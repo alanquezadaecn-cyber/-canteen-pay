@@ -16,6 +16,9 @@ RUN npm ci --only=production --legacy-peer-deps
 FROM node:18-slim
 WORKDIR /app
 
+# Install OpenSSL required by Prisma
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 # Copy backend
 COPY backend .
 RUN npm ci --legacy-peer-deps
