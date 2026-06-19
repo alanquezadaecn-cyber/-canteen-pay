@@ -1,5 +1,5 @@
 # Build stage - Frontend
-FROM node:18-alpine AS frontend-build
+FROM node:18-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
@@ -7,13 +7,13 @@ COPY frontend .
 RUN npm run build
 
 # Build stage - Backend
-FROM node:18-alpine AS backend-build
+FROM node:18-slim AS backend-build
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm ci --only=production --legacy-peer-deps
 
 # Production stage
-FROM node:18-alpine
+FROM node:18-slim
 WORKDIR /app
 
 # Copy backend
