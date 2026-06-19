@@ -1,0 +1,163 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    CANTEEN PAY - SISTEMA DE PAGO DIGITAL                    ║
+║                                                                              ║
+║              Sistema Premium de Monedero para Comedores Empresariales        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+🎯 INICIO RÁPIDO EN 3 PASOS
+═══════════════════════════════════════════════════════════════════════════
+
+PASO 1: BASE DE DATOS
+────────────────────────────────────────────────────────────────────────────
+  Opción A (Docker - Recomendado):
+    docker-compose up -d
+
+  Opción B (PostgreSQL local):
+    createdb canteen_pay
+
+  Luego, espera 10 segundos para que PostgreSQL inicie...
+
+
+PASO 2: BACKEND
+────────────────────────────────────────────────────────────────────────────
+  Abre PowerShell/Terminal y ejecuta:
+
+    cd backend
+    npm install
+    npm run prisma:migrate
+    npm run prisma:seed
+    npm run dev
+
+  Debe mostrar: "Servidor ejecutándose en puerto 3001"
+
+  ✓ Backend listo en: http://localhost:3001
+
+
+PASO 3: FRONTEND
+────────────────────────────────────────────────────────────────────────────
+  Abre OTRA terminal (mantener backend corriendo) y ejecuta:
+
+    cd frontend
+    npm install
+    npm run dev
+
+  Debe mostrar: "Local: http://localhost:5173"
+
+  ✓ App lista en: http://localhost:5173
+
+
+🧪 INICIA SESIÓN CON ESTOS DATOS
+═══════════════════════════════════════════════════════════════════════════
+
+  Email:    juan@example.com
+  Password: password123
+
+  Otros usuarios para probar:
+    - maria@example.com / password123
+    - carlos@example.com / password123 (Cajero)
+    - admin@example.com / password123 (Admin)
+
+
+📱 PRINCIPALES FUNCIONALIDADES
+═══════════════════════════════════════════════════════════════════════════
+
+  ✅ Dashboard          - Saldo y últimas compras
+  ✅ Mi QR             - Código QR escaneable y descargable
+  ✅ Mis Compras       - Historial de transacciones
+  ✅ Recargas          - Historial y nueva recarga
+  ✅ Estado de Cuenta  - Resumen detallado como banco
+  ✅ Perfil            - Editar datos y cambiar contraseña
+
+
+📚 DOCUMENTACIÓN
+═══════════════════════════════════════════════════════════════════════════
+
+  - SETUP.md          - Guía de instalación completa
+  - QUICK_START.md    - Start rápido en 5 minutos
+  - README.md         - Documentación del proyecto
+  - PROJECT_SUMMARY.md - Resumen técnico completo
+
+
+⚙️ COMANDOS ÚTILES
+═══════════════════════════════════════════════════════════════════════════
+
+Backend:
+  npm run dev              - Inicia servidor con hot reload
+  npm run prisma:migrate   - Ejecuta migraciones
+  npm run prisma:seed      - Carga datos de prueba
+  npm run prisma:studio    - Abre interfaz visual para BD
+
+Frontend:
+  npm run dev              - Inicia dev server
+  npm run build            - Build para producción
+  npm run preview          - Preview del build
+
+
+🆘 PROBLEMAS COMUNES
+═══════════════════════════════════════════════════════════════════════════
+
+  ❌ Error: "connect ECONNREFUSED 127.0.0.1:5432"
+     → PostgreSQL no está corriendo
+     → Con Docker: docker-compose up -d
+     → O inicia PostgreSQL localmente
+
+  ❌ Error: "Cannot find module '@prisma/client'"
+     → cd backend && npm install && npm run prisma:generate
+
+  ❌ Puerto 3001 o 5173 en uso
+     → Cambiar PORT en backend/.env
+     → O cambiar puerto en frontend/vite.config.js
+
+  ❌ Base de datos vacía después de migrar
+     → cd backend && npm run prisma:seed
+
+
+🏗️ ARQUITECTURA
+═══════════════════════════════════════════════════════════════════════════
+
+  Backend:  Node.js + Express + Prisma + PostgreSQL
+  Frontend: React 18 + TypeScript + Vite + TailwindCSS
+  Auth:     JWT (access 1h + refresh 7d)
+  Diseño:   Glassmorphism Premium
+
+
+🚀 PRÓXIMAS FASES
+═══════════════════════════════════════════════════════════════════════════
+
+  Fase 2: Panel de Cajero (escaneo QR, cobro)
+  Fase 3: Panel Administrativo (gestión de usuarios, reportes)
+  Fase 4: Integración Stripe/MercadoPago
+  Fase 5: Aplicación móvil nativa
+
+
+📝 NOTAS IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════
+
+  • Asegúrate de tener Node.js 16+ instalado
+  • Usa dos terminales diferentes (una para backend, una para frontend)
+  • No cierres la terminal del backend mientras estés desarrollando
+  • Los datos se guardan en PostgreSQL (persisten)
+  • El JWT se guarda en localStorage (local de browser)
+  • Las imágenes QR se generan en tiempo real
+
+
+✨ CARACTERÍSTICAS PRINCIPALES
+═══════════════════════════════════════════════════════════════════════════
+
+  ✅ Autenticación JWT completa
+  ✅ Diseño Premium con glassmorphism
+  ✅ Balance card con gradiente animado
+  ✅ QR único por usuario
+  ✅ Historial de transacciones
+  ✅ Estado de cuenta detallado
+  ✅ Responsive: Desktop + Mobile
+  ✅ Datos de prueba precargados
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+🎉 ¡LISTO! Abre tu navegador en http://localhost:5173 y comienza.
+
+Cualquier duda, revisa SETUP.md o PROJECT_SUMMARY.md
+
+═══════════════════════════════════════════════════════════════════════════

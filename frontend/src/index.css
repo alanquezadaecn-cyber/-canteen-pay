@@ -1,0 +1,318 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE STYLES & RESETS
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+  font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', sans-serif;
+}
+
+/* Dark mode */
+:is(html.dark) body {
+  @apply bg-slate-950 text-slate-50;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded;
+  transition: background-color 200ms ease-in-out;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-width: thin;
+}
+
+:is(html.dark) {
+  scrollbar-color: #4b5563 #1e293b;
+}
+
+/* ============================================
+   FOCUS STATES
+   ============================================ */
+
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-emerald-500;
+}
+
+:is(html.dark) :focus-visible {
+  @apply outline-emerald-400;
+}
+
+/* ============================================
+   GLASSMORPHISM UTILITIES
+   ============================================ */
+
+.glass {
+  @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-white/10;
+}
+
+.glass-sm {
+  @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-white/10;
+}
+
+.glass-lg {
+  @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/30 dark:border-white/20;
+}
+
+/* ============================================
+   ELEVATION & SHADOW UTILITIES
+   ============================================ */
+
+.elevation-xs {
+  @apply shadow-xs;
+}
+
+.elevation-sm {
+  @apply shadow-sm;
+}
+
+.elevation-md {
+  @apply shadow-md;
+}
+
+.elevation-lg {
+  @apply shadow-lg;
+}
+
+.elevation-xl {
+  @apply shadow-xl;
+}
+
+.elevation-dark {
+  @apply shadow-dark dark:shadow-2xl;
+}
+
+.hover-elevation {
+  @apply transition-all duration-200 hover:shadow-lg hover:scale-[1.02];
+}
+
+/* ============================================
+   GRADIENT UTILITIES
+   ============================================ */
+
+.gradient-user {
+  @apply bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950;
+}
+
+.gradient-cashier {
+  @apply bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950;
+}
+
+.gradient-admin {
+  @apply bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950;
+}
+
+.gradient-text-user {
+  @apply bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent;
+}
+
+.gradient-text-cashier {
+  @apply bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent;
+}
+
+.gradient-text-admin {
+  @apply bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent;
+}
+
+/* ============================================
+   BUTTON UTILITIES
+   ============================================ */
+
+.btn-base {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-all duration-200 cursor-pointer;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2;
+}
+
+.btn-primary {
+  @apply btn-base bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95;
+  @apply dark:bg-emerald-500 dark:hover:bg-emerald-600;
+}
+
+.btn-secondary {
+  @apply btn-base bg-slate-200 text-slate-900 hover:bg-slate-300;
+  @apply dark:bg-slate-700 dark:text-slate-50 dark:hover:bg-slate-600;
+}
+
+.btn-outline {
+  @apply btn-base border border-slate-300 text-slate-900 hover:bg-slate-50;
+  @apply dark:border-slate-600 dark:text-slate-50 dark:hover:bg-slate-800;
+}
+
+/* ============================================
+   CARD UTILITIES
+   ============================================ */
+
+.card {
+  @apply glass p-6 rounded-lg;
+}
+
+.card-hover {
+  @apply card hover-elevation;
+}
+
+.card-interactive {
+  @apply card cursor-pointer transition-all duration-200 hover:shadow-lg;
+}
+
+/* ============================================
+   INPUT UTILITIES
+   ============================================ */
+
+.input-base {
+  @apply w-full px-4 py-2 rounded-md border border-slate-300 bg-white text-slate-900;
+  @apply placeholder-slate-400 transition-all duration-200;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2;
+  @apply dark:bg-slate-800 dark:border-slate-600 dark:text-slate-50 dark:placeholder-slate-500;
+  @apply dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-slate-950;
+}
+
+/* ============================================
+   ANIMATION UTILITIES
+   ============================================ */
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Stagger animation for lists */
+@for $i from 0 to 12 {
+  .stagger-\[$i\] {
+    animation-delay: ($i * 50ms);
+  }
+}
+
+/* ============================================
+   NEUMORPHISM UTILITIES
+   ============================================ */
+
+.neumorphic-light {
+  @apply bg-slate-100 rounded-lg shadow-md;
+  box-shadow:
+    inset 1px 1px 3px rgba(255, 255, 255, 0.5),
+    inset -1px -1px 3px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.neumorphic-dark {
+  @apply bg-slate-800 rounded-lg;
+  box-shadow:
+    inset 1px 1px 3px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 3px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   LOADING STATE UTILITIES
+   ============================================ */
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 50%,
+    #f1f5f9 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+:is(html.dark) .shimmer {
+  background: linear-gradient(
+    90deg,
+    #1e293b 0%,
+    #334155 50%,
+    #1e293b 100%
+  );
+}
+
+/* ============================================
+   TEXT UTILITIES
+   ============================================ */
+
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+/* Tablet & up hide mobile-only */
+@media (min-width: 768px) {
+  .hidden-tablet {
+    @apply hidden;
+  }
+}
+
+/* Desktop & up hide mobile */
+@media (min-width: 1024px) {
+  .hidden-desktop {
+    @apply hidden;
+  }
+}
+
+/* ============================================
+   DARK MODE TOGGLE
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}

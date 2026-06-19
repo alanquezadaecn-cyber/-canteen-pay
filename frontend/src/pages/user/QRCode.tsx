@@ -1,0 +1,281 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { useAuthStore } from '../../store/useAuthStore';
+import { Download, Printer, Share2, Copy, CheckCircle } from 'lucide-react';
+import QRCodeComponent from 'qrcode.react';
+
+interface QRData {
+  qrCode: string;
+  name: string;
+  employeeNumber: string;
+}
+
+export const QRCode: React.FC = () => {
+  const { user } = useAuthStore();
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [size, setSize] = useState<'small' | 'medium' | 'large'>('large');
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const qrData: QRData = {
+    qrCode: user?.qrCode || '',
+    name: user?.name || '',
+    employeeNumber: user?.employeeNumber || ''
+  };
+
+  const sizeMap = { small: 150, medium: 250, large: 350 };
+
+  const downloadQR = (format: 'png' | 'svg' = 'png') => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (canvas) {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL(`image/${format}`);
+      link.download = `QR_${user?.id || 'canteen'}.${format}`;
+      link.click();
+    }
+  };
+
+  const printQR = () => {
+    const printWindow = window.open('', '', 'height=800,width=800');
+    if (printWindow && qrRef.current) {
+      const canvas = qrRef.current.querySelector('canvas');
+      if (canvas) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Mi Código QR - Canteen Pay</title>
+              <style>
+                body {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  background: #f8fafc;
+                  margin: 0;
+                  padding: 20px;
+                }
+                .container {
+                  background: white;
+                  padding: 40px;
+                  border-radius: 16px;
+                  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                  text-align: center;
+                  max-width: 500px;
+                }
+                h1 {
+                  color: #059669;
+                  margin: 0 0 10px 0;
+                  font-size: 28px;
+                }
+                .user-info {
+                  background: linear-gradient(135deg, #059669 0%, #14b8a6 100%);
+                  color: white;
+                  padding: 20px;
+                  border-radius: 12px;
+                  margin: 20px 0;
+                }
+                .user-info h2 {
+                  margin: 0 0 5px 0;
+                  font-size: 20px;
+                }
+                .user-info p {
+                  margin: 0;
+                  opacity: 0.9;
+                  font-size: 14px;
+                }
+                .qr-box {
+                  background: #f1f5f9;
+                  padding: 20px;
+                  border-radius: 12px;
+                  margin: 20px 0;
+                  display: inline-block;
+                }
+                .qr-box img, .qr-box canvas {
+                  width: 300px;
+                  height: 300px;
+                }
+                .footer {
+                  color: #64748b;
+                  font-size: 12px;
+                  margin-top: 20px;
+                  text-align: center;
+                }
+                .qr-id {
+                  font-family: monospace;
+                  background: #e2e8f0;
+                  padding: 8px 12px;
+                  border-radius: 6px;
+                  margin-top: 10px;
+                  font-size: 12px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>🎫 Mi Código QR</h1>
+                <div class="user-info">
+                  <h2>${qrData.name}</h2>
+                  <p>${qrData.employeeNumber}</p>
+                </div>
+                <p style="color: #64748b; font-size: 14px;">Usa este código en el comedor</p>
+                <div class="qr-box">
+                  ${canvas.outerHTML}
+                </div>
+                <div class="qr-id">
+                  ID: ${qrData.qrCode}
+                </div>
+                <div class="footer">
+                  <p>Impreso desde Canteen Pay</p>
+                  <p>${new Date().toLocaleDateString('es-MX')}</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 100);
+      }
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(qrData.qrCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+      <div className="p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
+        <div className="w-full max-w-lg space-y-8">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
+              Mi Código QR 🎫
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Comparte este código para realizar pagos en el comedor
+            </p>
+          </div>
+
+          {/* Main Card */}
+          <Card variant="elevated" className="shadow-2xl animate-scale-in">
+            <CardHeader borderBottom>
+              <CardTitle className="text-center">Tu Código QR Personal</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-8 space-y-6">
+              {/* QR Display */}
+              <div
+                ref={qrRef}
+                className="flex justify-center p-6 bg-white dark:bg-slate-800 rounded-lg border-2 border-slate-200 dark:border-slate-700"
+              >
+                <QRCodeComponent
+                  value={qrData.qrCode}
+                  size={sizeMap[size]}
+                  level="H"
+                  includeMargin={true}
+                  renderAs="canvas"
+                />
+              </div>
+
+              {/* User Info */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-2">{qrData.name}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                  Empleado #{qrData.employeeNumber}
+                </p>
+                <div className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800 p-3 rounded">
+                  <code className="text-xs font-mono text-slate-700 dark:text-slate-300">
+                    {qrData.qrCode}
+                  </code>
+                  <Button
+                    size="iconSm"
+                    variant="ghost"
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? (
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Size Selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Tamaño del QR
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['small', 'medium', 'large'] as const).map(s => (
+                    <Button
+                      key={s}
+                      variant={size === s ? 'primary' : 'outline'}
+                      size="sm"
+                      onClick={() => setSize(s)}
+                      className="capitalize"
+                    >
+                      {s === 'small' && 'Pequeño'}
+                      {s === 'medium' && 'Medio'}
+                      {s === 'large' && 'Grande'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2 pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={() => downloadQR('png')}
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar como Imagen
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={printQR}
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={() => {
+                    const text = `Mi código QR: ${qrData.qrCode}`;
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Canteen Pay QR',
+                        text: text
+                      });
+                    } else {
+                      copyToClipboard();
+                    }
+                  }}
+                >
+                  <Share2 className="w-4 h-4" />
+                  Compartir
+                </Button>
+              </div>
+
+              {/* Tips */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-xs text-blue-900 dark:text-blue-300">
+                  💡 <strong>Tip:</strong> Ten este QR a mano en el comedor para pagos rápidos. Puedes guardar la imagen en tu teléfono o imprimirlo.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
