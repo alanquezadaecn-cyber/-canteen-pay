@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 
 dotenv.config();
 
@@ -23,6 +23,9 @@ app.use('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos del frontend
+app.use(express.static(join(__dirname, '../../public')));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -42,6 +45,11 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/cashier', cashierRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+
+// Ruta catch-all para SPA (Single Page Application)
+app.get('*', (req, res) => {
+  res.sendFile(join(__dirname, '../../public/index.html'));
+});
 
 // Error handling
 app.use((err, req, res, next) => {
