@@ -1,22 +1,10 @@
 # Build stage - Frontend
 FROM node:18-slim AS frontend-build
+WORKDIR /app
+COPY frontend ./frontend
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
-COPY frontend/index.html ./
-COPY frontend/src ./src
-COPY frontend/vite.config.js ./
-COPY frontend/tailwind.config.js ./
-COPY frontend/postcss.config.js ./
-COPY frontend/tsconfig.json ./
-COPY frontend/tsconfig.node.json ./
 RUN npm run build
-
-# Build stage - Backend
-FROM node:18-slim AS backend-build
-WORKDIR /app/backend
-COPY backend/package*.json ./
-RUN npm ci --only=production --legacy-peer-deps
 
 # Production stage
 FROM node:18-slim
@@ -26,10 +14,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy backend
-COPY backend .
+COPY backend ./backend
+WORKDIR /app/backend
 RUN npm ci --legacy-peer-deps
 
 # Copy built frontend to backend public directory
+WORKDIR /app
 COPY --from=frontend-build /app/frontend/dist ./public
 
 # Expose port
@@ -40,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Start backend server
-CMD ["npm", "start"]
+CMD ["node", "backend/src/app.js"]
