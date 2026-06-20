@@ -3,7 +3,10 @@ FROM node:18-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
-COPY frontend .
+COPY frontend/index.html ./
+COPY frontend/src ./src
+COPY frontend/*.config.* ./
+COPY frontend/tsconfig.json ./
 RUN npm run build
 
 # Build stage - Backend
