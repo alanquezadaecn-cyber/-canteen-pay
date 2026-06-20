@@ -38,6 +38,7 @@ import transactionRoutes from './routes/transactions.js';
 import cashierRoutes from './routes/cashier.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payments.js';
+import initRoutes from './routes/init.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -45,6 +46,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/cashier', cashierRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/init', initRoutes);
 
 // Ruta catch-all para SPA (Single Page Application)
 app.get('*', (req, res) => {
