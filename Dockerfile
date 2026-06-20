@@ -5,8 +5,11 @@ COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY frontend/index.html ./
 COPY frontend/src ./src
-COPY frontend/*.config.* ./
+COPY frontend/vite.config.js ./
+COPY frontend/tailwind.config.js ./
+COPY frontend/postcss.config.js ./
 COPY frontend/tsconfig.json ./
+COPY frontend/tsconfig.node.json ./
 RUN npm run build
 
 # Build stage - Backend
