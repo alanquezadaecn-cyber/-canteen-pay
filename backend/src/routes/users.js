@@ -1,11 +1,10 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { verifyToken } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 router.get('/me', verifyToken, async (req, res) => {
   try {

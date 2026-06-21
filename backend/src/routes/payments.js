@@ -1,11 +1,10 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { stripe } from '../services/stripe.service.js';
 import { preference, payment } from '../services/mp.service.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // POST /api/payments/stripe/create-intent
 // Crea un PaymentIntent en Stripe y registra Recharge pendiente

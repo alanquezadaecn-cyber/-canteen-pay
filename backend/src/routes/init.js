@@ -1,10 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Endpoint para inicializar datos de prueba
 router.post('/seed', async (req, res) => {

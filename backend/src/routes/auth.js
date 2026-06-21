@@ -1,11 +1,10 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 const generateTokens = (userId, role) => {
   const accessToken = jwt.sign(
