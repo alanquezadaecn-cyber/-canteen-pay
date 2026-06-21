@@ -10,11 +10,18 @@ const prisma = new PrismaClient();
 router.post('/seed', async (req, res) => {
   try {
     console.log('🌱 Iniciando seed de datos...');
+    console.log('📡 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+
+    // Test connection first
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✅ Conexión a BD exitosa');
 
     // Limpiar datos existentes
+    console.log('🗑️  Limpiando datos existentes...');
     await prisma.transaction.deleteMany();
     await prisma.recharge.deleteMany();
     await prisma.user.deleteMany();
+    console.log('✅ Datos limpios');
 
     // Crear usuarios de prueba
     const users = await Promise.all([
