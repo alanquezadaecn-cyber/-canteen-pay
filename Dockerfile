@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY backend ./backend
 WORKDIR /app/backend
 RUN npm ci --legacy-peer-deps
-RUN npx prisma generate
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost/dummy" npx prisma generate
 
 # Copy built frontend to backend public directory
 WORKDIR /app
