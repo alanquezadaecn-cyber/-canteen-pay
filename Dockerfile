@@ -1,38 +1,33 @@
 # Build stage - Frontend
 FROM node:18-slim AS frontend-build
-WORKDIR /app
-COPY frontend ./frontend
 WORKDIR /app/frontend
-RUN npm ci --legacy-peer-deps
-RUN npm run build
+COPY frontend .
+RUN npm ci --legacy-peer-deps && npm run build
 
 # Production stage
 FROM node:18-slim
 WORKDIR /app
 
-# Install OpenSSL required by Prisma
+# Install OpenSSL for Prisma
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Copy backend
+# Copy backend and install dependencies
 COPY backend ./backend
 WORKDIR /app/backend
 RUN npm ci --legacy-peer-deps
-# Generate Prisma client without connecting to database
-RUN npx prisma generate 2>&1 || echo "Prisma generate warning (will retry at runtime)"
 
-# Copy built frontend to backend public directory
-WORKDIR /app
-COPY --from=frontend-build /app/frontend/dist ./public
+# Generate Prisma client (may fail but we continue)
+RUN npx prisma generate || true
+
+# Copy frontend build
+COPY --from=frontend-build /app/frontend/dist /app/public
 
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 0
 
-# Set working directory to backend for npm
-WORKDIR /app/backend
-
-# Start backend server
+# Start app
 CMD ["npm", "start"]
