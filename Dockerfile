@@ -29,6 +29,6 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 0
 
-# Start with sh to ensure compatibility
+# Start app - just run node directly
 WORKDIR /app/backend
-CMD ["sh", "-c", "npx prisma generate 2>/dev/null; exec node src/app-minimal.js"]
+CMD ["node", "src/app-minimal.js"]
