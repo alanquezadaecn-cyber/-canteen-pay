@@ -62,6 +62,24 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor ejecutándose en puerto ${PORT}`);
+
+// Start server with error handling
+try {
+  app.listen(PORT, () => {
+    console.log(`✅ Servidor ejecutándose en puerto ${PORT}`);
+  });
+} catch (error) {
+  console.error('❌ Error iniciando servidor:', error);
+  process.exit(1);
+}
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
 });
