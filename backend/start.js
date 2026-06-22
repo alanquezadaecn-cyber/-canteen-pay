@@ -9,19 +9,22 @@ const __dirname = path.dirname(__filename);
 
 console.log('🚀 Inicializando Canteen Pay Backend...');
 
-// Generar cliente Prisma si es necesario
-console.log('📦 Verificando Prisma client...');
+// Generar cliente Prisma
+console.log('📦 Generando Prisma client...');
 try {
   execSync('npx prisma generate', {
     cwd: __dirname,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: { ...process.env }
   });
   console.log('✅ Prisma client listo');
-} catch (error) {
-  console.error('❌ Error al generar Prisma:', error.message);
-  process.exit(1);
+} catch (err) {
+  console.warn('⚠️ Prisma generate warning, continuando...');
 }
 
 // Ejecutar el app
 console.log('🎯 Iniciando servidor...');
-import('./src/app.js');
+import('./src/app.js').catch(err => {
+  console.error('❌ Error iniciando app:', err);
+  process.exit(1);
+});
