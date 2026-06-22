@@ -22,10 +22,6 @@ RUN npx prisma generate || true
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist /app/public
 
-# Copy startup script
-COPY backend/start.sh /app/backend/start.sh
-RUN chmod +x /app/backend/start.sh
-
 # Expose port
 EXPOSE 3001
 
@@ -33,5 +29,6 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 0
 
-# Start app
-CMD ["/app/backend/start.sh"]
+# Start with sh to ensure compatibility
+WORKDIR /app/backend
+CMD ["sh", "-c", "npx prisma generate 2>/dev/null; exec node src/app-minimal.js"]
