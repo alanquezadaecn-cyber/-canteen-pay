@@ -1,14 +1,24 @@
-# Build stage - Frontend
-FROM node:18-slim AS frontend
-WORKDIR /app/frontend
-COPY frontend .
-RUN npm install --legacy-peer-deps && npm run build 2>&1 || true
-
-# Backend stage
 FROM node:18-slim
-WORKDIR /app/backend
-COPY backend .
+
+# Metadata
+LABEL version="1.0"
+LABEL description="Canteen Pay Backend"
+
+# Working directory
+WORKDIR /backend
+
+# Copy everything needed
+COPY backend/package.json .
+COPY backend/package-lock.json* .
+
+# Install
 RUN npm install --legacy-peer-deps
 
+# Copy source
+COPY backend/src ./src
+
+# Expose port
 EXPOSE 3001
-CMD ["node", "src/app.js"]
+
+# Start with debug output
+CMD ["sh", "-c", "echo 'NODE VERSION:' && node --version && echo 'PWD:' && pwd && echo 'FILES:' && ls -la && echo 'SRC:' && ls -la src/ && echo 'STARTING SERVER...' && node src/server.js"]
