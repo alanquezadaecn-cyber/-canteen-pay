@@ -29,5 +29,5 @@ COPY backend/src ./src
 # Expose port
 EXPOSE 8080
 
-# Start application with migrations
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/app.js"]
+# Start application (migrations already deployed at build time if migrations exist)
+CMD ["node", "src/app.js"]
