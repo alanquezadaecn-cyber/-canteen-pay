@@ -115,6 +115,19 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Debug endpoint
+router.get('/test-prisma', async (req, res) => {
+  try {
+    console.log('🧪 Testing Prisma connection...');
+    const user = await prisma.user.findFirst();
+    console.log('✅ Prisma works, found user:', user?.email);
+    res.json({ success: true, userFound: !!user });
+  } catch (err) {
+    console.error('❌ Prisma error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/refresh', (req, res) => {
   try {
     const { refreshToken } = req.body;
