@@ -7,18 +7,24 @@ LABEL description="Canteen Pay Backend"
 # Working directory
 WORKDIR /backend
 
-# Copy everything needed
+# Copy package files
 COPY backend/package.json .
 COPY backend/package-lock.json* .
 
-# Install
+# Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy source
+# Copy Prisma schema and migrations (REQUIRED BEFORE generate)
+COPY backend/prisma ./prisma
+
+# Generate Prisma client (CRITICAL - must happen during build)
+RUN npx prisma generate
+
+# Copy source code
 COPY backend/src ./src
 
 # Expose port
-EXPOSE 3001
+EXPOSE 8080
 
-# Start with debug output
-CMD ["sh", "-c", "echo 'NODE VERSION:' && node --version && echo 'PWD:' && pwd && echo 'FILES:' && ls -la && echo 'SRC:' && ls -la src/ && echo 'STARTING SERVER...' && node src/server.js"]
+# Start application
+CMD ["node", "src/app.js"]
