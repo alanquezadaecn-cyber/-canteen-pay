@@ -6,16 +6,18 @@ import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
+
 const generateTokens = (userId, role) => {
   const accessToken = jwt.sign(
     { sub: userId, role },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE_IN || '1h' }
   );
 
   const refreshToken = jwt.sign(
     { sub: userId, role },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: process.env.JWT_REFRESH_EXPIRE_IN || '7d' }
   );
 
