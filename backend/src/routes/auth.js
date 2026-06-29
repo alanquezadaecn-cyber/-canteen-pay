@@ -128,6 +128,28 @@ router.get('/test-prisma', async (req, res) => {
   }
 });
 
+// Debug endpoint - show user
+router.get('/test-user/:email', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: req.params.email }
+    });
+    if (!user) {
+      return res.json({ found: false });
+    }
+    res.json({
+      found: true,
+      email: user.email,
+      name: user.name,
+      passwordType: typeof user.password,
+      passwordLength: user.password?.length || 0,
+      passwordSample: user.password?.substring(0, 20) || 'NONE'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/refresh', (req, res) => {
   try {
     const { refreshToken } = req.body;
