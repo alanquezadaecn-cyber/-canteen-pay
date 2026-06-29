@@ -150,6 +150,28 @@ router.get('/test-user/:email', async (req, res) => {
   }
 });
 
+// Debug endpoint - test bcrypt
+router.post('/test-bcrypt', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    res.json({
+      email: user.email,
+      passwordStored: user.password?.substring(0, 30) + '...',
+      passwordProvided: password,
+      matchResult: match
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 router.post('/refresh', (req, res) => {
   try {
     const { refreshToken } = req.body;
