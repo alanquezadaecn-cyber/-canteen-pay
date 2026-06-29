@@ -78,12 +78,18 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email y contraseña requeridos' });
     }
 
+    console.log(`📧 Intento login: ${email}`);
+
     const user = await prisma.user.findUnique({ where: { email } });
+    console.log(`👤 Usuario encontrado: ${user ? 'SÍ' : 'NO'}`);
+
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
+    console.log(`🔐 Password match: ${passwordMatch}`);
+
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
@@ -103,7 +109,8 @@ router.post('/login', async (req, res) => {
       refreshToken
     });
   } catch (err) {
-    console.error(err);
+    console.error('❌ LOGIN ERROR:', err.message || err);
+    console.error(err.stack);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 });
