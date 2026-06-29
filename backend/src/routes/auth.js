@@ -94,20 +94,25 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.role);
+    try {
+      const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
-    res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        company: user.company,
-        role: user.role,
-        balance: user.balance.toString()
-      },
-      accessToken,
-      refreshToken
-    });
+      res.json({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          company: user.company || 'N/A',
+          role: user.role,
+          balance: (user.balance || 0).toString()
+        },
+        token: accessToken,
+        refreshToken
+      });
+    } catch (tokenErr) {
+      console.error('❌ Token generation error:', tokenErr);
+      res.status(500).json({ error: 'Error generando tokens' });
+    }
   } catch (err) {
     console.error('❌ LOGIN ERROR:', err.message || err);
     console.error(err.stack);
