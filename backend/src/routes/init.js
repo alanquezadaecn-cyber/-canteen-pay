@@ -22,13 +22,16 @@ router.post('/seed', async (req, res) => {
     await prisma.user.deleteMany();
     console.log('✅ Datos limpios');
 
+    // Hash passwords first (BEFORE creating users)
+    const hashedPassword = await bcrypt.hash('password123', 10);
+
     // Crear usuarios de prueba
     const users = await Promise.all([
       prisma.user.create({
         data: {
           name: 'Juan Pérez',
           email: 'juan@example.com',
-          password: await bcrypt.hash('password123', 10),
+          password: hashedPassword,
           company: 'Tech Corp',
           employeeNumber: 'EMP-2024-001',
           phone: '+55 5555-0001',
@@ -42,7 +45,7 @@ router.post('/seed', async (req, res) => {
         data: {
           name: 'María García',
           email: 'maria@example.com',
-          password: await bcrypt.hash('password123', 10),
+          password: hashedPassword,
           company: 'Tech Corp',
           employeeNumber: 'EMP-2024-002',
           phone: '+55 5555-0002',
@@ -56,7 +59,7 @@ router.post('/seed', async (req, res) => {
         data: {
           name: 'Carlos López',
           email: 'carlos@example.com',
-          password: await bcrypt.hash('password123', 10),
+          password: hashedPassword,
           company: 'Tech Corp',
           employeeNumber: 'EMP-2024-003',
           phone: '+55 5555-0003',
@@ -70,7 +73,7 @@ router.post('/seed', async (req, res) => {
         data: {
           name: 'Admin User',
           email: 'admin@example.com',
-          password: await bcrypt.hash('password123', 10),
+          password: hashedPassword,
           company: 'Tech Corp',
           employeeNumber: 'ADM-2024-001',
           phone: '+55 5555-0099',
