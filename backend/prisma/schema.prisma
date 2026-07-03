@@ -12,7 +12,7 @@ datasource db {
 
 model Plan {
   id              String    @id @default(cuid())
-  name            String    @unique  // ENTERPRISE, SUCCURSAL
+  name            String    @unique  // ENTERPRISE, LITE
   description     String?
   price           Decimal   @db.Decimal(10, 2)
   billingCycle    String    @default("MONTHLY") // MONTHLY, YEARLY, ONETIME

@@ -98,7 +98,7 @@ router.post('/companies/create', async (req, res) => {
     if (plan.name === 'ENTERPRISE') {
       licenseFee = 30000;   // $30k/año
       hostingFee = 500;     // $500/mes
-    } else if (plan.name === 'SUCCURSAL') {
+    } else if (plan.name === 'LITE') {
       licenseFee = 5000;    // $5k/año
       hostingFee = 150;     // $150/mes
     }

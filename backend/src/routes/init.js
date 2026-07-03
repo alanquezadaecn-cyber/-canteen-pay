@@ -167,10 +167,10 @@ router.post('/seed-plans', async (req, res) => {
       }
     });
 
-    const succursalPlan = await prisma.plan.upsert({
-      where: { name: 'SUCCURSAL' },
+    const litePlan = await prisma.plan.upsert({
+      where: { name: 'LITE' },
       update: {
-        description: 'Plan por sucursal - $5k licencia + $150/mes hosting',
+        description: 'Plan LITE - $5k licencia + $150/mes hosting',
         price: 5000,
         billingCycle: 'YEARLY',
         maxBranches: 1,
@@ -178,8 +178,8 @@ router.post('/seed-plans', async (req, res) => {
         features: ['qr-payments', 'cashier-module', 'admin-panel', 'basic-reports', 'email-support']
       },
       create: {
-        name: 'SUCCURSAL',
-        description: 'Plan por sucursal - $5k licencia + $150/mes hosting',
+        name: 'LITE',
+        description: 'Plan LITE - $5k licencia + $150/mes hosting',
         price: 5000,
         billingCycle: 'YEARLY',
         maxBranches: 1,
@@ -237,7 +237,7 @@ router.post('/seed-plans', async (req, res) => {
 
     const sub1 = await prisma.subscription.create({
       data: {
-        planId: succursalPlan.id,
+        planId: litePlan.id,
         status: 'ACTIVE',
         endDate: endDate1
       }
@@ -269,7 +269,7 @@ router.post('/seed-plans', async (req, res) => {
 
     const sub2 = await prisma.subscription.create({
       data: {
-        planId: succursalPlan.id,
+        planId: litePlan.id,
         status: 'ACTIVE',
         endDate: endDate2
       }
@@ -286,7 +286,7 @@ router.post('/seed-plans', async (req, res) => {
       success: true,
       message: '✅ Datos de prueba creados',
       data: {
-        plans: [enterprisePlan, succursalPlan],
+        plans: [enterprisePlan, litePlan],
         companies: [legacyCompany, testCompany1, testCompany2]
       }
     });
@@ -353,13 +353,13 @@ router.post('/setup-asinmex', async (req, res) => {
   try {
     console.log('🏢 Creando empresa ASINMEX con sucursales...');
 
-    // Obtener plan SUCCURSAL
-    const succursalPlan = await prisma.plan.findUnique({
-      where: { name: 'SUCCURSAL' }
+    // Obtener plan LITE
+    const litePlan = await prisma.plan.findUnique({
+      where: { name: 'LITE' }
     });
 
-    if (!succursalPlan) {
-      return res.status(400).json({ error: 'Plan SUCCURSAL no existe. Ejecuta /api/init/seed-plans primero' });
+    if (!litePlan) {
+      return res.status(400).json({ error: 'Plan LITE no existe. Ejecuta /api/init/seed-plans primero' });
     }
 
     // Buscar si ya existe
@@ -395,7 +395,7 @@ router.post('/setup-asinmex', async (req, res) => {
 
     const subscription = await prisma.subscription.create({
       data: {
-        planId: succursalPlan.id,
+        planId: litePlan.id,
         status: 'ACTIVE',
         endDate
       }
