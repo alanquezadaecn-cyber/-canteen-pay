@@ -43,7 +43,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { accessToken } = useAuthStore();
 
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    // Mostrar Login en lugar de redirigir
+    return <Login />;
   }
 
   return (
@@ -58,7 +59,8 @@ const CashierRoute: React.FC<CashierRouteProps> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
 
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    // Mostrar Login en lugar de redirigir
+    return <Login />;
   }
 
   if (!user || (user.role !== 'CASHIER' && user.role !== 'ADMIN')) {
@@ -81,7 +83,8 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
 
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    // Mostrar Login en lugar de redirigir
+    return <Login />;
   }
 
   if (!user || user.role !== 'ADMIN') {
