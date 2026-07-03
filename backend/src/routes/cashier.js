@@ -103,10 +103,19 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       return res.status(400).json({ error: 'QR y monto válido requeridos' });
     }
 
-    const user = await prisma.user.findUnique({
+    // Buscar por QR o por email
+    let user = await prisma.user.findUnique({
       where: { qrCode },
       select: { id: true, balance: true, name: true, isActive: true, branchId: true }
     });
+
+    // Si no encontró por QR, intenta por email
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email: qrCode },
+        select: { id: true, balance: true, name: true, isActive: true, branchId: true }
+      });
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -180,10 +189,19 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
       return res.status(400).json({ error: 'QR y monto válido requeridos' });
     }
 
-    const user = await prisma.user.findUnique({
+    // Buscar por QR o por email
+    let user = await prisma.user.findUnique({
       where: { qrCode },
       select: { id: true, balance: true, name: true, isActive: true, branchId: true }
     });
+
+    // Si no encontró por QR, intenta por email
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email: qrCode },
+        select: { id: true, balance: true, name: true, isActive: true, branchId: true }
+      });
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
