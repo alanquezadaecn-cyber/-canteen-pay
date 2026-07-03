@@ -26,9 +26,9 @@ const generateTokens = (userId, role, email, companyId) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, employeeNumber, phone } = req.body;
+    const { name, email, password, branchId, employeeNumber, phone } = req.body;
 
-    if (!name || !email || !password || !employeeNumber || !phone) {
+    if (!name || !email || !password || !branchId || !employeeNumber || !phone) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
@@ -37,10 +37,14 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'El email ya está registrado' });
     }
 
-    // Obtener empresa desde subdomain
-    const companyId = req.companyId;
-    if (!companyId) {
-      return res.status(400).json({ error: 'Empresa no encontrada en este subdominio' });
+    // Verificar que la sucursal existe
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+      include: { company: true }
+    });
+
+    if (!branch) {
+      return res.status(404).json({ error: 'Sucursal no encontrada' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -55,11 +59,12 @@ router.post('/register', async (req, res) => {
         phone,
         qrCode,
         role: 'USER',
-        branchId: null // Se asignará después si es necesario
+        branchId: branchId  // Asignar sucursal del registro
       }
     });
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, companyId);
+    // Usar companyId de la sucursal
+    const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, branch.companyId);
 
     res.status(201).json({
       user: {
@@ -67,7 +72,8 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        companyId
+        companyId: branch.companyId,
+        branchId: branch.id
       },
       accessToken,
       refreshToken

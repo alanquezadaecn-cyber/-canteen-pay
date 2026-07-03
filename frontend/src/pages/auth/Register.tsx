@@ -14,15 +14,38 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    company: '',
+    branchId: '',
     employeeNumber: '',
     phone: ''
   });
+
+  // Cargar sucursales al montar
+  React.useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        // Obtener sucursales de ASINMEX (hardcoded por ahora)
+        const { data } = await api.get('/branches');
+        setBranches(data);
+      } catch (err) {
+        console.error('Error cargando sucursales:', err);
+        // Datos de fallback
+        setBranches([
+          { id: 'cmr4fwm2j000e2ep6oxls9o7i', name: 'AIVY', location: 'México City' },
+          { id: 'cmr4fwm42000g2ep67c851kg0', name: 'BOCH', location: 'México City' }
+        ]);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+    loadBranches();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,7 +53,7 @@ export const Register: React.FC = () => {
   };
 
   const validateStep1 = () => {
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.branchId || !formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Todos los campos son requeridos');
       return false;
     }
@@ -71,7 +94,7 @@ export const Register: React.FC = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        company: formData.company,
+        branchId: formData.branchId,
         employeeNumber: formData.employeeNumber,
         phone: formData.phone
       });
@@ -107,6 +130,33 @@ export const Register: React.FC = () => {
           <form onSubmit={handleSubmit}>
             {step === 1 ? (
               <div className="space-y-4">
+                <div>
+                  <Label className="mb-2 block">
+                    🏪 Selecciona tu Sucursal
+                  </Label>
+                  {loadingBranches ? (
+                    <p className="text-gray-500">Cargando sucursales...</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {branches.map((branch) => (
+                        <button
+                          key={branch.id}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, branchId: branch.id }))}
+                          className={`p-3 rounded-lg border-2 transition ${
+                            formData.branchId === branch.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="font-semibold text-sm">{branch.name}</div>
+                          <div className="text-xs text-gray-500">{branch.location}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="name" className="mb-2 block">
                     Nombre Completo
