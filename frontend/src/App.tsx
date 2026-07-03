@@ -26,6 +26,7 @@ import { CashRecharge } from './pages/cashier/CashRecharge';
 import { CashierHistory } from './pages/cashier/CashierHistory';
 
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { BranchDetail } from './pages/admin/BranchDetail';
 import { UsersList } from './pages/admin/UsersList';
 import { UserDetail } from './pages/admin/UserDetail';
 import { TransactionsList } from './pages/admin/TransactionsList';
@@ -251,6 +252,14 @@ function App() {
           element={
             <AdminRoute>
               <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/branches/:id"
+          element={
+            <AdminRoute>
+              <BranchDetail />
             </AdminRoute>
           }
         />

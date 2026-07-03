@@ -5,100 +5,37 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Plus, DollarSign, TrendingUp, Building2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, ChevronRight, Building2, Users, Zap } from 'lucide-react';
 
-interface BranchStat {
-  company: string;
-  totalUsers: number;
-  totalBalance: string;
-  todayRevenue: string;
-  todayTransactions: number;
-}
-
-interface Transaction {
+interface Branch {
   id: string;
-  type: 'PURCHASE' | 'RECHARGE' | 'REFUND';
-  amount: string;
-  description: string;
-  createdAt: string;
-  user: {
-    name: string;
-    company: string;
+  name: string;
+  location?: string;
+  isActive: boolean;
+  _count?: {
+    cashiers: number;
+    users: number;
   };
 }
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [branches, setBranches] = useState<BranchStat[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBranch, setShowNewBranch] = useState(false);
   const [newBranch, setNewBranch] = useState({ name: '', location: '' });
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
   useEffect(() => {
-    fetchData();
+    fetchBranches();
   }, []);
 
-  const fetchData = async () => {
+  const fetchBranches = async () => {
     try {
-      const [statsRes, transRes] = await Promise.all([
-        api.get('/admin/stats'),
-        api.get('/admin/transactions?limit=10')
-      ]);
-
-      // Agrupar transacciones por company para estadísticas de sucursal
-      const txData = transRes.data.data || [];
-      const branchMap = new Map<string, BranchStat>();
-
-      // Inicializar con datos de usuarios
-      const usersRes = await api.get('/admin/users?limit=1000');
-      const users = usersRes.data.users || [];
-
-      users.forEach(user => {
-        const company = user.company || 'Sin Sucursal';
-        if (!branchMap.has(company)) {
-          branchMap.set(company, {
-            company,
-            totalUsers: 0,
-            totalBalance: '0',
-            todayRevenue: '0',
-            todayTransactions: 0
-          });
-        }
-        const branch = branchMap.get(company)!;
-        branch.totalUsers++;
-        branch.totalBalance = (parseFloat(branch.totalBalance) + parseFloat(user.balance)).toFixed(2);
-      });
-
-      // Agregar datos de transacciones
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      txData.forEach(tx => {
-        const company = tx.user.company || 'Sin Sucursal';
-        if (!branchMap.has(company)) {
-          branchMap.set(company, {
-            company,
-            totalUsers: 0,
-            totalBalance: '0',
-            todayRevenue: '0',
-            todayTransactions: 0
-          });
-        }
-        const branch = branchMap.get(company)!;
-        const txDate = new Date(tx.createdAt);
-        if (txDate >= today && txDate < tomorrow && tx.type === 'PURCHASE') {
-          branch.todayRevenue = (parseFloat(branch.todayRevenue) + parseFloat(tx.amount)).toFixed(2);
-          branch.todayTransactions++;
-        }
-      });
-
-      setBranches(Array.from(branchMap.values()));
-      setTransactions(txData);
+      const res = await api.get('/branches');
+      setBranches(res.data);
     } catch (err) {
-      console.error('Error fetching admin data:', err);
+      console.error('Error fetching branches:', err);
     } finally {
       setLoading(false);
     }
@@ -109,14 +46,44 @@ export const AdminDashboard: React.FC = () => {
     if (!newBranch.name.trim()) return;
 
     try {
-      // Crear usuario de admin para la sucursal o registrar la sucursal
-      // Por ahora, solo mostramos mensaje de éxito
-      alert(`Sucursal "${newBranch.name}" registrada`);
+      await api.post('/branches', {
+        name: newBranch.name.trim(),
+        location: newBranch.location.trim() || null
+      });
+
       setShowNewBranch(false);
       setNewBranch({ name: '', location: '' });
-      fetchData();
-    } catch (err) {
-      console.error('Error creating branch:', err);
+      fetchBranches();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al crear sucursal');
+    }
+  };
+
+  const handleUpdateBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBranch || !editingBranch.name.trim()) return;
+
+    try {
+      await api.put(`/branches/${editingBranch.id}`, {
+        name: editingBranch.name.trim(),
+        location: editingBranch.location?.trim() || null
+      });
+
+      setEditingBranch(null);
+      fetchBranches();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al actualizar sucursal');
+    }
+  };
+
+  const handleDeleteBranch = async (id: string) => {
+    if (!confirm('¿Eliminar esta sucursal?')) return;
+
+    try {
+      await api.delete(`/branches/${id}`);
+      fetchBranches();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al eliminar sucursal');
     }
   };
 
@@ -125,7 +92,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Cargando datos...</p>
+          <p className="text-slate-600 dark:text-slate-400">Cargando sucursales...</p>
         </div>
       </div>
     );
@@ -139,52 +106,82 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 mb-1">
-              Panel de Control
+              Administración de Sucursales
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Resumen por sucursales
+              Gestiona tus comedores y cajas
             </p>
           </div>
         </div>
 
-        {/* Sucursales Cards */}
+        {/* Sucursales Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {branches.map((branch) => (
-            <div key={branch.company}>
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    {branch.company}
-                  </h3>
+            <div
+              key={branch.id}
+              className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow duration-200"
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">
+                      {branch.name}
+                    </h3>
+                    {branch.location && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        📍 {branch.location}
+                      </p>
+                    )}
+                  </div>
                   <Building2 className="w-5 h-5 text-slate-400" />
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Usuarios</p>
+                    <p className="text-slate-500 dark:text-slate-400">Cajas</p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-                      {branch.totalUsers}
+                      {branch._count?.cashiers || 0}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Saldo Total</p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                      ${branch.totalBalance}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Cobros Hoy</p>
+                    <p className="text-slate-500 dark:text-slate-400">Usuarios</p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-                      ${branch.todayRevenue}
+                      {branch._count?.users || 0}
                     </p>
                   </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => navigate(`/admin/branches/${branch.id}`)}
+                    className="flex-1 flex items-center justify-center gap-2"
+                    size="sm"
+                  >
+                    Entrar <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => setEditingBranch(branch)}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteBranch(branch.id)}
+                    variant="outline"
+                    size="sm"
+                    className="px-3 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
 
           {/* Nueva Sucursal Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 p-6 flex items-center justify-center min-h-[280px]">
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 p-6 flex items-center justify-center min-h-[250px]">
             <Button
               onClick={() => setShowNewBranch(!showNewBranch)}
               className="flex items-center gap-2"
@@ -195,40 +192,54 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Crear Nueva Sucursal */}
-        {showNewBranch && (
+        {/* Crear/Editar Sucursal */}
+        {(showNewBranch || editingBranch) && (
           <Card>
             <CardHeader borderBottom>
-              <CardTitle>Crear Nueva Sucursal</CardTitle>
+              <CardTitle>
+                {editingBranch ? 'Editar Sucursal' : 'Crear Nueva Sucursal'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <form onSubmit={handleCreateBranch} className="space-y-4">
+              <form onSubmit={editingBranch ? handleUpdateBranch : handleCreateBranch} className="space-y-4">
                 <div>
-                  <Label htmlFor="branchName">Nombre de Sucursal</Label>
+                  <Label htmlFor="branchName">Nombre de Sucursal *</Label>
                   <Input
                     id="branchName"
-                    value={newBranch.name}
-                    onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
-                    placeholder="ej: Sucursal Centro"
+                    value={editingBranch ? editingBranch.name : newBranch.name}
+                    onChange={(e) => editingBranch
+                      ? setEditingBranch({ ...editingBranch, name: e.target.value })
+                      : setNewBranch({ ...newBranch, name: e.target.value })
+                    }
+                    placeholder="ej: Centro, Playa, Norte"
                     className="mt-1"
+                    required
                   />
                 </div>
                 <div>
                   <Label htmlFor="location">Ubicación</Label>
                   <Input
                     id="location"
-                    value={newBranch.location}
-                    onChange={(e) => setNewBranch({ ...newBranch, location: e.target.value })}
+                    value={editingBranch ? editingBranch.location || '' : newBranch.location}
+                    onChange={(e) => editingBranch
+                      ? setEditingBranch({ ...editingBranch, location: e.target.value })
+                      : setNewBranch({ ...newBranch, location: e.target.value })
+                    }
                     placeholder="ej: Calle 5 de Mayo #123"
                     className="mt-1"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit">Crear Sucursal</Button>
+                  <Button type="submit">
+                    {editingBranch ? 'Guardar Cambios' : 'Crear Sucursal'}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowNewBranch(false)}
+                    onClick={() => {
+                      setShowNewBranch(false);
+                      setEditingBranch(null);
+                    }}
                   >
                     Cancelar
                   </Button>
@@ -237,62 +248,6 @@ export const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         )}
-
-        {/* Últimas Transacciones */}
-        <Card>
-          <CardHeader borderBottom>
-            <CardTitle>Últimas Transacciones</CardTitle>
-            <CardDescription>Actividad reciente del sistema</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {transactions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-50">Usuario</th>
-                      <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-50">Sucursal</th>
-                      <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-50">Tipo</th>
-                      <th className="text-right py-3 px-4 font-semibold text-slate-900 dark:text-slate-50">Monto</th>
-                      <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-slate-50">Hora</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((tx) => (
-                      <tr key={tx.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="py-3 px-4 text-slate-900 dark:text-slate-50">{tx.user.name}</td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{tx.user.company}</td>
-                        <td className="py-3 px-4">
-                          <span className={`text-xs font-medium px-2 py-1 rounded ${
-                            tx.type === 'PURCHASE'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
-                          }`}>
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td className={`py-3 px-4 text-right font-semibold ${
-                          tx.type === 'PURCHASE'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
-                        }`}>
-                          {tx.type === 'PURCHASE' ? '-' : '+'}${tx.amount}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-xs">
-                          {new Date(tx.createdAt).toLocaleTimeString('es-MX')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
-                No hay transacciones
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
