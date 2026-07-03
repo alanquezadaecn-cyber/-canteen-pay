@@ -110,14 +110,15 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
 const MasterAdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-  const masterAdminEmail = process.env.VITE_MASTER_ADMIN_EMAIL || 'master@mealpay.com';
+  const masterAdminEmail = process.env.VITE_MASTER_ADMIN_EMAIL || 'alejandro.qt92@gmail.com';
 
   if (!accessToken) {
     return <Login />;
   }
 
-  if (!user || (user.email !== masterAdminEmail && user.role !== 'ADMIN')) {
-    return <Navigate to="/dashboard" replace />;
+  // Solo permitir si el email coincide exactamente con el master admin
+  if (!user || user.email !== masterAdminEmail) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <>{children}</>;
