@@ -41,6 +41,10 @@ import cashierRoutes from './routes/cashier.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payments.js';
 import branchRoutes from './routes/branches.js';
+import productRoutes from './routes/products.js';
+import reportRoutes from './routes/reports.js';
+import userMgmtRoutes from './routes/user-management.js';
+import cashierSessionRoutes from './routes/cashier-sessions.js';
 import initRoutes from './routes/init.js';
 
 app.use('/api/auth', authRoutes);
@@ -50,6 +54,10 @@ app.use('/api/cashier', cashierRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/user-management', userMgmtRoutes);
+app.use('/api/cashier-sessions', cashierSessionRoutes);
 app.use('/api/init', initRoutes);
 
 // SPA Fallback - sirve index.html para cualquier ruta que no sea API
