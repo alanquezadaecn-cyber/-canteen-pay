@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Usar URL inyectada en runtime o fallback a variable de build o localhost
+const API_URL = (window as any).__API_URL__ || import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
