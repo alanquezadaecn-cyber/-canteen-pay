@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +8,7 @@ import { AlertCircle, Zap, Keyboard } from 'lucide-react';
 
 export const QRScanner: React.FC = () => {
   const navigate = useNavigate();
+  const { branchId } = useParams<{ branchId?: string }>();
   const scannerRef = useRef<HTMLDivElement>(null);
   const [manualQR, setManualQR] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +29,11 @@ export const QRScanner: React.FC = () => {
 
     html5Scanner.render(
       (qrCode) => {
-        navigate(`/cashier/action?qr=${encodeURIComponent(qrCode)}`);
+        if (branchId) {
+          navigate(`/cashier/branch/${branchId}?action=process&qr=${encodeURIComponent(qrCode)}`);
+        } else {
+          navigate(`/cashier/action?qr=${encodeURIComponent(qrCode)}`);
+        }
       },
       (err) => {
         if (!err.includes('NotFound') && !err.includes('NotFoundException')) {
@@ -49,7 +54,11 @@ export const QRScanner: React.FC = () => {
       return;
     }
     setError('');
-    navigate(`/cashier/action?qr=${encodeURIComponent(manualQR)}`);
+    if (branchId) {
+      navigate(`/cashier/branch/${branchId}?action=process&qr=${encodeURIComponent(manualQR)}`);
+    } else {
+      navigate(`/cashier/action?qr=${encodeURIComponent(manualQR)}`);
+    }
   };
 
   return (

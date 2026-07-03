@@ -217,6 +217,14 @@ function App() {
 
         {/* Cashier Routes */}
         <Route
+          path="/cashier/branch/:branchId"
+          element={
+            <CashierRoute>
+              <QRScanner />
+            </CashierRoute>
+          }
+        />
+        <Route
           path="/cashier/dashboard"
           element={
             <CashierRoute>
@@ -346,6 +354,14 @@ function App() {
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/caja/:branchId"
+          element={
+            <CashierRoute>
+              <QRScanner />
+            </CashierRoute>
           }
         />
         <Route
