@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2 } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Users, Zap, BarChart3 } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -101,65 +101,91 @@ export const MasterAdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
-            Master Admin
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400">
-            Control de Empresas y Licencias
+        <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 bg-blue-600 rounded-lg">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-50">
+              Panel Master Admin
+            </h1>
+          </div>
+          <p className="text-base text-slate-600 dark:text-slate-400 ml-12">
+            Gestión centralizada de empresas, licencias y pagos
           </p>
         </div>
 
         {/* Revenue Stats */}
         {payment && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-blue-600 hover:shadow-lg transition-shadow">
               <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">INGRESOS TOTALES</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                      ${payment.totalCollected.toFixed(2)}
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ingresos Totales</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-3">
+                      ${payment.totalCollected.toFixed(0)}
                     </p>
+                    <p className="text-xs text-slate-500 mt-2">Total recaudado</p>
                   </div>
-                  <DollarSign className="w-8 h-8 text-slate-400" />
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-blue-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-green-600 hover:shadow-lg transition-shadow">
               <CardContent className="pt-6">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">POTENCIAL MENSUAL</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                    ${payment.potentialMonthlyRevenue.toFixed(2)}
-                  </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Potencial Mensual</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-3">
+                      ${payment.potentialMonthlyRevenue.toFixed(0)}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">Ingresos esperados</p>
+                  </div>
+                  <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <TrendingUp className="w-6 h-6 text-green-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-purple-600 hover:shadow-lg transition-shadow">
               <CardContent className="pt-6">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">EMPRESAS ACTIVAS</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                    {payment.activeCompanies}
-                  </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Empresas Activas</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-3">
+                      {payment.activeCompanies}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">Con suscripción activa</p>
+                  </div>
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Building2 className="w-6 h-6 text-purple-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-red-600 hover:shadow-lg transition-shadow">
               <CardContent className="pt-6">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">EMPRESAS BLOQUEADAS</p>
-                  <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
-                    {payment.blockedCompanies}
-                  </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Empresas Bloqueadas</p>
+                    <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-3">
+                      {payment.blockedCompanies}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">Requieren acción</p>
+                  </div>
+                  <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>

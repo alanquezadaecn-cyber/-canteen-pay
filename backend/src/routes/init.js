@@ -334,4 +334,103 @@ router.post('/setup-master', async (req, res) => {
   }
 });
 
+// Endpoint para crear empresa de prueba con sucursales
+router.post('/setup-asinmex', async (req, res) => {
+  try {
+    console.log('🏢 Creando empresa ASINMEX con sucursales...');
+
+    // Obtener plan SUCCURSAL
+    const succursalPlan = await prisma.plan.findUnique({
+      where: { name: 'SUCCURSAL' }
+    });
+
+    if (!succursalPlan) {
+      return res.status(400).json({ error: 'Plan SUCCURSAL no existe. Ejecuta /api/init/seed-plans primero' });
+    }
+
+    // Buscar si ya existe
+    const existing = await prisma.company.findUnique({
+      where: { email: 'asinmex@asinmex.com.mx' }
+    });
+
+    if (existing) {
+      return res.json({
+        success: true,
+        message: 'ASINMEX ya existe',
+        company: existing
+      });
+    }
+
+    // Crear empresa
+    const company = await prisma.company.create({
+      data: {
+        name: 'ASINMEX SA DE CV',
+        email: 'asinmex@asinmex.com.mx',
+        phone: '+52 (55) 5555-5555',
+        industry: 'Industrial',
+        contactPerson: 'Gerente General',
+        paymentEmail: 'pagos@asinmex.com.mx',
+        isActive: true,
+        masterAdminEmail: 'admin@asinmex.com.mx'
+      }
+    });
+
+    // Crear suscripción para la empresa
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        planId: succursalPlan.id,
+        status: 'ACTIVE',
+        endDate
+      }
+    });
+
+    await prisma.company.update({
+      where: { id: company.id },
+      data: { subscriptionId: subscription.id }
+    });
+
+    // Crear sucursales
+    const branches = await Promise.all([
+      prisma.branch.create({
+        data: {
+          companyId: company.id,
+          name: 'AIVY',
+          location: 'México City',
+          isActive: true,
+          licenseStatus: 'ACTIVE',
+          monthlyFee: 5000
+        }
+      }),
+      prisma.branch.create({
+        data: {
+          companyId: company.id,
+          name: 'BOCH',
+          location: 'México City',
+          isActive: true,
+          licenseStatus: 'ACTIVE',
+          monthlyFee: 5000
+        }
+      })
+    ]);
+
+    console.log('✅ ASINMEX creada con sucursales');
+
+    res.json({
+      success: true,
+      message: '✅ ASINMEX y sucursales creadas',
+      company: {
+        name: company.name,
+        email: company.email,
+        branches: branches.map(b => ({ id: b.id, name: b.name, location: b.location }))
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error creando ASINMEX:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
