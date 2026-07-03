@@ -447,6 +447,60 @@ router.post('/setup-asinmex', async (req, res) => {
   }
 });
 
+// Endpoint para crear vendedores en sucursales de ASINMEX
+router.post('/seed-asinmex-cashiers', async (req, res) => {
+  try {
+    console.log('💳 Creando vendedores en sucursales de ASINMEX...');
+
+    const branches = await prisma.branch.findMany({
+      where: { company: { email: 'asinmex@asinmex.com.mx' } }
+    });
+
+    if (branches.length === 0) {
+      return res.status(400).json({ error: 'ASINMEX no tiene sucursales' });
+    }
+
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    let totalCashiersCreated = 0;
+
+    for (const branch of branches) {
+      const email = `vendedor@${branch.name.toLowerCase()}.asinmex.com`;
+      const existingCashier = await prisma.cashier.findUnique({ where: { email } });
+
+      if (existingCashier) {
+        console.log(`⏭️  Vendedor ${email} ya existe`);
+        continue;
+      }
+
+      await prisma.cashier.create({
+        data: {
+          name: `Vendedor ${branch.name}`,
+          email,
+          password: hashedPassword,
+          phone: '+52 5555-0000',
+          branchId: branch.id,
+          isActive: true
+        }
+      });
+
+      totalCashiersCreated++;
+    }
+
+    res.json({
+      success: true,
+      message: `✅ ${totalCashiersCreated} vendedores creados`,
+      branches: branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        vendedorEmail: `vendedor@${b.name.toLowerCase()}.asinmex.com`
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint para crear usuarios de prueba en sucursales de ASINMEX
 router.post('/seed-asinmex-users', async (req, res) => {
   try {

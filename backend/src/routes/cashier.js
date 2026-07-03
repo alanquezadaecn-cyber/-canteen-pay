@@ -6,6 +6,212 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['CASHIER', 'ADMIN']));
 
+// GET branch info for cashier
+router.get('/branch/:branchId', async (req, res) => {
+  try {
+    const branch = await prisma.branch.findUnique({
+      where: { id: req.params.branchId },
+      select: {
+        id: true,
+        name: true,
+        location: true,
+        companyId: true
+      }
+    });
+
+    if (!branch) {
+      return res.status(404).json({ error: 'Sucursal no encontrada' });
+    }
+
+    res.json(branch);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener sucursal' });
+  }
+});
+
+// SCAN QR en sucursal específica (solo usuarios de esa sucursal)
+router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
+  try {
+    const { branchId, qrCode } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { qrCode },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        branchId: true,
+        employeeNumber: true,
+        phone: true,
+        balance: true,
+        isActive: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar que usuario pertenece a esta sucursal
+    if (user.branchId !== branchId) {
+      return res.status(403).json({ error: 'Usuario no pertenece a esta sucursal' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+
+    res.json({
+      ...user,
+      balance: user.balance.toString()
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al escanear QR' });
+  }
+});
+
+// CHARGE en sucursal específica
+router.post('/branch/:branchId/charge', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { qrCode, amount, description } = req.body;
+    const amountDecimal = parseFloat(amount);
+
+    if (!qrCode || !amountDecimal || amountDecimal <= 0) {
+      return res.status(400).json({ error: 'QR y monto válido requeridos' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { qrCode },
+      select: { id: true, balance: true, name: true, isActive: true, branchId: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (user.branchId !== branchId) {
+      return res.status(403).json({ error: 'Usuario no pertenece a esta sucursal' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+
+    const balanceDecimal = parseFloat(user.balance);
+    if (balanceDecimal < amountDecimal) {
+      return res.status(400).json({
+        error: 'Saldo insuficiente',
+        currentBalance: balanceDecimal.toFixed(2),
+        required: amountDecimal.toFixed(2)
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const balanceBefore = parseFloat(user.balance);
+      const newBalance = balanceBefore - amountDecimal;
+
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { balance: newBalance }
+      });
+
+      const transaction = await tx.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'PURCHASE',
+          amount: amountDecimal,
+          balanceBefore: balanceBefore,
+          balanceAfter: newBalance,
+          description: description || `Compra en ${new Date().toLocaleString('es-MX')}`,
+          cashierId: req.userId,
+          paymentMethod: 'CASH'
+        }
+      });
+
+      return { transaction, newBalance };
+    });
+
+    res.json({
+      success: true,
+      transaction: {
+        ...result.transaction,
+        amount: result.transaction.amount.toString()
+      },
+      newBalance: result.newBalance.toFixed(2),
+      userName: user.name
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al procesar pago' });
+  }
+});
+
+// RECHARGE en sucursal específica
+router.post('/branch/:branchId/recharge', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { qrCode, amount } = req.body;
+    const amountDecimal = parseFloat(amount);
+
+    if (!qrCode || !amountDecimal || amountDecimal <= 0) {
+      return res.status(400).json({ error: 'QR y monto válido requeridos' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { qrCode },
+      select: { id: true, balance: true, name: true, isActive: true, branchId: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (user.branchId !== branchId) {
+      return res.status(403).json({ error: 'Usuario no pertenece a esta sucursal' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const balanceBefore = parseFloat(user.balance);
+      const newBalance = balanceBefore + amountDecimal;
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { balance: newBalance }
+      });
+
+      const recharge = await tx.recharge.create({
+        data: {
+          userId: user.id,
+          amount: amountDecimal,
+          paymentMethod: 'CASH',
+          status: 'COMPLETED',
+          description: `Recarga en efectivo ${new Date().toLocaleString('es-MX')}`
+        }
+      });
+
+      return { recharge, newBalance };
+    });
+
+    res.json({
+      success: true,
+      recharge: result.recharge,
+      newBalance: result.newBalance.toFixed(2),
+      userName: user.name
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al procesar recarga' });
+  }
+});
+
+// Endpoints legados (sin filtro por sucursal)
 router.get('/scan/:qrCode', async (req, res) => {
   try {
     const { qrCode } = req.params;
