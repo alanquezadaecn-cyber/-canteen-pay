@@ -140,4 +140,148 @@ router.post('/seed', async (req, res) => {
   }
 });
 
+// Endpoint para crear planes y empresas de prueba
+router.post('/seed-plans', async (req, res) => {
+  try {
+    console.log('🌱 Creando planes y empresas de prueba...');
+
+    // Crear planes si no existen
+    const enterprisePlan = await prisma.plan.upsert({
+      where: { name: 'ENTERPRISE' },
+      update: {},
+      create: {
+        name: 'ENTERPRISE',
+        description: 'Plan empresarial - hasta 10 sucursales',
+        price: 30000,
+        billingCycle: 'YEARLY',
+        maxBranches: 10,
+        maxUsersPerBranch: null,
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'reports', 'api-access']
+      }
+    });
+
+    const succursalPlan = await prisma.plan.upsert({
+      where: { name: 'SUCCURSAL' },
+      update: {},
+      create: {
+        name: 'SUCCURSAL',
+        description: 'Plan por sucursal - 1 sucursal + 3 vendedores',
+        price: 5000,
+        billingCycle: 'MONTHLY',
+        maxBranches: 1,
+        maxUsersPerBranch: 200,
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'basic-reports']
+      }
+    });
+
+    console.log('✅ Planes creados');
+
+    // Crear suscripción para empresa legado
+    const legacyCompany = await prisma.company.findUnique({
+      where: { email: 'legacy@mealpay.com' }
+    });
+
+    if (legacyCompany && !legacyCompany.subscriptionId) {
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+
+      const subscription = await prisma.subscription.create({
+        data: {
+          planId: enterprisePlan.id,
+          status: 'ACTIVE',
+          endDate
+        }
+      });
+
+      await prisma.company.update({
+        where: { id: legacyCompany.id },
+        data: { subscriptionId: subscription.id }
+      });
+
+      console.log('✅ Suscripción creada para empresa legado');
+    }
+
+    // Crear empresas de prueba
+    const testCompany1 = await prisma.company.upsert({
+      where: { email: 'restaurante1@ejemplo.com' },
+      update: {},
+      create: {
+        name: 'Restaurante El Gourmet',
+        email: 'restaurante1@ejemplo.com',
+        phone: '+55 (11) 98765-4321',
+        industry: 'Restaurante',
+        contactPerson: 'Roberto Silva',
+        paymentEmail: 'pagos@gourmet.com.br',
+        isActive: true,
+        masterAdminEmail: 'admin@gourmet.com.br'
+      }
+    });
+
+    // Crear suscripción para empresa 1
+    const endDate1 = new Date();
+    endDate1.setMonth(endDate1.getMonth() + 1);
+
+    const sub1 = await prisma.subscription.create({
+      where: undefined,
+      data: {
+        planId: succursalPlan.id,
+        status: 'ACTIVE',
+        endDate: endDate1
+      }
+    });
+
+    await prisma.company.update({
+      where: { id: testCompany1.id },
+      data: { subscriptionId: sub1.id }
+    });
+
+    const testCompany2 = await prisma.company.upsert({
+      where: { email: 'cafeteria@ejemplo.com' },
+      update: {},
+      create: {
+        name: 'Cafetería Premium',
+        email: 'cafeteria@ejemplo.com',
+        phone: '+55 (11) 99999-8888',
+        industry: 'Cafetería',
+        contactPerson: 'Maria Santos',
+        paymentEmail: 'billing@cafeteria.com.br',
+        isActive: true,
+        masterAdminEmail: 'admin@cafeteria.com.br'
+      }
+    });
+
+    // Crear suscripción para empresa 2
+    const endDate2 = new Date();
+    endDate2.setMonth(endDate2.getMonth() + 2);
+
+    const sub2 = await prisma.subscription.create({
+      where: undefined,
+      data: {
+        planId: succursalPlan.id,
+        status: 'ACTIVE',
+        endDate: endDate2
+      }
+    });
+
+    await prisma.company.update({
+      where: { id: testCompany2.id },
+      data: { subscriptionId: sub2.id }
+    });
+
+    console.log('✅ Empresas de prueba creadas');
+
+    res.json({
+      success: true,
+      message: '✅ Datos de prueba creados',
+      data: {
+        plans: [enterprisePlan, succursalPlan],
+        companies: [legacyCompany, testCompany1, testCompany2]
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error en seed-plans:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
