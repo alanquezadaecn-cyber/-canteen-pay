@@ -22,7 +22,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
         className
       )}
     >
-      <div className="absolute inset-0 
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-teal-600 opacity-90"></div>
       <CardContent className="relative pt-8 pb-8">
         <div className="flex justify-between items-start mb-12">
           <div>
