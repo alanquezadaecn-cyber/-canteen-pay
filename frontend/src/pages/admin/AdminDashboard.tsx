@@ -106,14 +106,14 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
-        {/* Premium Header */}
+        {/* Header Profesional */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
-              Panel Administrativo 📊
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 mb-1">
+              Panel de Control
             </h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Vista completa del sistema y sucursales
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Resumen del sistema y operaciones
             </p>
           </div>
           <Button
@@ -121,8 +121,8 @@ export const AdminDashboard: React.FC = () => {
             variant="secondary"
             className="flex items-center gap-2"
           >
-            <Settings className="w-5 h-5" />
-            Configuración
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Configuración</span>
           </Button>
         </div>
 
@@ -165,54 +165,47 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         )}
 
-        {/* KPI Cards - Ultra Premium */}
+        {/* KPI Cards - Profesional */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-5 lg:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <KPICard
               title="Usuarios Activos"
               value={stats.totalUsers}
-              subtitle="En el sistema"
               icon={Users}
-              gradient="from-blue-500 to-cyan-500"
+              color="text-blue-600 dark:text-blue-400"
               delay={0}
             />
 
             <KPICard
               title="Saldo Total"
               value={`$${stats.totalBalance}`}
-              subtitle="En billeteras"
               icon={DollarSign}
-              gradient="from-purple-500 to-pink-500"
-              delay={100}
+              color="text-emerald-600 dark:text-emerald-400"
+              delay={50}
             />
 
             <KPICard
               title="Cobros Hoy"
               value={`$${stats.todayRevenue}`}
-              subtitle="Transacciones de venta"
               icon={TrendingUp}
-              gradient="from-emerald-500 to-teal-500"
-              trend={12}
-              delay={200}
+              color="text-slate-900 dark:text-slate-50"
+              delay={100}
             />
 
             <KPICard
               title="Recargas Hoy"
               value={`$${stats.todayRecharges}`}
-              subtitle="Dinero ingresado"
               icon={TrendingDown}
-              gradient="from-amber-500 to-orange-500"
-              trend={-5}
-              delay={300}
+              color="text-slate-900 dark:text-slate-50"
+              delay={150}
             />
 
             <KPICard
               title="Transacciones"
               value={stats.totalTransactions}
-              subtitle="Total del sistema"
               icon={Zap}
-              gradient="from-rose-500 to-red-500"
-              delay={400}
+              color="text-slate-900 dark:text-slate-50"
+              delay={200}
             />
           </div>
         )}
