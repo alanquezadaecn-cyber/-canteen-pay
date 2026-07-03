@@ -447,4 +447,90 @@ router.post('/setup-asinmex', async (req, res) => {
   }
 });
 
+// Endpoint para crear usuarios de prueba en sucursales de ASINMEX
+router.post('/seed-asinmex-users', async (req, res) => {
+  try {
+    console.log('👥 Creando usuarios de prueba en sucursales de ASINMEX...');
+
+    // Obtener ASINMEX
+    const company = await prisma.company.findUnique({
+      where: { email: 'asinmex@asinmex.com.mx' }
+    });
+
+    if (!company) {
+      return res.status(400).json({ error: 'ASINMEX no existe. Ejecuta /api/init/setup-asinmex primero' });
+    }
+
+    // Obtener sucursales de ASINMEX
+    const branches = await prisma.branch.findMany({
+      where: { companyId: company.id }
+    });
+
+    if (branches.length === 0) {
+      return res.status(400).json({ error: 'ASINMEX no tiene sucursales' });
+    }
+
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    let totalUsersCreated = 0;
+
+    // Crear 3 usuarios por sucursal
+    for (const branch of branches) {
+      const branchUsers = [];
+
+      for (let i = 1; i <= 3; i++) {
+        const email = `usuario${i}@${branch.name.toLowerCase()}.asinmex.com`;
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+
+        if (existingUser) {
+          console.log(`⏭️  Usuario ${email} ya existe, saltando...`);
+          continue;
+        }
+
+        const qrCode = randomUUID();
+
+        const user = await prisma.user.create({
+          data: {
+            name: `Usuario ${i} - ${branch.name}`,
+            email,
+            password: hashedPassword,
+            employeeNumber: `${branch.name}-USR-${i}`,
+            phone: `+52 555${i}${i}${i}${i}`,
+            qrCode,
+            balance: (100 + i * 50),
+            branchId: branch.id,
+            role: 'USER',
+            isActive: true
+          }
+        });
+
+        branchUsers.push({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          qrCode: user.qrCode,
+          balance: user.balance.toString()
+        });
+
+        totalUsersCreated++;
+      }
+
+      console.log(`✅ ${branchUsers.length} usuarios creados en sucursal ${branch.name}`);
+    }
+
+    res.json({
+      success: true,
+      message: `✅ ${totalUsersCreated} usuarios creados en sucursales de ASINMEX`,
+      totalUsers: totalUsersCreated,
+      branches: branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        location: b.location
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error creando usuarios:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
