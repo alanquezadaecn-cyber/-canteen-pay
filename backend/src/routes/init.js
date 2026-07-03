@@ -654,4 +654,56 @@ router.post('/seed-asinmex-products', async (req, res) => {
   }
 });
 
+// Fix: Migrar Cashiers a Users table
+router.post('/fix-cashiers-to-users', async (req, res) => {
+  try {
+    console.log('🔄 Migrando Cashiers a Users...');
+
+    // Obtener todos los Cashiers
+    const cashiers = await prisma.cashier.findMany();
+    console.log(`📋 ${cashiers.length} cashiers encontrados`);
+
+    // Eliminar Cashiers de la tabla (después crearemos como Users)
+    await prisma.cashier.deleteMany();
+    console.log('✅ Cashiers eliminados de tabla Cashier');
+
+    // Crear como Users con role CASHIER
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    let created = 0;
+
+    for (const cashier of cashiers) {
+      const existingUser = await prisma.user.findUnique({ where: { email: cashier.email } });
+
+      if (existingUser) {
+        console.log(`⏭️  Usuario ${cashier.email} ya existe`);
+        continue;
+      }
+
+      await prisma.user.create({
+        data: {
+          name: cashier.name,
+          email: cashier.email,
+          password: hashedPassword,
+          phone: cashier.phone || '+52 5555-0000',
+          role: 'CASHIER',
+          employeeNumber: `CASH-${cashier.branchId.substring(0, 4)}-001`,
+          branchId: cashier.branchId,
+          qrCode: randomUUID(),
+          isActive: true
+        }
+      });
+      created++;
+    }
+
+    res.json({
+      success: true,
+      message: `✅ ${created} cashiers migrados a Users`,
+      total: cashiers.length
+    });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
