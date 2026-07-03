@@ -131,7 +131,8 @@ router.post('/login', async (req, res) => {
           role: user.role,
           balance: (user.balance || 0).toString(),
           companyId,
-          branchId: user.branchId
+          branchId: user.branchId,
+          qrCode: user.qrCode
         },
         accessToken,
         refreshToken
