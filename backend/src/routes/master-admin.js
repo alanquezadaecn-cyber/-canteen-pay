@@ -64,6 +64,30 @@ router.get('/companies', async (req, res) => {
   }
 });
 
+// UPDATE company details
+router.put('/companies/:companyId', async (req, res) => {
+  try {
+    const { name, email, phone, industry, contactPerson, paymentEmail } = req.body;
+
+    const company = await prisma.company.update({
+      where: { id: req.params.companyId },
+      data: {
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(phone && { phone }),
+        ...(industry && { industry }),
+        ...(contactPerson && { contactPerson }),
+        ...(paymentEmail && { paymentEmail })
+      }
+    });
+
+    res.json({ success: true, company });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar empresa' });
+  }
+});
+
 // GET company details with branches
 router.get('/companies/:companyId', async (req, res) => {
   try {
