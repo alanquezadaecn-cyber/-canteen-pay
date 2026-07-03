@@ -587,4 +587,68 @@ router.post('/seed-asinmex-users', async (req, res) => {
   }
 });
 
+// Endpoint para crear productos de prueba en sucursales de ASINMEX
+router.post('/seed-asinmex-products', async (req, res) => {
+  try {
+    console.log('🍽️ Creando productos de prueba en sucursales...');
+
+    const branches = await prisma.branch.findMany({
+      where: { company: { email: 'asinmex@asinmex.com.mx' } }
+    });
+
+    if (branches.length === 0) {
+      return res.status(400).json({ error: 'ASINMEX no tiene sucursales' });
+    }
+
+    const productsTemplate = [
+      { name: 'Comida del día', price: 50, category: 'Platillos' },
+      { name: 'Bebida', price: 15, category: 'Bebidas' },
+      { name: 'Postre', price: 20, category: 'Postres' },
+      { name: 'Combo Completo', price: 80, category: 'Combos' },
+      { name: 'Sopa', price: 25, category: 'Platillos' },
+      { name: 'Agua', price: 10, category: 'Bebidas' }
+    ];
+
+    let totalProducts = 0;
+
+    for (const branch of branches) {
+      for (const productTemplate of productsTemplate) {
+        const existingProduct = await prisma.product.findFirst({
+          where: {
+            branchId: branch.id,
+            name: productTemplate.name
+          }
+        });
+
+        if (existingProduct) continue;
+
+        await prisma.product.create({
+          data: {
+            branchId: branch.id,
+            name: productTemplate.name,
+            price: productTemplate.price,
+            category: productTemplate.category,
+            isActive: true
+          }
+        });
+
+        totalProducts++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `✅ ${totalProducts} productos creados`,
+      branches: branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        productCount: productsTemplate.length
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

@@ -24,6 +24,7 @@ import { ActionSelector } from './pages/cashier/ActionSelector';
 import { ChargeUser } from './pages/cashier/ChargeUser';
 import { CashRecharge } from './pages/cashier/CashRecharge';
 import { CashierHistory } from './pages/cashier/CashierHistory';
+import { CashierActionPanel } from './pages/cashier/CashierActionPanel';
 
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { BranchDetail } from './pages/admin/BranchDetail';
@@ -224,7 +225,7 @@ function App() {
           path="/cashier/branch/:branchId"
           element={
             <CashierRoute>
-              <QRScanner />
+              <CashierActionPanel />
             </CashierRoute>
           }
         />
@@ -364,7 +365,7 @@ function App() {
           path="/caja/:branchId"
           element={
             <CashierRoute>
-              <QRScanner />
+              <CashierActionPanel />
             </CashierRoute>
           }
         />
