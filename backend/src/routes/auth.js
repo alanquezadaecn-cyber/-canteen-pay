@@ -187,7 +187,7 @@ router.post('/refresh', (req, res) => {
       return res.status(400).json({ error: 'Refresh token requerido' });
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.sub, decoded.role);
 
     res.json({
