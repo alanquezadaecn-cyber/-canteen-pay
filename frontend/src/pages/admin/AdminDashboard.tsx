@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { KPICard } from '../../components/admin/KPICard';
 import api from '../../lib/api';
 import { Users, DollarSign, TrendingUp, TrendingDown, Zap, Building2, Settings, BarChart3, Activity } from 'lucide-react';
 
@@ -164,88 +165,55 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         )}
 
-        {/* KPI Cards - Premium */}
+        {/* KPI Cards - Ultra Premium */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card variant="elevated" className="animate-fade-in">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Usuarios Activos</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent mt-2">
-                      {stats.totalUsers}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 opacity-10">
-                    <Users className="w-6 h-6 text-slate-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-5 lg:gap-6">
+            <KPICard
+              title="Usuarios Activos"
+              value={stats.totalUsers}
+              subtitle="En el sistema"
+              icon={Users}
+              gradient="from-blue-500 to-cyan-500"
+              delay={0}
+            />
 
-            <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Saldo Total</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mt-2">
-                      ${stats.totalBalance}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 opacity-10">
-                    <DollarSign className="w-6 h-6 text-slate-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <KPICard
+              title="Saldo Total"
+              value={`$${stats.totalBalance}`}
+              subtitle="En billeteras"
+              icon={DollarSign}
+              gradient="from-purple-500 to-pink-500"
+              delay={100}
+            />
 
-            <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Cobros Hoy</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent mt-2">
-                      ${stats.todayRevenue}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 opacity-10">
-                    <TrendingUp className="w-6 h-6 text-slate-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <KPICard
+              title="Cobros Hoy"
+              value={`$${stats.todayRevenue}`}
+              subtitle="Transacciones de venta"
+              icon={TrendingUp}
+              gradient="from-emerald-500 to-teal-500"
+              trend={12}
+              delay={200}
+            />
 
-            <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '300ms' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Recargas Hoy</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent mt-2">
-                      ${stats.todayRecharges}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 opacity-10">
-                    <TrendingDown className="w-6 h-6 text-slate-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <KPICard
+              title="Recargas Hoy"
+              value={`$${stats.todayRecharges}`}
+              subtitle="Dinero ingresado"
+              icon={TrendingDown}
+              gradient="from-amber-500 to-orange-500"
+              trend={-5}
+              delay={300}
+            />
 
-            <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '400ms' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Transacciones</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-rose-500 to-red-500 bg-clip-text text-transparent mt-2">
-                      {stats.totalTransactions}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 opacity-10">
-                    <Zap className="w-6 h-6 text-slate-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <KPICard
+              title="Transacciones"
+              value={stats.totalTransactions}
+              subtitle="Total del sistema"
+              icon={Zap}
+              gradient="from-rose-500 to-red-500"
+              delay={400}
+            />
           </div>
         )}
 
