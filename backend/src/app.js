@@ -47,6 +47,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '2.0' });
 });
 
+// Endpoint público para obtener nombre de sucursal (sin auth, para la pantalla de login)
+app.get('/api/public/branch/:branchId', async (req, res) => {
+  try {
+    const { prisma } = await import('./lib/prisma.js');
+    const branch = await prisma.branch.findUnique({
+      where: { id: req.params.branchId },
+      select: { id: true, name: true }
+    });
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+    res.json(branch);
+  } catch (err) {
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
 // Routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';

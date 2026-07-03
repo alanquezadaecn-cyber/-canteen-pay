@@ -19,12 +19,12 @@ export const Login: React.FC = () => {
     password: ''
   });
 
-  // Cargar nombre de sucursal si existe branchId
+  // Cargar nombre de sucursal sin auth (endpoint público)
   useEffect(() => {
     if (branchId) {
       const loadBranchName = async () => {
         try {
-          const { data } = await api.get(`/cashier/branch/${branchId}`);
+          const { data } = await api.get(`/public/branch/${branchId}`);
           setBranchName(data.name);
         } catch (err) {
           console.error('Error cargando sucursal:', err);
