@@ -40,11 +40,16 @@ interface CashierRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
 
   if (!accessToken) {
     // Mostrar Login en lugar de redirigir
     return <Login />;
+  }
+
+  if (!user || user.role !== 'USER') {
+    // Solo permite acceso a usuarios normales, no a ADMIN ni CASHIER
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return (
