@@ -1,7 +1,7 @@
 FROM node:18-slim
 
 LABEL version="1.0"
-LABEL description="Canteen Pay Backend"
+LABEL description="Canteen Pay - Backend + Frontend"
 
 # Install OpenSSL (required for Prisma)
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -23,6 +23,9 @@ RUN npx prisma generate
 
 # Copy backend source
 COPY backend/src ./src
+
+# Copy compiled frontend files (CRITICAL)
+COPY backend/public ./public
 
 # Expose port
 EXPOSE 8080
