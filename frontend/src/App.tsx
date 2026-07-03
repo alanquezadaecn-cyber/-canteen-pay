@@ -30,6 +30,7 @@ import { BranchDetail } from './pages/admin/BranchDetail';
 import { Products } from './pages/admin/Products';
 import { BranchReports } from './pages/admin/BranchReports';
 import { UsersList } from './pages/admin/UsersList';
+import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard';
 import { UserDetail } from './pages/admin/UserDetail';
 import { TransactionsList } from './pages/admin/TransactionsList';
 import { AdminReports } from './pages/admin/AdminReports';
@@ -105,6 +106,21 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
       {children}
     </>
   );
+};
+
+const MasterAdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+  const { accessToken, user } = useAuthStore();
+  const masterAdminEmail = process.env.VITE_MASTER_ADMIN_EMAIL || 'master@mealpay.com';
+
+  if (!accessToken) {
+    return <Login />;
+  }
+
+  if (!user || (user.email !== masterAdminEmail && user.role !== 'ADMIN')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 function App() {
@@ -249,6 +265,14 @@ function App() {
         />
 
         {/* Admin Routes */}
+        <Route
+          path="/master-admin"
+          element={
+            <MasterAdminRoute>
+              <MasterAdminDashboard />
+            </MasterAdminRoute>
+          }
+        />
         <Route
           path="/admin/dashboard"
           element={
