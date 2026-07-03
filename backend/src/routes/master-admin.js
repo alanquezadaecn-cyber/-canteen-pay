@@ -15,6 +15,19 @@ const masterAdminOnly = (req, res, next) => {
   next();
 };
 
+// Debug endpoint (sin autenticación)
+router.get('/debug/companies-count', async (req, res) => {
+  try {
+    const count = await prisma.company.count();
+    const companies = await prisma.company.findMany({
+      select: { id: true, name: true, email: true }
+    });
+    res.json({ count, companies });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.use(verifyToken, masterAdminOnly);
 
 // GET all companies with branches and payment status
