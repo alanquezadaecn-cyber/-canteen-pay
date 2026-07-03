@@ -40,7 +40,25 @@ app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos del frontend
 const publicPath = join(__dirname, '../public');
-app.use(express.static(publicPath));
+
+// Archivos assets (JS/CSS) con caché larga
+app.use('/assets', express.static(join(publicPath, 'assets'), {
+  maxAge: '1y',
+  immutable: true
+}));
+
+// index.html NUNCA se cachea
+app.use(express.static(publicPath, {
+  maxAge: 0,
+  etag: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html') || filePath.endsWith('/')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // Health check
 app.get('/health', (req, res) => {

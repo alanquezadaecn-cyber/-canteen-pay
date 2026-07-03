@@ -48,8 +48,7 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
           return api(originalRequest);
         } catch (refreshError) {
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
+          // No hacer logout automático - dejar que el usuario lo haga manualmente
           return Promise.reject(refreshError);
         }
       }
