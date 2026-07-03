@@ -35,7 +35,8 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
   try {
     const { branchId, qrCode } = req.params;
 
-    const user = await prisma.user.findUnique({
+    // Buscar por QR o por email
+    let user = await prisma.user.findUnique({
       where: { qrCode },
       select: {
         id: true,
@@ -45,9 +46,28 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
         employeeNumber: true,
         phone: true,
         balance: true,
-        isActive: true
+        isActive: true,
+        qrCode: true
       }
     });
+
+    // Si no encontró por QR, intenta por email
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email: qrCode },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          branchId: true,
+          employeeNumber: true,
+          phone: true,
+          balance: true,
+          isActive: true,
+          qrCode: true
+        }
+      });
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
