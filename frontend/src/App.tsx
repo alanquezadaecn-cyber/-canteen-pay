@@ -68,12 +68,23 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 const CashierRoute: React.FC<CashierRouteProps> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
 
+  console.log('🔐 CashierRoute check:', { accessToken: !!accessToken, user });
+
   if (!accessToken) {
     // Mostrar Login en lugar de redirigir
+    console.log('❌ No accessToken, showing login');
     return <Login />;
   }
 
-  if (!user || (user.role !== 'CASHIER' && user.role !== 'ADMIN')) {
+  if (!user) {
+    console.log('❌ No user in store');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  console.log('👤 User role:', user.role);
+
+  if (user.role !== 'CASHIER' && user.role !== 'ADMIN') {
+    console.log('❌ User is not CASHIER or ADMIN, redirecting');
     return <Navigate to="/dashboard" replace />;
   }
 
