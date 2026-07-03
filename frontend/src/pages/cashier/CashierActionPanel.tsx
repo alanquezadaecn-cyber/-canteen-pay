@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { AlertCircle, ShoppingCart, Plus } from 'lucide-react';
+import { AlertCircle, ShoppingCart, Plus, Search } from 'lucide-react';
 import api from '../../lib/api';
 
 interface User {
@@ -33,11 +33,16 @@ export const CashierActionPanel: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const [searchInput, setSearchInput] = useState('');
+  const [searching, setSearching] = useState(false);
+
   // Cargar datos del usuario desde query param
   useEffect(() => {
     const qrCode = new URLSearchParams(window.location.search).get('qr');
     if (qrCode && branchId) {
       loadUser(qrCode);
+      loadProducts();
+    } else if (branchId) {
       loadProducts();
     }
   }, [branchId]);
@@ -46,9 +51,19 @@ export const CashierActionPanel: React.FC = () => {
     try {
       const { data } = await api.get(`/cashier/branch/${branchId}/scan/${qrCode}`);
       setUser(data);
+      setError('');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Usuario no encontrado');
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchInput.trim() || !branchId) return;
+    setSearching(true);
+    setError('');
+    await loadUser(searchInput.trim());
+    setSearching(false);
   };
 
   const loadProducts = async () => {
@@ -115,26 +130,55 @@ export const CashierActionPanel: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Cargando...</CardTitle>
-          </CardHeader>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-start justify-center p-4 md:p-8">
+        <div className="w-full max-w-md mt-8 md:mt-16 space-y-4">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Panel de Caja</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">Busca al usuario para cobrar o recargar</p>
+          </div>
+
           {error && (
-            <CardContent>
-              <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm flex gap-2">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                {error}
-              </div>
-            </CardContent>
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
           )}
-        </Card>
+
+          <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Search className="w-5 h-5 text-amber-500" />
+                Buscar Usuario
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSearch} className="space-y-4">
+                <Input
+                  type="text"
+                  placeholder="Email o código QR del usuario..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  autoFocus
+                  disabled={searching}
+                  className="text-base"
+                />
+                <Button
+                  type="submit"
+                  disabled={searching || !searchInput.trim()}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold h-12 text-base"
+                >
+                  {searching ? 'Buscando...' : 'Buscar'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50 p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 p-4 md:p-8">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Perfil del Usuario */}
         <Card className="border-2 border-blue-200">
