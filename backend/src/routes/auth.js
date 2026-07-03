@@ -108,7 +108,7 @@ router.post('/login', async (req, res) => {
           role: user.role,
           balance: (user.balance || 0).toString()
         },
-        token: accessToken,
+        accessToken,
         refreshToken
       });
     } catch (tokenErr) {
