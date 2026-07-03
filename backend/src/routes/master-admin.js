@@ -106,7 +106,7 @@ router.post('/companies/create', async (req, res) => {
     // Crear company con ID = subdomain (más fácil para routing)
     const company = await prisma.company.create({
       data: {
-        id: subdomain, // Usar subdomain como ID
+        id: subdomain,
         name,
         email,
         phone,
@@ -114,10 +114,6 @@ router.post('/companies/create', async (req, res) => {
         contactPerson,
         paymentEmail,
         subscriptionId: subscription.id,
-        licenseFee: new Decimal(licenseFee),
-        hostingFee: new Decimal(hostingFee),
-        licenseRenewalDate,
-        nextBillingDate,
         isActive: true
       },
       include: {
@@ -125,24 +121,7 @@ router.post('/companies/create', async (req, res) => {
       }
     });
 
-    // Crear factura de licencia inicial
-    const invoiceNumber = `INV-${company.id}-${Date.now()}`;
-    const licenseDueDate = new Date();
-    licenseDueDate.setDate(licenseDueDate.getDate() + 30); // 30 días para pagar
-
-    await prisma.companyInvoice.create({
-      data: {
-        companyId: company.id,
-        type: 'LICENSE',
-        amount: new Decimal(licenseFee),
-        description: `Licencia anual ${plan.name} (hasta ${plan.maxBranches} sucursales)`,
-        invoiceNumber,
-        status: 'PENDING',
-        dueDate: licenseDueDate,
-        periodStart: new Date(),
-        periodEnd: licenseRenewalDate
-      }
-    });
+    // TODO: Agregar factura de licencia cuando se implemente CompanyInvoice table
 
     // Crear Super Admin user para esta empresa
     const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
@@ -172,23 +151,16 @@ router.post('/companies/create', async (req, res) => {
         subdomain: company.id,
         plan: company.subscription?.plan?.name,
         pricing: {
-          licenseFee: company.licenseFee.toString(),
-          hostingFee: company.hostingFee.toString() + '/mes',
-          licenseRenewalDate: company.licenseRenewalDate,
-          nextBillingDate: company.nextBillingDate
+          licenseFee: licenseFee,
+          hostingFee: `$${hostingFee}/mes`,
+          subscriptionEnd: company.subscription?.endDate
         }
       },
       superAdmin: {
         id: superAdmin.id,
         email: superAdmin.email,
-        tempPassword, // IMPORTANTE: Cambiar en primer login
+        tempPassword,
         loginUrl: `https://${subdomain}.cashfood.online/admin`
-      },
-      invoice: {
-        number: invoiceNumber,
-        amount: licenseFee.toString(),
-        dueDate: licenseDueDate,
-        status: 'PENDING'
       }
     });
   } catch (err) {
