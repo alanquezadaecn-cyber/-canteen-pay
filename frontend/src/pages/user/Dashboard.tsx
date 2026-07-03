@@ -69,7 +69,7 @@ export const Dashboard: React.FC = () => {
             </head>
             <body>
               <div class="container">
-                <h1>Canteen Pay - Mi QR</h1>
+                <h1>MealPay - Mi QR</h1>
                 <p>${user?.name}</p>
                 <p>${user?.company}</p>
                 ${canvas.outerHTML}

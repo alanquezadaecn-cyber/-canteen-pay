@@ -37,7 +37,7 @@ export const AppNav: React.FC = () => {
       {/* Desktop Sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-slate-900 md:text-white">
         <div className="flex items-center justify-center h-16 border-b border-slate-800">
-          <h1 className="text-xl font-bold">Canteen Pay</h1>
+          <h1 className="text-xl font-bold">MealPay</h1>
         </div>
         <nav className="flex-1 px-4 py-8 space-y-2">
           {navItems.map(({ path, label, icon: Icon }) => (
@@ -69,7 +69,7 @@ export const AppNav: React.FC = () => {
       {/* Mobile Header */}
       <div className="fixed top-0 left-0 right-0 bg-slate-900 text-white md:hidden z-40">
         <div className="flex items-center justify-between h-16 px-4">
-          <h1 className="text-lg font-bold">Canteen Pay</h1>
+          <h1 className="text-lg font-bold">MealPay</h1>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-2"

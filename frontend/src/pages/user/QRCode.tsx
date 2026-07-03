@@ -45,7 +45,7 @@ export const QRCode: React.FC = () => {
           <!DOCTYPE html>
           <html>
             <head>
-              <title>Mi Código QR - Canteen Pay</title>
+              <title>Mi Código QR - MealPay</title>
               <style>
                 body {
                   display: flex;
@@ -129,7 +129,7 @@ export const QRCode: React.FC = () => {
                   ID: ${qrData.qrCode}
                 </div>
                 <div class="footer">
-                  <p>Impreso desde Canteen Pay</p>
+                  <p>Impreso desde MealPay</p>
                   <p>${new Date().toLocaleDateString('es-MX')}</p>
                 </div>
               </div>
@@ -253,7 +253,7 @@ export const QRCode: React.FC = () => {
                     const text = `Mi código QR: ${qrData.qrCode}`;
                     if (navigator.share) {
                       navigator.share({
-                        title: 'Canteen Pay QR',
+                        title: 'MealPay QR',
                         text: text
                       });
                     } else {
