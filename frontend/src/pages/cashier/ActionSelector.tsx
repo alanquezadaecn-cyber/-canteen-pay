@@ -48,7 +48,7 @@ export const ActionSelector: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
+      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Buscando usuario...</p>
@@ -59,7 +59,7 @@ export const ActionSelector: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
+      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
         <Card variant="elevated" className="w-full max-w-md animate-scale-in">
           <CardContent className="pt-8 pb-8">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -83,11 +83,11 @@ export const ActionSelector: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold  dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
             Seleccionar Acción 👤
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
@@ -99,7 +99,7 @@ export const ActionSelector: React.FC = () => {
         <Card variant="elevated" className="animate-fade-in">
           <CardHeader borderBottom>
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-lg  dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
                 <User className="w-7 h-7 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
@@ -129,7 +129,7 @@ export const ActionSelector: React.FC = () => {
             </div>
 
             {/* Balance Highlight */}
-            <div className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+            <div className="p-6  dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-emerald-800 dark:text-emerald-300 font-medium uppercase mb-1">Saldo Disponible</p>
@@ -169,7 +169,7 @@ export const ActionSelector: React.FC = () => {
           >
             <CardContent className="pt-8 pb-8">
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-xl  dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
                   <DollarSign className="w-8 h-8 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
@@ -196,7 +196,7 @@ export const ActionSelector: React.FC = () => {
           >
             <CardContent className="pt-8 pb-8">
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-xl  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
                   <CreditCard className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>

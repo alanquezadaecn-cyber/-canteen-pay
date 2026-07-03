@@ -148,7 +148,7 @@ export const UserDetail: React.FC = () => {
         )}
 
         {/* Perfil */}
-        <Card className="mb-8 bg-gradient-to-r from-slate-800 to-slate-900 text-white border-0">
+        <Card className="mb-8  text-white border-0">
           <CardContent className="pt-8">
             <div className="flex justify-between items-start mb-6">
               <div>

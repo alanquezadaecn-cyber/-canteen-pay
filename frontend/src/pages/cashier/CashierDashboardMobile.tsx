@@ -159,7 +159,7 @@ export const CashierDashboardMobile: React.FC = () => {
 
   if (loading && !session.sessionId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Inicializando...</p>
@@ -171,9 +171,9 @@ export const CashierDashboardMobile: React.FC = () => {
   // Layout móvil
   if (session.isMobile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900">
         {/* Header Móvil */}
-        <div className="sticky top-0 z-50 bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-900 dark:to-orange-900 text-white p-4 space-y-3">
+        <div className="sticky top-0 z-50  dark:from-amber-900 dark:to-orange-900 text-white p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold">🏪 Mi Caja</h1>
             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
@@ -210,7 +210,7 @@ export const CashierDashboardMobile: React.FC = () => {
           <div className="space-y-3">
             <Button
               onClick={openScannerApp}
-              className="w-full h-16 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white flex items-center justify-center gap-3 text-lg font-bold rounded-xl"
+              className="w-full h-16  hover:from-amber-600 hover:to-orange-600 text-white flex items-center justify-center gap-3 text-lg font-bold rounded-xl"
             >
               <QrCode className="w-6 h-6" />
               {session.isMobile ? 'Abrir Scanner' : 'Scanner en otra ventana'}
@@ -218,7 +218,7 @@ export const CashierDashboardMobile: React.FC = () => {
 
             <Button
               onClick={() => navigate('/cashier/recharge')}
-              className="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white flex items-center justify-center gap-2 text-base font-semibold rounded-xl"
+              className="w-full h-14  hover:from-emerald-600 hover:to-teal-600 text-white flex items-center justify-center gap-2 text-base font-semibold rounded-xl"
             >
               <DollarSign className="w-5 h-5" />
               Recarga Efectivo
@@ -230,7 +230,7 @@ export const CashierDashboardMobile: React.FC = () => {
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 space-y-3">
               <h2 className="font-bold text-slate-900 dark:text-slate-50">Estadísticas Hoy</h2>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-3 rounded-lg">
+                <div className=" dark:from-red-900/20 dark:to-orange-900/20 p-3 rounded-lg">
                   <p className="text-xs text-slate-600 dark:text-slate-400">Cobros</p>
                   <p className="text-lg font-bold text-red-600 dark:text-red-400">
                     ${summary.totalChargesAmount}
@@ -238,7 +238,7 @@ export const CashierDashboardMobile: React.FC = () => {
                   <p className="text-xs text-slate-500">x{summary.totalCharges}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 p-3 rounded-lg">
+                <div className=" dark:from-emerald-900/20 dark:to-teal-900/20 p-3 rounded-lg">
                   <p className="text-xs text-slate-600 dark:text-slate-400">Recargas</p>
                   <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                     ${summary.totalRechargesAmount}
@@ -368,11 +368,11 @@ export const CashierDashboardMobile: React.FC = () => {
 
   // Layout Desktop (original)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
               Panel de Caja 🏪
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
@@ -436,11 +436,11 @@ export const CashierDashboardMobile: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Cobros Hoy</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent mt-2">
+                    <p className="text-3xl font-bold  bg-clip-text text-transparent mt-2">
                       ${summary.totalChargesAmount}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 opacity-10">
+                  <div className="p-3 rounded-lg  opacity-10">
                     <DollarSign className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -456,7 +456,7 @@ export const CashierDashboardMobile: React.FC = () => {
                       {summary.totalCharges}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 opacity-10">
+                  <div className="p-3 rounded-lg  opacity-10">
                     <TrendingUp className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -468,11 +468,11 @@ export const CashierDashboardMobile: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Recargas</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent mt-2">
+                    <p className="text-3xl font-bold  bg-clip-text text-transparent mt-2">
                       ${summary.totalRechargesAmount}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 opacity-10">
+                  <div className="p-3 rounded-lg  opacity-10">
                     <TrendingUp className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -488,7 +488,7 @@ export const CashierDashboardMobile: React.FC = () => {
                       ${summary.averageCharge}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 opacity-10">
+                  <div className="p-3 rounded-lg  opacity-10">
                     <DollarSign className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>

@@ -56,7 +56,7 @@ export const PaymentSuccess: React.FC = () => {
               <p className="text-sm text-slate-600">Actualizando saldo...</p>
             </div>
           ) : (
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-6 mb-8 border border-emerald-200">
+            <div className=" rounded-lg p-6 mb-8 border border-emerald-200">
               <p className="text-sm text-slate-600 mb-1">Tu nuevo saldo</p>
               <p className="text-4xl font-bold text-emerald-600">
                 ${parseFloat(newBalance).toFixed(2)}

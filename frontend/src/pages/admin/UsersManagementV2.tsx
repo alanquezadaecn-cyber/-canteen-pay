@@ -115,12 +115,12 @@ export const UsersManagementV2: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
               Gestión de Usuarios 👥
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
@@ -138,7 +138,7 @@ export const UsersManagementV2: React.FC = () => {
             </Button>
             <Button
               variant="primary"
-              className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500"
+              className="flex items-center gap-2 
             >
               <Upload className="w-4 h-4" />
               Importar
@@ -181,7 +181,7 @@ export const UsersManagementV2: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Saldo Total</p>
-                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
+                  <p className="text-3xl font-bold text-slate-700 dark:text-purple-400 mt-2">
                     ${stats.totalBalance.toFixed(2)}
                   </p>
                 </div>

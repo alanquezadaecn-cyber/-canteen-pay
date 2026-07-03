@@ -95,11 +95,11 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-8">
         {/* Header Premium */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
             Mi Perfil 👤
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
@@ -126,7 +126,7 @@ export const Profile: React.FC = () => {
         <Card variant="elevated" className="animate-fade-in">
           <CardHeader borderBottom>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-lg  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
                 <User className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
@@ -228,8 +228,8 @@ export const Profile: React.FC = () => {
         <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '100ms' }}>
           <CardHeader borderBottom>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 rounded-lg  dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                <Lock className="w-6 h-6 text-slate-700 dark:text-blue-400" />
               </div>
               <div>
                 <CardTitle>Seguridad</CardTitle>

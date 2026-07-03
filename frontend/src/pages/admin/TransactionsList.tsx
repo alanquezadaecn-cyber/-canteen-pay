@@ -116,9 +116,9 @@ export const TransactionsList: React.FC = () => {
 
         {/* Resumen */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-slate-50 border-blue-200">
             <CardContent className="pt-6">
-              <p className="text-sm text-blue-600">Total</p>
+              <p className="text-sm text-slate-700">Total</p>
               <p className="text-2xl font-bold text-blue-900 mt-1">
                 ${totalAmount.toFixed(2)}
               </p>

@@ -34,7 +34,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       case 'RECHARGE':
         return 'text-emerald-600 bg-emerald-50';
       case 'REFUND':
-        return 'text-blue-600 bg-blue-50';
+        return 'text-slate-700 bg-slate-50';
     }
   };
 

@@ -18,11 +18,11 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   return (
     <Card
       className={cn(
-        'bg-gradient-to-br from-slate-900 to-slate-800 border-0 text-white overflow-hidden relative',
+        ' border-0 text-white overflow-hidden relative',
         className
       )}
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent"></div>
+      <div className="absolute inset-0 
       <CardContent className="relative pt-8 pb-8">
         <div className="flex justify-between items-start mb-12">
           <div>

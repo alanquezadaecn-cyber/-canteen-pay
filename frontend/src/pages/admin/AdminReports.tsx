@@ -101,18 +101,18 @@ export const AdminReports: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-slate-50 border-blue-200">
             <CardContent className="pt-6">
-              <p className="text-sm text-blue-600">Neto</p>
+              <p className="text-sm text-slate-700">Neto</p>
               <p className="text-2xl font-bold text-blue-900 mt-1">
                 ${(parseFloat(report.rechargesTotal) - parseFloat(report.purchasesTotal)).toFixed(2)}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-purple-50 border-purple-200">
+          <Card className="bg-slate-50 border-purple-200">
             <CardContent className="pt-6">
-              <p className="text-sm text-purple-600">Usuarios Activos</p>
+              <p className="text-sm text-slate-700">Usuarios Activos</p>
               <p className="text-2xl font-bold text-purple-900 mt-1">
                 {report.activeUsers}
               </p>
@@ -139,7 +139,7 @@ export const AdminReports: React.FC = () => {
                   </div>
                   <div className="h-6 bg-slate-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-red-400 to-red-600 rounded-full"
+                      className="h-full  rounded-full"
                       style={{
                         width: `${(parseFloat(user.amount) / maxAmount) * 100}%`
                       }}

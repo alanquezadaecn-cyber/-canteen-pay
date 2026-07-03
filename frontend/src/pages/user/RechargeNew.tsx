@@ -159,7 +159,7 @@ export const RechargeNew: React.FC = () => {
         )}
 
         {/* Resumen */}
-        <Card className="mb-8 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+        <Card className="mb-8  border-emerald-200">
           <CardContent className="pt-6">
             <p className="text-slate-600 text-sm mb-2">Monto a recargar</p>
             <p className="text-4xl font-bold text-emerald-600">
@@ -192,13 +192,13 @@ export const RechargeNew: React.FC = () => {
           <div
             className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
               selectedMethod === 'mercadopago'
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-blue-500 bg-slate-50'
                 : 'border-slate-200 bg-white hover:border-slate-300'
             }`}
             onClick={() => setSelectedMethod('mercadopago')}
           >
             <div className="flex items-center gap-3 mb-3">
-              <Wallet className={`w-6 h-6 ${selectedMethod === 'mercadopago' ? 'text-blue-600' : 'text-slate-600'}`} />
+              <Wallet className={`w-6 h-6 ${selectedMethod === 'mercadopago' ? 'text-slate-700' : 'text-slate-600'}`} />
               <div>
                 <p className="font-bold text-slate-900">MercadoPago</p>
                 <p className="text-sm text-slate-600">Tarjeta o billetera MP</p>
@@ -236,7 +236,7 @@ export const RechargeNew: React.FC = () => {
               <Button
                 onClick={handleMercadoPagoPayment}
                 disabled={loading}
-                className="w-full bg-blue-500 hover:bg-blue-600"
+                className="w-full bg-slate-500 hover:bg-blue-600"
               >
                 {loading ? 'Procesando...' : `Pagar $${parseFloat(amount).toFixed(2)} con MercadoPago`}
               </Button>

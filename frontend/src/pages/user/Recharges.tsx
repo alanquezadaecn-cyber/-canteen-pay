@@ -43,7 +43,7 @@ export const Recharges: React.FC = () => {
       case 'CASH':
         return <Wallet className="w-6 h-6 text-amber-600 dark:text-amber-400" />;
       case 'STRIPE':
-        return <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />;
+        return <CreditCard className="w-6 h-6 text-slate-700 dark:text-blue-400" />;
       case 'MERCADOPAGO':
         return <DollarSign className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />;
       default:
@@ -128,12 +128,12 @@ export const Recharges: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
         {/* Premium Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
               Mis Recargas 💳
             </h1>
             <p className="text-slate-600 dark:text-slate-400">

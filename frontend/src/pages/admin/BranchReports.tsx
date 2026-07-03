@@ -64,7 +64,7 @@ export const BranchReports: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
 
         <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export const BranchReports: React.FC = () => {
                     {stats.activeUsers}/{stats.totalUsers}
                   </p>
                 </div>
-                <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <Users className="w-5 h-5 text-slate-700 dark:text-blue-400" />
               </div>
             </CardContent>
           </Card>
@@ -128,7 +128,7 @@ export const BranchReports: React.FC = () => {
                     {stats.totalTransactions}
                   </p>
                 </div>
-                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <TrendingUp className="w-5 h-5 text-slate-700 dark:text-purple-400" />
               </div>
             </CardContent>
           </Card>

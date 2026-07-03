@@ -39,7 +39,7 @@ const cardVariants = cva(
 
         // Gradient - With background gradient
         gradient: `
-          bg-gradient-to-br from-white/80 to-slate-50/80 dark:from-slate-900/80 dark:to-slate-950/80
+           dark:from-slate-900/80 dark:to-slate-950/80
           border-white/20 dark:border-white/10
           backdrop-blur-xl shadow-sm
         `,

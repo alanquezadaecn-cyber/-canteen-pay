@@ -53,11 +53,11 @@ export const QRScanner: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold  dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
             Escanear QR 📸
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
@@ -75,9 +75,9 @@ export const QRScanner: React.FC = () => {
 
         {/* Scanner Card */}
         <Card variant="elevated" className="overflow-hidden">
-          <CardHeader borderBottom className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+          <CardHeader borderBottom className=" dark:from-amber-900/20 dark:to-orange-900/20">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg  dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
@@ -96,7 +96,7 @@ export const QRScanner: React.FC = () => {
               }}
               className="bg-black"
             />
-            <div className="p-4 bg-gradient-to-r from-amber-900 to-orange-900 text-white text-center">
+            <div className="p-4  text-white text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-amber-300" />
                 <span className="font-semibold">Scanner activo</span>
@@ -112,8 +112,8 @@ export const QRScanner: React.FC = () => {
         <Card variant="elevated">
           <CardHeader borderBottom>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                <Keyboard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="w-10 h-10 rounded-lg  dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                <Keyboard className="w-5 h-5 text-slate-700 dark:text-blue-400" />
               </div>
               <div>
                 <CardTitle>Ingreso Manual</CardTitle>
@@ -134,7 +134,7 @@ export const QRScanner: React.FC = () => {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                className="w-full  hover:from-amber-600 hover:to-orange-600"
                 size="lg"
               >
                 Continuar

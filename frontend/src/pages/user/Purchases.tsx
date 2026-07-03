@@ -61,7 +61,7 @@ export const Purchases: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
         {/* Premium Header */}
         <div>
@@ -137,7 +137,7 @@ export const Purchases: React.FC = () => {
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-lg  dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
                           <ShoppingBag className="w-6 h-6 text-red-600 dark:text-red-400" />
                         </div>
                         <div>

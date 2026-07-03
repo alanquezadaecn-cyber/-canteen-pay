@@ -160,7 +160,7 @@ export const QRScannerApp: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Inicializando...</p>
@@ -170,9 +170,9 @@ export const QRScannerApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-950 dark:to-slate-900 pb-24">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-900 dark:to-orange-900 text-white p-4">
+      <div className="sticky top-0 z-50  dark:from-amber-900 dark:to-orange-900 text-white p-4">
         <div className="max-w-md mx-auto">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-2xl font-bold">🏪 Caja QR</h1>
@@ -261,7 +261,7 @@ export const QRScannerApp: React.FC = () => {
         {/* Scanner */}
         {connection.connected ? (
           <Card variant="elevated" className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30">
+            <CardHeader className=" dark:from-amber-900/30 dark:to-orange-900/30">
               <CardTitle className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 Escanea QR del Cliente

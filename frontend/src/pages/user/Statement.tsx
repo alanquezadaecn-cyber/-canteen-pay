@@ -133,7 +133,7 @@ export const Statement: React.FC = () => {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-slate-600 mb-2">Total Reembolsos</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-slate-700">
                   +${parseFloat(summary.refundsAmount).toFixed(2)}
                 </p>
                 <p className="text-xs text-slate-500 mt-2">

@@ -5,7 +5,7 @@ interface KPICardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
-  color: string; // tailwind color class like "text-blue-600"
+  color: string; // tailwind color class like "text-slate-700"
   delay?: number;
 }
 

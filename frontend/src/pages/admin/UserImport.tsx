@@ -88,11 +88,11 @@ pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || '
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold  dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
             Importar Usuarios 📥
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
@@ -175,7 +175,7 @@ pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || '
         <Card variant="flat">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              <FileCheck className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <FileCheck className="w-6 h-6 text-slate-700 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-2">Formato requerido</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
@@ -255,7 +255,7 @@ pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || '
               <Button
                 type="submit"
                 disabled={importing || !file || !branch}
-                className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white flex items-center justify-center gap-2"
+                className="w-full  hover:from-violet-600 hover:to-purple-600 text-white flex items-center justify-center gap-2"
                 size="lg"
               >
                 {importing ? (

@@ -100,13 +100,13 @@ export const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 space-y-8">
         {/* Premium Header */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-10 blur-3xl"></div>
+          <div className="absolute inset-0  opacity-10 blur-3xl"></div>
           <div className="relative">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
               ¡Hola, {user?.name?.split(' ')[0]}! 👋
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm md:text-base">
@@ -154,7 +154,7 @@ export const Dashboard: React.FC = () => {
           <Card variant="interactive" className="cursor-pointer" onClick={() => setShowQRModal(true)}>
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
                   <QrCode className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
@@ -174,7 +174,7 @@ export const Dashboard: React.FC = () => {
           >
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg  dark:from-emerald-900/30 dark:to-emerald-900/30 flex items-center justify-center">
                   <CreditCard className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
@@ -194,8 +194,8 @@ export const Dashboard: React.FC = () => {
           >
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-12 h-12 rounded-lg  dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-slate-700 dark:text-blue-400" />
                 </div>
                 <div>
                   <p className="font-semibold text-slate-900 dark:text-slate-50">Estado de Cuenta</p>

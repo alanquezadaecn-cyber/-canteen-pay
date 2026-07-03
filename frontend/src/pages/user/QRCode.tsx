@@ -149,12 +149,12 @@ export const QRCode: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
         <div className="w-full max-w-lg space-y-8">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
               Mi Código QR 🎫
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
@@ -183,7 +183,7 @@ export const QRCode: React.FC = () => {
               </div>
 
               {/* User Info */}
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
+              <div className=" dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-2">{qrData.name}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
                   Empleado #{qrData.employeeNumber}
@@ -267,7 +267,7 @@ export const QRCode: React.FC = () => {
               </div>
 
               {/* Tips */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="bg-slate-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <p className="text-xs text-blue-900 dark:text-blue-300">
                   💡 <strong>Tip:</strong> Ten este QR a mano en el comedor para pagos rápidos. Puedes guardar la imagen en tu teléfono o imprimirlo.
                 </p>
