@@ -11,15 +11,46 @@ datasource db {
 }
 
 model Branch {
-  id        String    @id @default(cuid())
-  name      String
-  location  String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  location        String?
+  isActive        Boolean   @default(true)
 
-  cashiers  Cashier[]
-  users     User[]
+  // Licencia y Pago
+  licenseStatus   String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, TRIAL
+  licenseExpiry   DateTime?
+  isBlocked       Boolean   @default(false)
+  blockReason     String?
+
+  // Información de Pago
+  contactEmail    String?
+  contactPhone    String?
+  monthlyFee      Decimal   @default(0) @db.Decimal(10, 2)
+  lastPaymentDate DateTime?
+  nextPaymentDate DateTime?
+
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  cashiers        Cashier[]
+  users           User[]
+  payments        BranchPayment[]
+}
+
+model BranchPayment {
+  id          String   @id @default(cuid())
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(10, 2)
+  status      String   @default("PENDING") // PENDING, PAID, FAILED
+  description String?
+  paymentDate DateTime?
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([branchId])
 }
 
 model Cashier {
