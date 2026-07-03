@@ -4,34 +4,36 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, TrendingUp } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2 } from 'lucide-react';
 
-interface Branch {
+interface Company {
   id: string;
   name: string;
-  location?: string;
-  status: string;
-  users: number;
-  cashiers: number;
-  monthlyFee: string;
+  email: string;
+  contactPerson?: string;
+  totalBranches: number;
+  planName: string;
+  subscriptionStatus: string;
+  subscriptionEnd?: string;
   isBlocked: boolean;
   blockReason?: string;
-  nextPaymentDate?: string;
+  branches: Array<{ id: string; name: string; isBlocked: boolean }>;
 }
 
 interface PaymentInfo {
-  totalCollected: string;
+  totalCollected: number;
   totalPayments: number;
-  potentialMonthlyRevenue: string;
-  activeBranches: number;
+  potentialMonthlyRevenue: number;
+  activeCompanies: number;
+  blockedCompanies: number;
 }
 
 export const MasterAdminDashboard: React.FC = () => {
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
   const [overdue, setOverdue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [blockReason, setBlockReason] = useState('');
 
@@ -41,15 +43,15 @@ export const MasterAdminDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [branchesRes, revenueRes, overdueRes] = await Promise.all([
-        api.get('/master-admin/branches'),
+      const [companiesRes, revenueRes, overdueRes] = await Promise.all([
+        api.get('/master-admin/companies'),
         api.get('/master-admin/report/revenue'),
         api.get('/master-admin/report/overdue')
       ]);
 
-      setBranches(branchesRes.data);
+      setCompanies(companiesRes.data);
       setPayment(revenueRes.data);
-      setOverdue(overdueRes.data.branches);
+      setOverdue(overdueRes.data.companies);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -57,33 +59,33 @@ export const MasterAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleBlockBranch = async (branchId: string) => {
+  const handleBlockCompany = async (companyId: string) => {
     try {
-      await api.post(`/master-admin/${branchId}/block`, { reason: blockReason });
+      await api.post(`/master-admin/companies/${companyId}/block`, { reason: blockReason });
       setBlockReason('');
-      setSelectedBranch(null);
+      setSelectedCompany(null);
       fetchData();
-      alert('Sucursal bloqueada');
+      alert('Empresa y sucursales bloqueadas');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error');
     }
   };
 
-  const handleUnblockBranch = async (branchId: string) => {
+  const handleUnblockCompany = async (companyId: string) => {
     try {
-      await api.post(`/master-admin/${branchId}/unblock`);
+      await api.post(`/master-admin/companies/${companyId}/unblock`);
       fetchData();
-      alert('Sucursal desbloqueada');
+      alert('Empresa desbloqueada');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error');
     }
   };
 
-  const handleAddPayment = async (branchId: string) => {
+  const handleAddPayment = async (companyId: string) => {
     try {
-      await api.post(`/master-admin/${branchId}/payment`, {
+      await api.post(`/master-admin/companies/${companyId}/payment`, {
         amount: paymentAmount,
-        description: 'Pago manual',
+        description: 'Pago de suscripción',
         status: 'PAID'
       });
       setPaymentAmount('');
@@ -108,7 +110,7 @@ export const MasterAdminDashboard: React.FC = () => {
             Master Admin
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">
-            Control de Licencias y Sucursales
+            Control de Empresas y Licencias
           </p>
         </div>
 
@@ -121,7 +123,7 @@ export const MasterAdminDashboard: React.FC = () => {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">INGRESOS TOTALES</p>
                     <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                      ${payment.totalCollected}
+                      ${payment.totalCollected.toFixed(2)}
                     </p>
                   </div>
                   <DollarSign className="w-8 h-8 text-slate-400" />
@@ -134,7 +136,7 @@ export const MasterAdminDashboard: React.FC = () => {
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">POTENCIAL MENSUAL</p>
                   <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                    ${payment.potentialMonthlyRevenue}
+                    ${payment.potentialMonthlyRevenue.toFixed(2)}
                   </p>
                 </div>
               </CardContent>
@@ -143,9 +145,9 @@ export const MasterAdminDashboard: React.FC = () => {
             <Card>
               <CardContent className="pt-6">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">SUCURSALES ACTIVAS</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">EMPRESAS ACTIVAS</p>
                   <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                    {payment.activeBranches}
+                    {payment.activeCompanies}
                   </p>
                 </div>
               </CardContent>
@@ -154,9 +156,9 @@ export const MasterAdminDashboard: React.FC = () => {
             <Card>
               <CardContent className="pt-6">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">PAGOS PROCESADOS</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                    {payment.totalPayments}
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold">EMPRESAS BLOQUEADAS</p>
+                  <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
+                    {payment.blockedCompanies}
                   </p>
                 </div>
               </CardContent>
@@ -171,20 +173,20 @@ export const MasterAdminDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-red-600" />
                 <CardTitle className="text-red-800 dark:text-red-200">
-                  {overdue.length} Sucursales Vencidas
+                  {overdue.length} Suscripciones Vencidas
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-2">
-                {overdue.map((branch) => (
-                  <div key={branch.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded">
+                {overdue.map((company) => (
+                  <div key={company.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded">
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-slate-50">{branch.name}</p>
-                      <p className="text-sm text-red-600">{branch.daysOverdue} días vencido</p>
+                      <p className="font-semibold text-slate-900 dark:text-slate-50">{company.name}</p>
+                      <p className="text-sm text-red-600">{company.daysOverdue} días vencido</p>
                     </div>
                     <p className="font-bold text-slate-900 dark:text-slate-50">
-                      ${branch.monthlyFee}/mes
+                      Plan: {company.planName}
                     </p>
                   </div>
                 ))}
@@ -193,52 +195,63 @@ export const MasterAdminDashboard: React.FC = () => {
           </Card>
         )}
 
-        {/* Branches List */}
+        {/* Companies List */}
         <Card>
           <CardHeader borderBottom>
-            <CardTitle>Sucursales ({branches.length})</CardTitle>
+            <CardTitle>Empresas ({companies.length})</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 font-semibold">Nombre</th>
-                    <th className="text-left py-3 px-4 font-semibold">Estado</th>
-                    <th className="text-right py-3 px-4 font-semibold">Usuarios</th>
-                    <th className="text-right py-3 px-4 font-semibold">Cuota Mensual</th>
+                    <th className="text-left py-3 px-4 font-semibold">Empresa</th>
+                    <th className="text-left py-3 px-4 font-semibold">Plan</th>
+                    <th className="text-center py-3 px-4 font-semibold">Sucursales</th>
+                    <th className="text-left py-3 px-4 font-semibold">Suscripción</th>
                     <th className="text-center py-3 px-4 font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {branches.map((branch) => (
-                    <tr key={branch.id} className={`border-b border-slate-200 dark:border-slate-700 ${
-                      branch.isBlocked ? 'bg-red-50 dark:bg-red-900/10' : ''
+                  {companies.map((company) => (
+                    <tr key={company.id} className={`border-b border-slate-200 dark:border-slate-700 ${
+                      company.isBlocked ? 'bg-red-50 dark:bg-red-900/10' : ''
                     }`}>
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium text-slate-900 dark:text-slate-50">{branch.name}</p>
-                          {branch.location && <p className="text-xs text-slate-500">{branch.location}</p>}
+                          <p className="font-medium text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            {company.name}
+                          </p>
+                          <p className="text-xs text-slate-500">{company.email}</p>
                         </div>
                       </td>
                       <td className="py-3 px-4">
+                        <span className="font-semibold text-slate-900 dark:text-slate-50">
+                          {company.planName}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold text-slate-900 dark:text-slate-50">
+                          {company.totalBranches}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
                         <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                          branch.isBlocked
+                          company.isBlocked
                             ? 'bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-200'
-                            : branch.status === 'ACTIVE'
+                            : company.subscriptionStatus === 'ACTIVE'
                             ? 'bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-200'
                             : 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200'
                         }`}>
-                          {branch.isBlocked ? 'BLOQUEADA' : branch.status}
+                          {company.isBlocked ? 'BLOQUEADA' : company.subscriptionStatus}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right">{branch.users}</td>
-                      <td className="py-3 px-4 text-right font-bold">${branch.monthlyFee}</td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex gap-2 justify-center">
-                          {branch.isBlocked ? (
+                          {company.isBlocked ? (
                             <Button
-                              onClick={() => handleUnblockBranch(branch.id)}
+                              onClick={() => handleUnblockCompany(company.id)}
                               size="sm"
                               className="px-3 bg-green-600 hover:bg-green-700 text-white"
                             >
@@ -246,7 +259,7 @@ export const MasterAdminDashboard: React.FC = () => {
                             </Button>
                           ) : (
                             <Button
-                              onClick={() => setSelectedBranch(branch)}
+                              onClick={() => setSelectedCompany(company)}
                               size="sm"
                               className="px-3 bg-red-600 hover:bg-red-700 text-white"
                             >
@@ -258,7 +271,7 @@ export const MasterAdminDashboard: React.FC = () => {
                               const amount = prompt('Monto del pago:');
                               if (amount) {
                                 setPaymentAmount(amount);
-                                handleAddPayment(branch.id);
+                                handleAddPayment(company.id);
                               }
                             }}
                             size="sm"
@@ -278,10 +291,10 @@ export const MasterAdminDashboard: React.FC = () => {
         </Card>
 
         {/* Block Modal */}
-        {selectedBranch && (
+        {selectedCompany && (
           <Card>
             <CardHeader borderBottom>
-              <CardTitle>Bloquear Sucursal: {selectedBranch.name}</CardTitle>
+              <CardTitle>Bloquear Empresa: {selectedCompany.name}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div>
@@ -289,18 +302,18 @@ export const MasterAdminDashboard: React.FC = () => {
                 <Input
                   value={blockReason}
                   onChange={(e) => setBlockReason(e.target.value)}
-                  placeholder="ej: Falta de pago"
-                  className="mt-2"
+                  placeholder="ej: Falta de pago - Suscripción vencida"
+                  className="mt-2 text-slate-900 dark:text-slate-50"
                 />
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => handleBlockBranch(selectedBranch.id)}
+                  onClick={() => handleBlockCompany(selectedCompany.id)}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  Bloquear
+                  Bloquear Empresa
                 </Button>
-                <Button variant="outline" onClick={() => setSelectedBranch(null)}>
+                <Button variant="outline" onClick={() => setSelectedCompany(null)}>
                   Cancelar
                 </Button>
               </div>

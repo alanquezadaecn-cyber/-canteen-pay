@@ -10,8 +10,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Plan {
+  id              String    @id @default(cuid())
+  name            String    @unique  // ENTERPRISE, SUCCURSAL
+  description     String?
+  price           Decimal   @db.Decimal(10, 2)
+  billingCycle    String    @default("MONTHLY") // MONTHLY, YEARLY, ONETIME
+  maxBranches     Int       @default(1)
+  maxUsersPerBranch Int?    // null = unlimited
+  features        String[]  // JSON array de features
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id              String    @id @default(cuid())
+  planId          String
+  plan            Plan      @relation(fields: [planId], references: [id])
+
+  status          String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, CANCELLED
+  startDate       DateTime  @default(now())
+  endDate         DateTime
+  renewalDate     DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company         Company?
+
+  @@index([planId])
+}
+
+model Company {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  phone           String?
+  industry        String?   // Restaurante, Cafetería, etc.
+
+  // Plan y Suscripción (one-to-one)
+  subscriptionId  String?   @unique
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  // Información de Pago
+  contactPerson   String?
+  paymentEmail    String?
+
+  // Status
+  isActive        Boolean   @default(true)
+  isBlocked       Boolean   @default(false)
+  blockReason     String?
+
+  // Master Admin de esta empresa
+  masterAdminEmail String?
+
+  // Auditoría
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  branches        Branch[]
+  payments        CompanyPayment[]
+
+  @@index([subscriptionId])
+}
+
+model CompanyPayment {
+  id              String    @id @default(cuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  amount          Decimal   @db.Decimal(10, 2)
+  status          String    @default("PENDING") // PENDING, PAID, FAILED
+  description     String?
+  invoiceNumber   String?
+
+  paymentDate     DateTime?
+  dueDate         DateTime
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+}
+
 model Branch {
   id              String    @id @default(cuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   name            String
   location        String?
   isActive        Boolean   @default(true)
@@ -22,9 +110,7 @@ model Branch {
   isBlocked       Boolean   @default(false)
   blockReason     String?
 
-  // Información de Pago
-  contactEmail    String?
-  contactPhone    String?
+  // Información de Pago (hereda de Company)
   monthlyFee      Decimal   @default(0) @db.Decimal(10, 2)
   lastPaymentDate DateTime?
   nextPaymentDate DateTime?
@@ -36,6 +122,10 @@ model Branch {
   cashiers        Cashier[]
   users           User[]
   payments        BranchPayment[]
+  products        Product[]
+  cashierSessions CashierSession[]
+
+  @@index([companyId])
 }
 
 model BranchPayment {

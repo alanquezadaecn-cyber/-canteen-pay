@@ -6,8 +6,6 @@ const router = express.Router();
 
 // Middleware: Verificar que sea Master Admin
 const masterAdminOnly = (req, res, next) => {
-  // Por ahora, verificamos si el usuario tiene email específico de master admin
-  // En producción, agregar un campo isMasterAdmin en User
   const masterAdminEmails = process.env.MASTER_ADMIN_EMAILS?.split(',') || ['master@mealpay.com'];
 
   if (!masterAdminEmails.includes(req.userEmail)) {
@@ -19,128 +17,159 @@ const masterAdminOnly = (req, res, next) => {
 
 router.use(verifyToken, masterAdminOnly);
 
-// GET all branches with payment status
-router.get('/branches', async (req, res) => {
+// GET all companies with branches and payment status
+router.get('/companies', async (req, res) => {
   try {
-    const branches = await prisma.branch.findMany({
+    const companies = await prisma.company.findMany({
       include: {
-        _count: { select: { users: true, cashiers: true } },
-        payments: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
+        _count: { select: { branches: true } },
+        subscription: { include: { plan: true } },
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        branches: { select: { id: true, name: true, isBlocked: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(branches.map(b => ({
-      id: b.id,
-      name: b.name,
-      location: b.location,
-      status: b.isBlocked ? 'BLOQUEADA' : b.licenseStatus,
-      users: b._count.users,
-      cashiers: b._count.cashiers,
-      monthlyFee: b.monthlyFee,
-      lastPayment: b.payments[0],
-      isBlocked: b.isBlocked,
-      blockReason: b.blockReason,
-      nextPaymentDate: b.nextPaymentDate,
-      licenseExpiry: b.licenseExpiry
+    res.json(companies.map(c => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      contactPerson: c.contactPerson,
+      totalBranches: c._count.branches,
+      planName: c.subscription?.plan?.name || 'N/A',
+      subscriptionStatus: c.subscription?.status || 'INACTIVE',
+      subscriptionEnd: c.subscription?.endDate,
+      isActive: c.isActive,
+      isBlocked: c.isBlocked,
+      blockReason: c.blockReason,
+      lastPayment: c.payments[0],
+      branches: c.branches
     })));
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al obtener sucursales' });
+    res.status(500).json({ error: 'Error al obtener empresas' });
   }
 });
 
-// GET branch details
-router.get('/:branchId', async (req, res) => {
+// GET company details with branches
+router.get('/companies/:companyId', async (req, res) => {
   try {
-    const branch = await prisma.branch.findUnique({
-      where: { id: req.params.branchId },
+    const company = await prisma.company.findUnique({
+      where: { id: req.params.companyId },
       include: {
-        payments: { orderBy: { createdAt: 'desc' } },
-        _count: { select: { users: true, cashiers: true } }
+        subscription: { include: { plan: true } },
+        branches: {
+          include: {
+            _count: { select: { users: true, cashiers: true } }
+          }
+        },
+        payments: { orderBy: { createdAt: 'desc' } }
       }
     });
 
-    if (!branch) {
-      return res.status(404).json({ error: 'Sucursal no encontrada' });
+    if (!company) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
     }
 
-    res.json(branch);
+    res.json(company);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al obtener sucursal' });
+    res.status(500).json({ error: 'Error al obtener empresa' });
   }
 });
 
-// BLOCK branch
-router.post('/:branchId/block', async (req, res) => {
+// BLOCK company (all branches)
+router.post('/companies/:companyId/block', async (req, res) => {
   try {
     const { reason } = req.body;
 
-    const branch = await prisma.branch.update({
-      where: { id: req.params.branchId },
+    const company = await prisma.company.update({
+      where: { id: req.params.companyId },
       data: {
         isBlocked: true,
-        blockReason: reason || 'Bloqueo por Master Admin',
-        licenseStatus: 'BLOCKED'
+        blockReason: reason || 'Bloqueo por Master Admin'
       }
     });
 
-    res.json({ success: true, message: 'Sucursal bloqueada', branch });
+    // Bloquear todas las sucursales
+    await prisma.branch.updateMany({
+      where: { companyId: req.params.companyId },
+      data: {
+        isBlocked: true,
+        blockReason: reason || 'Empresa bloqueada'
+      }
+    });
+
+    res.json({ success: true, message: 'Empresa y sucursales bloqueadas', company });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al bloquear sucursal' });
+    res.status(500).json({ error: 'Error al bloquear empresa' });
   }
 });
 
-// UNBLOCK branch
-router.post('/:branchId/unblock', async (req, res) => {
+// UNBLOCK company
+router.post('/companies/:companyId/unblock', async (req, res) => {
   try {
-    const branch = await prisma.branch.update({
-      where: { id: req.params.branchId },
+    const company = await prisma.company.update({
+      where: { id: req.params.companyId },
       data: {
         isBlocked: false,
-        blockReason: null,
-        licenseStatus: 'ACTIVE'
+        blockReason: null
       }
     });
 
-    res.json({ success: true, message: 'Sucursal desbloqueada', branch });
+    // Desbloquear sucursales
+    await prisma.branch.updateMany({
+      where: { companyId: req.params.companyId },
+      data: {
+        isBlocked: false,
+        blockReason: null
+      }
+    });
+
+    res.json({ success: true, message: 'Empresa desbloqueada', company });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al desbloquear sucursal' });
+    res.status(500).json({ error: 'Error al desbloquear empresa' });
   }
 });
 
-// CREATE payment
-router.post('/:branchId/payment', async (req, res) => {
+// CREATE payment for company
+router.post('/companies/:companyId/payment', async (req, res) => {
   try {
-    const { amount, description, status = 'PAID', dueDate } = req.body;
+    const { amount, description, status = 'PAID', dueDate, invoiceNumber } = req.body;
 
-    const payment = await prisma.branchPayment.create({
+    const payment = await prisma.companyPayment.create({
       data: {
-        branchId: req.params.branchId,
+        companyId: req.params.companyId,
         amount: parseFloat(amount),
         description,
         status,
+        invoiceNumber,
         paymentDate: status === 'PAID' ? new Date() : null,
         dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       }
     });
 
-    // Si se marcó como PAID, actualizar próximo pago
+    // Si se marcó como PAID, actualizar subscription
     if (status === 'PAID') {
-      await prisma.branch.update({
-        where: { id: req.params.branchId },
-        data: {
-          lastPaymentDate: new Date(),
-          nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          licenseStatus: 'ACTIVE'
-        }
+      const company = await prisma.company.findUnique({
+        where: { id: req.params.companyId },
+        include: { subscription: true }
       });
+
+      if (company?.subscription) {
+        const newEndDate = new Date(company.subscription.endDate);
+        newEndDate.setMonth(newEndDate.getMonth() + 1);
+
+        await prisma.subscription.update({
+          where: { id: company.subscription.id },
+          data: {
+            status: 'ACTIVE',
+            renewalDate: newEndDate
+          }
+        });
+      }
     }
 
     res.status(201).json(payment);
@@ -151,10 +180,10 @@ router.post('/:branchId/payment', async (req, res) => {
 });
 
 // GET payment history
-router.get('/:branchId/payments', async (req, res) => {
+router.get('/companies/:companyId/payments', async (req, res) => {
   try {
-    const payments = await prisma.branchPayment.findMany({
-      where: { branchId: req.params.branchId },
+    const payments = await prisma.companyPayment.findMany({
+      where: { companyId: req.params.companyId },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -165,32 +194,33 @@ router.get('/:branchId/payments', async (req, res) => {
   }
 });
 
-// GET overdue branches
+// GET overdue companies
 router.get('/report/overdue', async (req, res) => {
   try {
     const today = new Date();
 
-    const overdue = await prisma.branch.findMany({
+    const overdue = await prisma.company.findMany({
       where: {
         AND: [
-          { nextPaymentDate: { lt: today } },
-          { licenseStatus: 'ACTIVE' },
+          { subscription: { endDate: { lt: today } } },
           { isBlocked: false }
         ]
       },
       include: {
+        subscription: { include: { plan: true } },
         payments: { orderBy: { createdAt: 'desc' }, take: 1 }
       }
     });
 
     res.json({
       count: overdue.length,
-      branches: overdue.map(b => ({
-        id: b.id,
-        name: b.name,
-        daysOverdue: Math.floor((today - b.nextPaymentDate) / (1000 * 60 * 60 * 24)),
-        monthlyFee: b.monthlyFee,
-        lastPayment: b.payments[0]
+      companies: overdue.map(c => ({
+        id: c.id,
+        name: c.name,
+        planName: c.subscription?.plan?.name,
+        daysOverdue: Math.floor((today - c.subscription.endDate) / (1000 * 60 * 60 * 24)),
+        subscriptionEnd: c.subscription?.endDate,
+        lastPayment: c.payments[0]
       }))
     });
   } catch (err) {
@@ -199,26 +229,30 @@ router.get('/report/overdue', async (req, res) => {
   }
 });
 
-// GET revenue report
+// GET revenue report (agregado a nivel de empresas)
 router.get('/report/revenue', async (req, res) => {
   try {
-    const payments = await prisma.branchPayment.aggregate({
+    const payments = await prisma.companyPayment.aggregate({
       _sum: { amount: true },
       _count: true,
       where: { status: 'PAID' }
     });
 
-    const branches = await prisma.branch.findMany({
-      select: { monthlyFee: true }
+    const companies = await prisma.company.findMany({
+      where: { isActive: true },
+      include: { subscription: { include: { plan: true } } }
     });
 
-    const totalMonthlyPotential = branches.reduce((sum, b) => sum + parseFloat(b.monthlyFee || 0), 0);
+    const totalMonthlyPotential = companies.reduce((sum, c) => {
+      return sum + parseFloat(c.subscription?.plan?.price || 0);
+    }, 0);
 
     res.json({
       totalCollected: payments._sum.amount || 0,
       totalPayments: payments._count,
       potentialMonthlyRevenue: totalMonthlyPotential,
-      activeBranches: branches.length
+      activeCompanies: companies.filter(c => !c.isBlocked).length,
+      blockedCompanies: companies.filter(c => c.isBlocked).length
     });
   } catch (err) {
     console.error(err);
@@ -226,25 +260,30 @@ router.get('/report/revenue', async (req, res) => {
   }
 });
 
-// UPDATE branch license
-router.put('/:branchId/license', async (req, res) => {
+// Legacy: GET all branches (para compatibilidad)
+router.get('/branches', async (req, res) => {
   try {
-    const { monthlyFee, licenseExpiry, contactEmail, contactPhone } = req.body;
-
-    const branch = await prisma.branch.update({
-      where: { id: req.params.branchId },
-      data: {
-        ...(monthlyFee !== undefined && { monthlyFee: parseFloat(monthlyFee) }),
-        ...(licenseExpiry && { licenseExpiry: new Date(licenseExpiry) }),
-        ...(contactEmail && { contactEmail }),
-        ...(contactPhone && { contactPhone })
-      }
+    const branches = await prisma.branch.findMany({
+      include: {
+        company: true,
+        _count: { select: { users: true, cashiers: true } }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    res.json(branch);
+    res.json(branches.map(b => ({
+      id: b.id,
+      name: b.name,
+      location: b.location,
+      company: b.company.name,
+      users: b._count.users,
+      cashiers: b._count.cashiers,
+      isBlocked: b.isBlocked,
+      blockReason: b.blockReason
+    })));
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al actualizar licencia' });
+    res.status(500).json({ error: 'Error al obtener sucursales' });
   }
 });
 
