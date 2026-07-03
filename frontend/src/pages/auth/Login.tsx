@@ -61,7 +61,7 @@ export const Login: React.FC = () => {
       // Redirigir según rol
       const destination =
         data.user.role === 'ADMIN' ? '/admin/dashboard' :
-        data.user.role === 'CASHIER' ? `/cashier/branch/${data.user.branchId}` :
+        data.user.role === 'CASHIER' ? `/caja/${data.user.branchId}` :
         '/dashboard';
 
       navigate(destination);
