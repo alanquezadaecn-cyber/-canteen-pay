@@ -8,15 +8,15 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
 
-const generateTokens = (userId, role, email) => {
+const generateTokens = (userId, role, email, companyId) => {
   const accessToken = jwt.sign(
-    { sub: userId, role, email },
+    { sub: userId, role, email, companyId },
     JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE_IN || '1h' }
   );
 
   const refreshToken = jwt.sign(
-    { sub: userId, role, email },
+    { sub: userId, role, email, companyId },
     JWT_SECRET,
     { expiresIn: process.env.JWT_REFRESH_EXPIRE_IN || '7d' }
   );
@@ -26,15 +26,21 @@ const generateTokens = (userId, role, email) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, company, employeeNumber, phone } = req.body;
+    const { name, email, password, employeeNumber, phone } = req.body;
 
-    if (!name || !email || !password || !company || !employeeNumber || !phone) {
+    if (!name || !email || !password || !employeeNumber || !phone) {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(409).json({ error: 'El email ya está registrado' });
+    }
+
+    // Obtener empresa desde subdomain
+    const companyId = req.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Empresa no encontrada en este subdominio' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,23 +51,23 @@ router.post('/register', async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        company,
         employeeNumber,
         phone,
         qrCode,
-        role: 'USER' // Siempre USER en registro público
+        role: 'USER',
+        branchId: null // Se asignará después si es necesario
       }
     });
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email);
+    const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, companyId);
 
     res.status(201).json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        company: user.company,
-        role: user.role
+        role: user.role,
+        companyId
       },
       accessToken,
       refreshToken
@@ -82,7 +88,10 @@ router.post('/login', async (req, res) => {
 
     console.log(`📧 Intento login: ${email}`);
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { branch: { include: { company: true } } }
+    });
     console.log(`👤 Usuario encontrado: ${user ? 'SÍ' : 'NO'}`);
 
     if (!user) {
@@ -97,16 +106,19 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-      const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email);
+      // Obtener companyId desde branch o desde subdomain
+      const companyId = user.branch?.company?.id || req.companyId;
+      const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, companyId);
 
       res.json({
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
-          company: user.company || 'N/A',
+          company: user.branch?.company?.name || 'N/A',
           role: user.role,
-          balance: (user.balance || 0).toString()
+          balance: (user.balance || 0).toString(),
+          companyId
         },
         accessToken,
         refreshToken

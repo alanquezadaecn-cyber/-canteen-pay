@@ -14,6 +14,7 @@ export const verifyToken = (req, res, next) => {
     req.userId = decoded.sub;
     req.userRole = decoded.role;
     req.userEmail = decoded.email;
+    req.userCompanyId = decoded.companyId;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token inválido o expirado' });

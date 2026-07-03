@@ -1,6 +1,8 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken } from '../middleware/auth.js';
+import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
 
@@ -29,6 +31,123 @@ router.get('/debug/companies-count', async (req, res) => {
 });
 
 router.use(verifyToken, masterAdminOnly);
+
+// CREATE new company (para onboarding)
+router.post('/companies/create', async (req, res) => {
+  try {
+    const { name, email, phone, industry, contactPerson, paymentEmail, planId, subdomain } = req.body;
+
+    if (!name || !email || !subdomain || !planId) {
+      return res.status(400).json({ error: 'Campos requeridos: name, email, subdomain, planId' });
+    }
+
+    // Verificar que el subdominio no exista
+    const existingCompany = await prisma.company.findFirst({
+      where: {
+        OR: [
+          { id: subdomain },
+          { name: { mode: 'insensitive', equals: subdomain } }
+        ]
+      }
+    });
+
+    if (existingCompany) {
+      return res.status(409).json({ error: 'El subdominio ya existe' });
+    }
+
+    // Verificar que el email de empresa no exista
+    const existingEmail = await prisma.company.findUnique({
+      where: { email }
+    });
+
+    if (existingEmail) {
+      return res.status(409).json({ error: 'El email de empresa ya está registrado' });
+    }
+
+    // Obtener el plan
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan no encontrado' });
+    }
+
+    // Crear subscription
+    const endDate = new Date();
+    if (plan.billingCycle === 'MONTHLY') {
+      endDate.setMonth(endDate.getMonth() + 1);
+    } else if (plan.billingCycle === 'YEARLY') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    }
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        planId,
+        endDate,
+        status: 'ACTIVE'
+      }
+    });
+
+    // Crear company con ID = subdomain (más fácil para routing)
+    const company = await prisma.company.create({
+      data: {
+        id: subdomain, // Usar subdomain como ID
+        name,
+        email,
+        phone,
+        industry,
+        contactPerson,
+        paymentEmail,
+        subscriptionId: subscription.id,
+        isActive: true
+      },
+      include: {
+        subscription: { include: { plan: true } }
+      }
+    });
+
+    // Crear Super Admin user para esta empresa
+    const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const qrCode = QRService.generateUniqueCode();
+
+    const superAdmin = await prisma.user.create({
+      data: {
+        name: `Admin ${name}`,
+        email: email,
+        password: hashedPassword,
+        role: 'ADMIN',
+        employeeNumber: `ADMIN-${Date.now()}`,
+        phone: phone || '+52 0000-0000',
+        qrCode,
+        isActive: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Empresa creada exitosamente',
+      company: {
+        id: company.id,
+        name: company.name,
+        email: company.email,
+        subdomain: company.id,
+        plan: company.subscription?.plan?.name,
+        subscriptionEnd: company.subscription?.endDate
+      },
+      superAdmin: {
+        id: superAdmin.id,
+        email: superAdmin.email,
+        tempPassword, // IMPORTANTE: Cambiar en primer login
+        loginUrl: `https://${subdomain}.cashfood.online/admin` // Ajusta dominio según corresponda
+      }
+    });
+  } catch (err) {
+    console.error('❌ Error creando empresa:', err);
+    res.status(500).json({ error: 'Error al crear empresa: ' + err.message });
+  }
+});
 
 // GET all companies with branches and payment status
 router.get('/companies', async (req, res) => {

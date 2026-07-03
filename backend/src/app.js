@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import { detectSubdomain } from './middleware/subdomain.js';
 
 dotenv.config();
 
@@ -14,9 +15,12 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:3000'],
+  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'],
   credentials: true
 }));
+
+// Detectar subdominio PRIMERO
+app.use(detectSubdomain);
 
 // Raw body middleware para Stripe webhook (ANTES de express.json())
 app.use('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }));
