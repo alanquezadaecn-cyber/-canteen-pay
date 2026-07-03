@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import { Decimal } from '@prisma/client/runtime/library.js';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
@@ -74,20 +75,33 @@ router.post('/companies/create', async (req, res) => {
     }
 
     // Crear subscription
-    const endDate = new Date();
-    if (plan.billingCycle === 'MONTHLY') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else if (plan.billingCycle === 'YEARLY') {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    }
+    const licenseRenewalDate = new Date();
+    licenseRenewalDate.setFullYear(licenseRenewalDate.getFullYear() + 1);
+
+    const nextBillingDate = new Date();
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
 
     const subscription = await prisma.subscription.create({
       data: {
         planId,
-        endDate,
+        startDate: new Date(),
+        endDate: licenseRenewalDate,
+        renewalDate: licenseRenewalDate,
         status: 'ACTIVE'
       }
     });
+
+    // Definir fees según plan
+    let licenseFee = 0;
+    let hostingFee = 0;
+
+    if (plan.name === 'ENTERPRISE') {
+      licenseFee = 30000;   // $30k/año
+      hostingFee = 500;     // $500/mes
+    } else if (plan.name === 'SUCCURSAL') {
+      licenseFee = 5000;    // $5k/año
+      hostingFee = 150;     // $150/mes
+    }
 
     // Crear company con ID = subdomain (más fácil para routing)
     const company = await prisma.company.create({
@@ -100,10 +114,33 @@ router.post('/companies/create', async (req, res) => {
         contactPerson,
         paymentEmail,
         subscriptionId: subscription.id,
+        licenseFee: new Decimal(licenseFee),
+        hostingFee: new Decimal(hostingFee),
+        licenseRenewalDate,
+        nextBillingDate,
         isActive: true
       },
       include: {
         subscription: { include: { plan: true } }
+      }
+    });
+
+    // Crear factura de licencia inicial
+    const invoiceNumber = `INV-${company.id}-${Date.now()}`;
+    const licenseDueDate = new Date();
+    licenseDueDate.setDate(licenseDueDate.getDate() + 30); // 30 días para pagar
+
+    await prisma.companyInvoice.create({
+      data: {
+        companyId: company.id,
+        type: 'LICENSE',
+        amount: new Decimal(licenseFee),
+        description: `Licencia anual ${plan.name} (hasta ${plan.maxBranches} sucursales)`,
+        invoiceNumber,
+        status: 'PENDING',
+        dueDate: licenseDueDate,
+        periodStart: new Date(),
+        periodEnd: licenseRenewalDate
       }
     });
 
@@ -134,13 +171,24 @@ router.post('/companies/create', async (req, res) => {
         email: company.email,
         subdomain: company.id,
         plan: company.subscription?.plan?.name,
-        subscriptionEnd: company.subscription?.endDate
+        pricing: {
+          licenseFee: company.licenseFee.toString(),
+          hostingFee: company.hostingFee.toString() + '/mes',
+          licenseRenewalDate: company.licenseRenewalDate,
+          nextBillingDate: company.nextBillingDate
+        }
       },
       superAdmin: {
         id: superAdmin.id,
         email: superAdmin.email,
         tempPassword, // IMPORTANTE: Cambiar en primer login
-        loginUrl: `https://${subdomain}.cashfood.online/admin` // Ajusta dominio según corresponda
+        loginUrl: `https://${subdomain}.cashfood.online/admin`
+      },
+      invoice: {
+        number: invoiceNumber,
+        amount: licenseFee.toString(),
+        dueDate: licenseDueDate,
+        status: 'PENDING'
       }
     });
   } catch (err) {

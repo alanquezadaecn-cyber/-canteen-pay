@@ -148,29 +148,43 @@ router.post('/seed-plans', async (req, res) => {
     // Crear planes si no existen
     const enterprisePlan = await prisma.plan.upsert({
       where: { name: 'ENTERPRISE' },
-      update: {},
-      create: {
-        name: 'ENTERPRISE',
-        description: 'Plan empresarial - hasta 10 sucursales',
+      update: {
+        description: 'Plan empresarial - $30k licencia + $500/mes hosting',
         price: 30000,
         billingCycle: 'YEARLY',
         maxBranches: 10,
         maxUsersPerBranch: null,
-        features: ['qr-payments', 'cashier-module', 'admin-panel', 'reports', 'api-access']
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'reports', 'api-access', 'priority-support']
+      },
+      create: {
+        name: 'ENTERPRISE',
+        description: 'Plan empresarial - $30k licencia + $500/mes hosting',
+        price: 30000,
+        billingCycle: 'YEARLY',
+        maxBranches: 10,
+        maxUsersPerBranch: null,
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'reports', 'api-access', 'priority-support']
       }
     });
 
     const succursalPlan = await prisma.plan.upsert({
       where: { name: 'SUCCURSAL' },
-      update: {},
+      update: {
+        description: 'Plan por sucursal - $5k licencia + $150/mes hosting',
+        price: 5000,
+        billingCycle: 'YEARLY',
+        maxBranches: 1,
+        maxUsersPerBranch: null,
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'basic-reports', 'email-support']
+      },
       create: {
         name: 'SUCCURSAL',
-        description: 'Plan por sucursal - 1 sucursal + 3 vendedores',
+        description: 'Plan por sucursal - $5k licencia + $150/mes hosting',
         price: 5000,
-        billingCycle: 'MONTHLY',
+        billingCycle: 'YEARLY',
         maxBranches: 1,
-        maxUsersPerBranch: 200,
-        features: ['qr-payments', 'cashier-module', 'admin-panel', 'basic-reports']
+        maxUsersPerBranch: null,
+        features: ['qr-payments', 'cashier-module', 'admin-panel', 'basic-reports', 'email-support']
       }
     });
 

@@ -58,6 +58,13 @@ model Company {
   contactPerson   String?
   paymentEmail    String?
 
+  // Facturación
+  licenseFee      Decimal   @default(0) @db.Decimal(10, 2)  // Precio anual de licencia
+  hostingFee      Decimal   @default(0) @db.Decimal(10, 2)  // Precio mensual de hosting
+  licenseRenewalDate DateTime?  // Cuándo vence la licencia anual
+  nextBillingDate DateTime?     // Próximo cobro de hosting
+  additionalBranches Int @default(0)  // Sucursales adicionales > plan base
+
   // Status
   isActive        Boolean   @default(true)
   isBlocked       Boolean   @default(false)
@@ -72,8 +79,11 @@ model Company {
 
   branches        Branch[]
   payments        CompanyPayment[]
+  invoices        CompanyInvoice[]
 
   @@index([subscriptionId])
+  @@index([licenseRenewalDate])
+  @@index([nextBillingDate])
 }
 
 model CompanyPayment {
@@ -93,6 +103,34 @@ model CompanyPayment {
   updatedAt       DateTime  @updatedAt
 
   @@index([companyId])
+}
+
+model CompanyInvoice {
+  id              String    @id @default(cuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  type            String    // LICENSE, HOSTING, ADDITIONAL_BRANCH
+  amount          Decimal   @db.Decimal(10, 2)
+  description     String?
+  invoiceNumber   String    @unique
+  status          String    @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+
+  // Fechas
+  invoiceDate     DateTime  @default(now())
+  dueDate         DateTime
+  paymentDate     DateTime?
+
+  // Período
+  periodStart     DateTime?
+  periodEnd       DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@index([dueDate])
 }
 
 model Branch {
