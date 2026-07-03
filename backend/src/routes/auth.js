@@ -8,15 +8,15 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
 
-const generateTokens = (userId, role) => {
+const generateTokens = (userId, role, email) => {
   const accessToken = jwt.sign(
-    { sub: userId, role },
+    { sub: userId, role, email },
     JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE_IN || '1h' }
   );
 
   const refreshToken = jwt.sign(
-    { sub: userId, role },
+    { sub: userId, role, email },
     JWT_SECRET,
     { expiresIn: process.env.JWT_REFRESH_EXPIRE_IN || '7d' }
   );
@@ -53,7 +53,7 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.role);
+    const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email);
 
     res.status(201).json({
       user: {
@@ -97,7 +97,7 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-      const { accessToken, refreshToken } = generateTokens(user.id, user.role);
+      const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email);
 
       res.json({
         user: {
@@ -188,7 +188,7 @@ router.post('/refresh', (req, res) => {
     }
 
     const decoded = jwt.verify(refreshToken, JWT_SECRET);
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.sub, decoded.role);
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.sub, decoded.role, decoded.email);
 
     res.json({
       accessToken,
