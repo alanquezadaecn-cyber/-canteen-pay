@@ -86,13 +86,13 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, branchId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email y contraseña requeridos' });
     }
 
-    console.log(`📧 Intento login: ${email}`);
+    console.log(`📧 Intento login: ${email}${branchId ? ` (Sucursal: ${branchId})` : ''}`);
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -102,6 +102,12 @@ router.post('/login', async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // Si se especifica branchId, validar que el usuario pertenece a esa sucursal
+    if (branchId && user.branchId !== branchId) {
+      console.log(`❌ Usuario no pertenece a la sucursal ${branchId}`);
+      return res.status(403).json({ error: 'Usuario no pertenece a esta sucursal' });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -124,7 +130,8 @@ router.post('/login', async (req, res) => {
           company: user.branch?.company?.name || 'N/A',
           role: user.role,
           balance: (user.balance || 0).toString(),
-          companyId
+          companyId,
+          branchId: user.branchId
         },
         accessToken,
         refreshToken

@@ -133,6 +133,10 @@ function App() {
       <Routes>
         {/* Auth Routes */}
         <Route
+          path="/login/:branchId"
+          element={accessToken ? <Navigate to="/dashboard" replace /> : <Login />}
+        />
+        <Route
           path="/login"
           element={accessToken ? <Navigate to="/dashboard" replace /> : <Login />}
         />

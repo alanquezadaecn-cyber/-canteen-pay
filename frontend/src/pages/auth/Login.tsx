@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -9,13 +9,30 @@ import api from '../../lib/api';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { branchId } = useParams<{ branchId?: string }>();
   const { setAuth } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [branchName, setBranchName] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  // Cargar nombre de sucursal si existe branchId
+  useEffect(() => {
+    if (branchId) {
+      const loadBranchName = async () => {
+        try {
+          const { data } = await api.get(`/cashier/branch/${branchId}`);
+          setBranchName(data.name);
+        } catch (err) {
+          console.error('Error cargando sucursal:', err);
+        }
+      };
+      loadBranchName();
+    }
+  }, [branchId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -35,7 +52,8 @@ export const Login: React.FC = () => {
     try {
       const { data } = await api.post('/auth/login', {
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        branchId: branchId || undefined  // Enviar branchId si existe, para validación
       });
 
       setAuth(data.user, data.accessToken, data.refreshToken);
@@ -43,7 +61,7 @@ export const Login: React.FC = () => {
       // Redirigir según rol
       const destination =
         data.user.role === 'ADMIN' ? '/admin/dashboard' :
-        data.user.role === 'CASHIER' ? '/cashier/dashboard' :
+        data.user.role === 'CASHIER' ? `/cashier/branch/${data.user.branchId}` :
         '/dashboard';
 
       navigate(destination);
@@ -58,9 +76,11 @@ export const Login: React.FC = () => {
     <div className="min-h-screen  flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white">
         <CardHeader className=" text-white rounded-t-xl">
-          <CardTitle className="text-3xl">MealPay</CardTitle>
+          <CardTitle className="text-3xl">
+            {branchName ? `${branchName} - Login` : 'MealPay'}
+          </CardTitle>
           <p className="text-sm text-slate-300 mt-1">
-            Sistema de Pago Digital para Comedores
+            {branchName ? 'Acceso a tu sucursal' : 'Sistema de Pago Digital para Comedores'}
           </p>
         </CardHeader>
 
