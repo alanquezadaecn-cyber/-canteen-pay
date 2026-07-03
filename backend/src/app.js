@@ -23,6 +23,11 @@ app.use('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos del frontend (ANTES de las rutas API)
+const publicPath = join(__dirname, '../public');
+console.log(`📁 Serving static files from: ${publicPath}`);
+app.use(express.static(publicPath));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -45,23 +50,18 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/init', initRoutes);
 
-// API Info
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Canteen Pay API',
-    version: '1.0.0',
-    status: 'online',
-    endpoints: {
-      health: 'GET /health',
-      auth: 'POST /api/auth/login',
-      api_docs: 'See /api/* endpoints'
+// Catch-all para SPA - sirve index.html para rutas del frontend
+app.get('*', (req, res) => {
+  const indexPath = join(__dirname, '../public/index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      // Si no existe index.html, devolver JSON
+      res.status(404).json({
+        error: 'Endpoint not found',
+        path: req.path
+      });
     }
   });
-});
-
-// Catch-all for undefined routes
-app.all('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Error handling
