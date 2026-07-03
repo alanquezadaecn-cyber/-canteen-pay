@@ -137,7 +137,13 @@ const MasterAdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 };
 
 function App() {
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
+
+  // Determinar destino correcto según rol
+  const roleDestination =
+    user?.role === 'ADMIN' ? '/admin/dashboard' :
+    user?.role === 'CASHIER' ? `/caja/${user?.branchId}` :
+    '/dashboard';
 
   return (
     <ThemeProvider>
@@ -146,15 +152,15 @@ function App() {
         {/* Auth Routes */}
         <Route
           path="/login/:branchId"
-          element={accessToken ? <Navigate to="/dashboard" replace /> : <Login />}
+          element={accessToken ? <Navigate to={roleDestination} replace /> : <Login />}
         />
         <Route
           path="/login"
-          element={accessToken ? <Navigate to="/dashboard" replace /> : <Login />}
+          element={accessToken ? <Navigate to={roleDestination} replace /> : <Login />}
         />
         <Route
           path="/register"
-          element={accessToken ? <Navigate to="/dashboard" replace /> : <Register />}
+          element={accessToken ? <Navigate to={roleDestination} replace /> : <Register />}
         />
 
         {/* User Routes */}
