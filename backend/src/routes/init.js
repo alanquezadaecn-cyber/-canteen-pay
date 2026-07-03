@@ -222,7 +222,6 @@ router.post('/seed-plans', async (req, res) => {
     endDate1.setMonth(endDate1.getMonth() + 1);
 
     const sub1 = await prisma.subscription.create({
-      where: undefined,
       data: {
         planId: succursalPlan.id,
         status: 'ACTIVE',
@@ -255,7 +254,6 @@ router.post('/seed-plans', async (req, res) => {
     endDate2.setMonth(endDate2.getMonth() + 2);
 
     const sub2 = await prisma.subscription.create({
-      where: undefined,
       data: {
         planId: succursalPlan.id,
         status: 'ACTIVE',
