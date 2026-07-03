@@ -68,8 +68,7 @@ router.get('/users', async (req, res) => {
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { company: { contains: search, mode: 'insensitive' } }
+          { email: { contains: search, mode: 'insensitive' } }
         ]
       }),
       ...(role && { role })
@@ -82,7 +81,7 @@ router.get('/users', async (req, res) => {
           id: true,
           name: true,
           email: true,
-          company: true,
+          branchId: true,
           employeeNumber: true,
           role: true,
           balance: true,
@@ -125,7 +124,7 @@ router.get('/users/:id', async (req, res) => {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         role: true,
@@ -194,7 +193,7 @@ router.post('/users', async (req, res) => {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         role: true,
@@ -232,7 +231,7 @@ router.put('/users/:id', async (req, res) => {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         role: true,

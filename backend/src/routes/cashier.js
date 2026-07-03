@@ -16,7 +16,7 @@ router.get('/scan/:qrCode', async (req, res) => {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         balance: true,

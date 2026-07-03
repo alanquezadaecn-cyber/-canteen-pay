@@ -14,7 +14,7 @@ router.get('/me', verifyToken, async (req, res) => {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         role: true,
@@ -36,20 +36,19 @@ router.get('/me', verifyToken, async (req, res) => {
 
 router.put('/me', verifyToken, async (req, res) => {
   try {
-    const { name, phone, company } = req.body;
+    const { name, phone } = req.body;
 
     const user = await prisma.user.update({
       where: { id: req.userId },
       data: {
         ...(name && { name }),
-        ...(phone && { phone }),
-        ...(company && { company })
+        ...(phone && { phone })
       },
       select: {
         id: true,
         name: true,
         email: true,
-        company: true,
+        branchId: true,
         employeeNumber: true,
         phone: true,
         role: true,
