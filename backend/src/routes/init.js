@@ -282,4 +282,56 @@ router.post('/seed-plans', async (req, res) => {
   }
 });
 
+// Endpoint para crear Master Admin
+router.post('/setup-master', async (req, res) => {
+  try {
+    console.log('🔐 Creando Master Admin...');
+
+    const hashedPassword = await bcrypt.hash('Anubis920520.#', 10);
+
+    // Buscar si ya existe el usuario
+    const existing = await prisma.user.findUnique({
+      where: { email: 'alejandro.qt92@gmail.com' }
+    });
+
+    if (existing) {
+      return res.json({
+        success: true,
+        message: 'Master Admin ya existe',
+        email: 'alejandro.qt92@gmail.com'
+      });
+    }
+
+    // Crear usuario Master Admin
+    const masterAdmin = await prisma.user.create({
+      data: {
+        name: 'Alejandro Quezada',
+        email: 'alejandro.qt92@gmail.com',
+        password: hashedPassword,
+        employeeNumber: 'MASTER-001',
+        phone: '+55 (11) 99999-9999',
+        role: 'ADMIN',
+        balance: 0,
+        qrCode: randomUUID(),
+        isActive: true
+      }
+    });
+
+    console.log('✅ Master Admin creado');
+
+    res.json({
+      success: true,
+      message: '✅ Master Admin creado exitosamente',
+      user: {
+        email: masterAdmin.email,
+        name: masterAdmin.name,
+        role: masterAdmin.role
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error creando master admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
