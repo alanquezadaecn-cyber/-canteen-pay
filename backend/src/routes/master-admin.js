@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Middleware: Verificar que sea Master Admin
 const masterAdminOnly = (req, res, next) => {
-  const masterAdminEmails = process.env.MASTER_ADMIN_EMAILS?.split(',') || ['master@mealpay.com'];
+  const masterAdminEmails = process.env.MASTER_ADMIN_EMAILS?.split(',') || ['alejandro.qt92@gmail.com', 'master@mealpay.com'];
 
   if (!masterAdminEmails.includes(req.userEmail)) {
     return res.status(403).json({ error: 'Acceso denegado. Master Admin requerido.' });
