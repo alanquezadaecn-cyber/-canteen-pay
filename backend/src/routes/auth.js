@@ -199,4 +199,46 @@ router.post('/refresh', (req, res) => {
   }
 });
 
+// Create admin user endpoint (temporal para setup)
+router.post('/admin/create-user', async (req, res) => {
+  try {
+    const { email, password, name, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email y password requeridos' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const qrCode = QRService.generateUniqueCode();
+
+    const user = await prisma.user.create({
+      data: {
+        name: name || email.split('@')[0],
+        email,
+        password: hashedPassword,
+        company: 'Admin Company',
+        employeeNumber: `EMP-${Date.now()}`,
+        phone: '+52 5555-0000',
+        role: role || 'ADMIN',
+        balance: 0,
+        qrCode,
+        isActive: true
+      }
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('❌ Error creando usuario:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
