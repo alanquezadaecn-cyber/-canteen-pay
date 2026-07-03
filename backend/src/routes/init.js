@@ -465,20 +465,23 @@ router.post('/seed-asinmex-cashiers', async (req, res) => {
 
     for (const branch of branches) {
       const email = `vendedor@${branch.name.toLowerCase()}.asinmex.com`;
-      const existingCashier = await prisma.cashier.findUnique({ where: { email } });
+      const existingUser = await prisma.user.findUnique({ where: { email } });
 
-      if (existingCashier) {
+      if (existingUser) {
         console.log(`⏭️  Vendedor ${email} ya existe`);
         continue;
       }
 
-      await prisma.cashier.create({
+      await prisma.user.create({
         data: {
           name: `Vendedor ${branch.name}`,
           email,
           password: hashedPassword,
           phone: '+52 5555-0000',
+          role: 'CASHIER',
+          employeeNumber: `CASH-${branch.name}-001`,
           branchId: branch.id,
+          qrCode: randomUUID(),
           isActive: true
         }
       });
