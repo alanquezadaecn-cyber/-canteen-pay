@@ -135,19 +135,29 @@ export const BranchDetail: React.FC = () => {
       <div className="p-4 md:p-8 space-y-8">
 
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button onClick={() => navigate('/admin')} variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50">
-              {branch.name}
-            </h1>
-            {branch.location && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                📍 {branch.location}
-              </p>
-            )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button onClick={() => navigate('/admin')} variant="outline" size="sm">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50">
+                {branch.name}
+              </h1>
+              {branch.location && (
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  📍 {branch.location}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate(`/admin/branches/${id}/products`)} size="sm">
+              📦 Menú
+            </Button>
+            <Button onClick={() => navigate(`/admin/branches/${id}/reports`)} size="sm" variant="outline">
+              📊 Reportes
+            </Button>
           </div>
         </div>
 

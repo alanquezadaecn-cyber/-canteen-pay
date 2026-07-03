@@ -27,6 +27,8 @@ import { CashierHistory } from './pages/cashier/CashierHistory';
 
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { BranchDetail } from './pages/admin/BranchDetail';
+import { Products } from './pages/admin/Products';
+import { BranchReports } from './pages/admin/BranchReports';
 import { UsersList } from './pages/admin/UsersList';
 import { UserDetail } from './pages/admin/UserDetail';
 import { TransactionsList } from './pages/admin/TransactionsList';
@@ -260,6 +262,22 @@ function App() {
           element={
             <AdminRoute>
               <BranchDetail />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/branches/:branchId/products"
+          element={
+            <AdminRoute>
+              <Products />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/branches/:branchId/reports"
+          element={
+            <AdminRoute>
+              <BranchReports />
             </AdminRoute>
           }
         />
