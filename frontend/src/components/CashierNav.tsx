@@ -13,11 +13,12 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export const CashierNav: React.FC = () => {
   const location = useLocation();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const branchId = user?.branchId || '';
 
   const navItems = [
-    { path: '/cashier/dashboard', label: 'Inicio', icon: Home },
+    { path: `/caja/${branchId}`, label: 'Inicio', icon: Home },
     { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
     { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
     { path: '/cashier/history', label: 'Historial', icon: History }

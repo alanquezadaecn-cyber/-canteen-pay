@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { AlertCircle, Zap, Keyboard } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export const QRScanner: React.FC = () => {
   const navigate = useNavigate();
-  const { branchId } = useParams<{ branchId?: string }>();
+  const { user } = useAuthStore();
+  const branchId = user?.branchId;
   const scannerRef = useRef<HTMLDivElement>(null);
   const [manualQR, setManualQR] = useState('');
   const [error, setError] = useState('');
@@ -29,11 +31,7 @@ export const QRScanner: React.FC = () => {
 
     html5Scanner.render(
       (qrCode) => {
-        if (branchId) {
-          navigate(`/cashier/branch/${branchId}?action=process&qr=${encodeURIComponent(qrCode)}`);
-        } else {
-          navigate(`/cashier/action?qr=${encodeURIComponent(qrCode)}`);
-        }
+        navigate(`/caja/${branchId}?qr=${encodeURIComponent(qrCode)}`);
       },
       (err) => {
         if (!err.includes('NotFound') && !err.includes('NotFoundException')) {
@@ -45,7 +43,7 @@ export const QRScanner: React.FC = () => {
     return () => {
       html5Scanner.stop().catch(() => {});
     };
-  }, [navigate]);
+  }, [navigate, branchId]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,20 +52,16 @@ export const QRScanner: React.FC = () => {
       return;
     }
     setError('');
-    if (branchId) {
-      navigate(`/cashier/branch/${branchId}?action=process&qr=${encodeURIComponent(manualQR)}`);
-    } else {
-      navigate(`/cashier/action?qr=${encodeURIComponent(manualQR)}`);
-    }
+    navigate(`/caja/${branchId}?qr=${encodeURIComponent(manualQR)}`);
   };
 
   return (
-    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold  dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
-            Escanear QR 📸
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+            Escanear QR
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Apunta la cámara al código QR del cliente

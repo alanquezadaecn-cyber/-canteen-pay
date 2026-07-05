@@ -149,13 +149,13 @@ export const QRCode: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
         <div className="w-full max-w-lg space-y-8">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
-              Mi Código QR 🎫
+            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+              Mi Código QR
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
               Comparte este código para realizar pagos en el comedor
