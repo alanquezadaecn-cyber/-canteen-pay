@@ -102,7 +102,7 @@ export const ChargeUser: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Buscando usuario...</p>
@@ -113,10 +113,10 @@ export const ChargeUser: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen  dark:from-emerald-900/20 dark:to-emerald-900/20 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
         <Card variant="elevated" className="w-full max-w-md text-center animate-scale-in">
           <CardContent className="pt-12 pb-12">
-            <div className="w-16 h-16 rounded-full  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-50 mb-2">
@@ -186,11 +186,11 @@ export const ChargeUser: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold  dark:from-red-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
             Procesar Pago 💰
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
@@ -210,7 +210,7 @@ export const ChargeUser: React.FC = () => {
         <Card variant="elevated" className="animate-fade-in">
           <CardHeader borderBottom>
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-lg  dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                 <UserIcon className="w-7 h-7 text-red-600 dark:text-red-400" />
               </div>
               <div>
@@ -266,7 +266,7 @@ export const ChargeUser: React.FC = () => {
         <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '100ms' }}>
           <CardHeader borderBottom>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg  dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                 <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>

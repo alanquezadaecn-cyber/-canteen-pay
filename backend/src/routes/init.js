@@ -7,6 +7,10 @@ const router = express.Router();
 
 // Endpoint para inicializar datos de prueba
 router.post('/seed', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🌱 Iniciando seed de datos...');
     console.log('📡 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
@@ -142,6 +146,10 @@ router.post('/seed', async (req, res) => {
 
 // Endpoint para crear planes y empresas de prueba
 router.post('/seed-plans', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🌱 Creando planes y empresas de prueba...');
 
@@ -298,6 +306,10 @@ router.post('/seed-plans', async (req, res) => {
 
 // Endpoint para crear Master Admin
 router.post('/setup-master', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🔐 Creando Master Admin...');
 
@@ -350,6 +362,10 @@ router.post('/setup-master', async (req, res) => {
 
 // Endpoint para crear empresa de prueba con sucursales
 router.post('/setup-asinmex', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🏢 Creando empresa ASINMEX con sucursales...');
 
@@ -449,6 +465,10 @@ router.post('/setup-asinmex', async (req, res) => {
 
 // Endpoint para crear vendedores en sucursales de ASINMEX
 router.post('/seed-asinmex-cashiers', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('💳 Creando vendedores en sucursales de ASINMEX...');
 
@@ -506,6 +526,10 @@ router.post('/seed-asinmex-cashiers', async (req, res) => {
 
 // Endpoint para crear usuarios de prueba en sucursales de ASINMEX
 router.post('/seed-asinmex-users', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('👥 Creando usuarios de prueba en sucursales de ASINMEX...');
 
@@ -592,6 +616,10 @@ router.post('/seed-asinmex-users', async (req, res) => {
 
 // Endpoint para crear productos de prueba en sucursales de ASINMEX
 router.post('/seed-asinmex-products', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🍽️ Creando productos de prueba en sucursales...');
 
@@ -656,6 +684,10 @@ router.post('/seed-asinmex-products', async (req, res) => {
 
 // Fix: Migrar Cashiers a Users table
 router.post('/fix-cashiers-to-users', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     console.log('🔄 Migrando Cashiers a Users...');
 

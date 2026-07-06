@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 export const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setAuth, user } = useAuthStore();
+  const { setBalance } = useAuthStore();
   const [newBalance, setNewBalance] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +18,7 @@ export const PaymentSuccess: React.FC = () => {
       try {
         const { data } = await api.get('/users/me');
         setNewBalance(data.balance);
-        setAuth(data, null, null);
+        setBalance(data.balance);
       } catch (err) {
         console.error('Error fetching user:', err);
       } finally {
@@ -29,7 +29,7 @@ export const PaymentSuccess: React.FC = () => {
     const timer = setTimeout(verifyPayment, 2000);
 
     return () => clearTimeout(timer);
-  }, [setAuth]);
+  }, [setBalance]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-slate-50 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
@@ -56,7 +56,7 @@ export const PaymentSuccess: React.FC = () => {
               <p className="text-sm text-slate-600">Actualizando saldo...</p>
             </div>
           ) : (
-            <div className=" rounded-lg p-6 mb-8 border border-emerald-200">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6 mb-8 border border-emerald-200">
               <p className="text-sm text-slate-600 mb-1">Tu nuevo saldo</p>
               <p className="text-4xl font-bold text-emerald-600">
                 ${parseFloat(newBalance).toFixed(2)}

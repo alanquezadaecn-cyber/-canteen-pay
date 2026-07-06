@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken, checkRole } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
@@ -176,7 +177,7 @@ router.post('/users', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const qrCode = require('crypto').randomUUID();
+    const qrCode = randomUUID();
 
     const user = await prisma.user.create({
       data: {

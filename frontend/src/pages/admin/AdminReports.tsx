@@ -139,7 +139,7 @@ export const AdminReports: React.FC = () => {
                   </div>
                   <div className="h-6 bg-slate-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full  rounded-full"
+                      className="h-full bg-violet-500 dark:bg-violet-400 rounded-full"
                       style={{
                         width: `${(parseFloat(user.amount) / maxAmount) * 100}%`
                       }}

@@ -148,7 +148,7 @@ export const UserDetail: React.FC = () => {
         )}
 
         {/* Perfil */}
-        <Card className="mb-8  text-white border-0">
+        <Card className="mb-8 bg-violet-600 text-white border-0">
           <CardContent className="pt-8">
             <div className="flex justify-between items-start mb-6">
               <div>

@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Users, Zap, BarChart3, Edit3, MapPin, CreditCard, Phone, Mail, Globe, Calendar, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2 } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -67,6 +67,7 @@ export const MasterAdminDashboard: React.FC = () => {
   };
 
   const handleEditCompany = (company: Company) => {
+    setSelectedCompany(company);
     setEditingCompany({ ...company });
     setShowEditModal(true);
   };

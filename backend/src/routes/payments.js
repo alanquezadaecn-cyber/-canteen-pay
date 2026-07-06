@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/stripe/create-intent', verifyToken, async (req, res) => {
   try {
     const { amount } = req.body;
-    const userId = req.user.sub;
+    const userId = req.userId;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Monto inválido' });
@@ -130,7 +130,7 @@ router.post('/stripe/webhook', express.raw({ type: 'application/json' }), async 
 router.post('/mp/create-preference', verifyToken, async (req, res) => {
   try {
     const { amount } = req.body;
-    const userId = req.user.sub;
+    const userId = req.userId;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Monto inválido' });

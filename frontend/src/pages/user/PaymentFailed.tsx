@@ -51,7 +51,7 @@ export const PaymentFailed: React.FC = () => {
               Volver al Panel
             </Button>
             <Button
-              onClick={() => navigate('/cashier/scan')}
+              onClick={() => navigate('/dashboard')}
               variant="outline"
               className="w-full text-slate-600"
             >

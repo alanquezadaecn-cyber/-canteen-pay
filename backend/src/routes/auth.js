@@ -214,7 +214,7 @@ router.post('/refresh', (req, res) => {
     }
 
     const decoded = jwt.verify(refreshToken, JWT_SECRET);
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.sub, decoded.role, decoded.email);
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.sub, decoded.role, decoded.email, decoded.companyId);
 
     res.json({
       accessToken,

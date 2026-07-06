@@ -19,6 +19,7 @@ router.get('/me', verifyToken, async (req, res) => {
         phone: true,
         role: true,
         balance: true,
+        qrCode: true,
         createdAt: true
       }
     });

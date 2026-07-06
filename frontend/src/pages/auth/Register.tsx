@@ -109,9 +109,9 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen  flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white">
-        <CardHeader className=" text-white rounded-t-xl">
+        <CardHeader className="bg-emerald-600 text-white rounded-t-xl">
           <CardTitle className="text-2xl">
             {step === 1 ? 'Crear Cuenta' : 'Datos de Empresa'}
           </CardTitle>

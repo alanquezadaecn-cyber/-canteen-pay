@@ -18,7 +18,9 @@ const masterAdminOnly = (req, res, next) => {
   next();
 };
 
-// Debug endpoint (sin autenticación)
+router.use(verifyToken, masterAdminOnly);
+
+// Debug endpoint
 router.get('/debug/companies-count', async (req, res) => {
   try {
     const count = await prisma.company.count();
@@ -30,8 +32,6 @@ router.get('/debug/companies-count', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-router.use(verifyToken, masterAdminOnly);
 
 // CREATE new company (para onboarding)
 router.post('/companies/create', async (req, res) => {

@@ -13,14 +13,9 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
-  console.log('🔑 Request interceptor - Token:', accessToken ? `${accessToken.substring(0, 30)}...` : 'NO TOKEN');
-  console.log('📍 Request URL:', config.url);
 
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
-    console.log('✅ Authorization header set');
-  } else {
-    console.log('❌ NO accessToken available');
   }
   return config;
 });
