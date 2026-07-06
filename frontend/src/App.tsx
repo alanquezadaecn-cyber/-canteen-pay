@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -6,8 +6,11 @@ import { AppNav } from './components/AppNav';
 import { CashierNav } from './components/CashierNav';
 import { AdminNav } from './components/AdminNav';
 
+// Auth
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
+
+// Comensal
 import { Dashboard } from './pages/user/Dashboard';
 import { QRCode } from './pages/user/QRCode';
 import { Purchases } from './pages/user/Purchases';
@@ -18,395 +21,130 @@ import { Profile } from './pages/user/Profile';
 import { PaymentSuccess } from './pages/user/PaymentSuccess';
 import { PaymentFailed } from './pages/user/PaymentFailed';
 
-import { CashierDashboard } from './pages/cashier/CashierDashboard';
+// Vendedor
 import { QRScanner } from './pages/cashier/QRScanner';
-import { ActionSelector } from './pages/cashier/ActionSelector';
-import { ChargeUser } from './pages/cashier/ChargeUser';
 import { CashRecharge } from './pages/cashier/CashRecharge';
 import { CashierHistory } from './pages/cashier/CashierHistory';
 import { CashierActionPanel } from './pages/cashier/CashierActionPanel';
 
+// Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { BranchDetail } from './pages/admin/BranchDetail';
 import { Products } from './pages/admin/Products';
 import { BranchReports } from './pages/admin/BranchReports';
 import { UsersList } from './pages/admin/UsersList';
-import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard';
 import { UserDetail } from './pages/admin/UserDetail';
 import { TransactionsList } from './pages/admin/TransactionsList';
 import { AdminReports } from './pages/admin/AdminReports';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
+// Super Admin
+import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const MASTER_EMAIL = 'alejandro.qt92@gmail.com';
+
+function getRoleHome(role?: string, branchId?: string): string {
+  switch (role) {
+    case 'CASHIER':      return `/caja/${branchId || ''}`;
+    case 'ADMIN':        return '/admin/dashboard';
+    case 'MASTER_ADMIN': return '/master-admin';
+    default:             return '/dashboard';
+  }
 }
 
-interface CashierRouteProps {
-  children: React.ReactNode;
-}
+// ── Guards ───────────────────────────────────────────────────────────────────
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+const ComensalRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-
-  if (!accessToken) {
-    // Mostrar Login en lugar de redirigir
-    return <Login />;
-  }
-
-  if (!user || user.role !== 'USER') {
-    // Solo permite acceso a usuarios normales, no a ADMIN ni CASHIER
-    return <Navigate to="/admin/dashboard" replace />;
-  }
-
-  return (
-    <>
-      <AppNav />
-      {children}
-    </>
-  );
+  if (!accessToken) return <Navigate to="/login" replace />;
+  if (user?.role !== 'USER') return <Navigate to={getRoleHome(user?.role, user?.branchId)} replace />;
+  return <><AppNav />{children}</>;
 };
 
-const CashierRoute: React.FC<CashierRouteProps> = ({ children }) => {
+const VendedorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-
-  console.log('🔐 CashierRoute check:', { accessToken: !!accessToken, user });
-
-  if (!accessToken) {
-    // Mostrar Login en lugar de redirigir
-    console.log('❌ No accessToken, showing login');
-    return <Login />;
-  }
-
-  if (!user) {
-    console.log('❌ No user in store');
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  console.log('👤 User role:', user.role);
-
-  if (user.role !== 'CASHIER' && user.role !== 'ADMIN') {
-    console.log('❌ User is not CASHIER or ADMIN, redirecting');
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return (
-    <>
-      <CashierNav />
-      {children}
-    </>
-  );
+  if (!accessToken) return <Navigate to="/login" replace />;
+  if (user?.role !== 'CASHIER') return <Navigate to={getRoleHome(user?.role, user?.branchId)} replace />;
+  return <><CashierNav />{children}</>;
 };
 
-interface AdminRouteProps {
-  children: React.ReactNode;
-}
-
-const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-
-  if (!accessToken) {
-    // Mostrar Login en lugar de redirigir
-    return <Login />;
-  }
-
-  if (!user || user.role !== 'ADMIN') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return (
-    <>
-      <AdminNav />
-      {children}
-    </>
-  );
+  if (!accessToken) return <Navigate to="/login" replace />;
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
+  if (!isAdmin) return <Navigate to={getRoleHome(user?.role, user?.branchId)} replace />;
+  return <><AdminNav />{children}</>;
 };
 
-const MasterAdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-  const masterAdminEmail = process.env.VITE_MASTER_ADMIN_EMAIL || 'alejandro.qt92@gmail.com';
-
-  if (!accessToken) {
-    return <Login />;
-  }
-
-  // Solo permitir si el email coincide exactamente con el master admin
-  if (!user || user.email !== masterAdminEmail) {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
-
+  if (!accessToken) return <Navigate to="/login" replace />;
+  const isMaster = user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
+  if (!isMaster) return <Navigate to={getRoleHome(user?.role, user?.branchId)} replace />;
   return <>{children}</>;
 };
 
+// ── App ──────────────────────────────────────────────────────────────────────
+
 function App() {
   const { accessToken, user } = useAuthStore();
-
-  // Determinar destino correcto según rol
-  const roleDestination =
-    user?.role === 'ADMIN' ? '/admin/dashboard' :
-    user?.role === 'CASHIER' ? `/caja/${user?.branchId}` :
-    '/dashboard';
+  const roleHome = getRoleHome(user?.role, user?.branchId);
 
   return (
     <ThemeProvider>
       <Router>
-      <Routes>
-        {/* Auth Routes */}
-        <Route
-          path="/login/:branchId"
-          element={accessToken ? <Navigate to={roleDestination} replace /> : <Login />}
-        />
-        <Route
-          path="/login"
-          element={accessToken ? <Navigate to={roleDestination} replace /> : <Login />}
-        />
-        <Route
-          path="/register"
-          element={accessToken ? <Navigate to={roleDestination} replace /> : <Register />}
-        />
+        <Routes>
 
-        {/* User Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/qr"
-          element={
-            <ProtectedRoute>
-              <QRCode />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/purchases"
-          element={
-            <ProtectedRoute>
-              <Purchases />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/recharges"
-          element={
-            <ProtectedRoute>
-              <Recharges />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/recharge/new"
-          element={
-            <ProtectedRoute>
-              <RechargeNew />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payment/success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccess />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payment/failed"
-          element={
-            <ProtectedRoute>
-              <PaymentFailed />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/statement"
-          element={
-            <ProtectedRoute>
-              <Statement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+          {/* ── PÚBLICO ─────────────────────────────────────────────────── */}
+          <Route
+            path="/login/:branchId"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+          />
+          <Route
+            path="/login"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+          />
+          <Route
+            path="/register"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Register />}
+          />
 
-        {/* Cashier Routes */}
-        <Route
-          path="/cashier/branch/:branchId"
-          element={
-            <CashierRoute>
-              <CashierActionPanel />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/dashboard"
-          element={
-            <CashierRoute>
-              <CashierDashboard />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/scan"
-          element={
-            <CashierRoute>
-              <QRScanner />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/action"
-          element={
-            <CashierRoute>
-              <ActionSelector />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/charge"
-          element={
-            <CashierRoute>
-              <ChargeUser />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/recharge"
-          element={
-            <CashierRoute>
-              <CashRecharge />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/cashier/history"
-          element={
-            <CashierRoute>
-              <CashierHistory />
-            </CashierRoute>
-          }
-        />
+          {/* ── COMENSAL ────────────────────────────────────────────────── */}
+          <Route path="/dashboard"       element={<ComensalRoute><Dashboard /></ComensalRoute>} />
+          <Route path="/qr"              element={<ComensalRoute><QRCode /></ComensalRoute>} />
+          <Route path="/purchases"       element={<ComensalRoute><Purchases /></ComensalRoute>} />
+          <Route path="/recharges"       element={<ComensalRoute><Recharges /></ComensalRoute>} />
+          <Route path="/recharge/new"    element={<ComensalRoute><RechargeNew /></ComensalRoute>} />
+          <Route path="/payment/success" element={<ComensalRoute><PaymentSuccess /></ComensalRoute>} />
+          <Route path="/payment/failed"  element={<ComensalRoute><PaymentFailed /></ComensalRoute>} />
+          <Route path="/statement"       element={<ComensalRoute><Statement /></ComensalRoute>} />
+          <Route path="/profile"         element={<ComensalRoute><Profile /></ComensalRoute>} />
 
-        {/* Admin Routes */}
-        <Route
-          path="/master-admin"
-          element={
-            <MasterAdminRoute>
-              <MasterAdminDashboard />
-            </MasterAdminRoute>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/branches/:id"
-          element={
-            <AdminRoute>
-              <BranchDetail />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/branches/:branchId/products"
-          element={
-            <AdminRoute>
-              <Products />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/branches/:branchId/reports"
-          element={
-            <AdminRoute>
-              <BranchReports />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <UsersList />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/users/:id"
-          element={
-            <AdminRoute>
-              <UserDetail />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/transactions"
-          element={
-            <AdminRoute>
-              <TransactionsList />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/reports"
-          element={
-            <AdminRoute>
-              <AdminReports />
-            </AdminRoute>
-          }
-        />
+          {/* ── VENDEDOR ────────────────────────────────────────────────── */}
+          <Route path="/caja/:branchId"    element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
+          <Route path="/cashier/scan"      element={<VendedorRoute><QRScanner /></VendedorRoute>} />
+          <Route path="/cashier/recharge"  element={<VendedorRoute><CashRecharge /></VendedorRoute>} />
+          <Route path="/cashier/history"   element={<VendedorRoute><CashierHistory /></VendedorRoute>} />
 
-        {/* Main Role Routes - Las 3 URLs principales */}
-        <Route
-          path="/user"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/caja/:branchId"
-          element={
-            <CashierRoute>
-              <CashierActionPanel />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/caja"
-          element={
-            <CashierRoute>
-              <CashierDashboard />
-            </CashierRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        />
+          {/* ── ADMINISTRADOR ────────────────────────────────────────────── */}
+          <Route path="/admin/dashboard"                    element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/branches/:id"                 element={<AdminRoute><BranchDetail /></AdminRoute>} />
+          <Route path="/admin/branches/:branchId/products"  element={<AdminRoute><Products /></AdminRoute>} />
+          <Route path="/admin/branches/:branchId/reports"   element={<AdminRoute><BranchReports /></AdminRoute>} />
+          <Route path="/admin/users"                        element={<AdminRoute><UsersList /></AdminRoute>} />
+          <Route path="/admin/users/:id"                    element={<AdminRoute><UserDetail /></AdminRoute>} />
+          <Route path="/admin/transactions"                 element={<AdminRoute><TransactionsList /></AdminRoute>} />
+          <Route path="/admin/reports"                      element={<AdminRoute><AdminReports /></AdminRoute>} />
 
-        {/* Default Route */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}
+          <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />
+
+          {/* ── DEFAULT ─────────────────────────────────────────────────── */}
+          <Route path="/" element={<Navigate to={accessToken ? roleHome : '/login'} replace />} />
+          <Route path="*" element={<Navigate to={accessToken ? roleHome : '/login'} replace />} />
+
+        </Routes>
       </Router>
     </ThemeProvider>
   );
