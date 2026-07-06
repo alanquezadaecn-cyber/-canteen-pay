@@ -28,7 +28,7 @@ export const QRScanner: React.FC = () => {
         (decoded) => {
           if (scanned) return;
           setScanned(true);
-          qr.stop().catch(() => {});
+          // Navegar directo — el cleanup del useEffect para la cámara al desmontar
           navigate(`/caja/${branchId}?qr=${encodeURIComponent(decoded)}`);
         },
         () => {}
@@ -46,6 +46,7 @@ export const QRScanner: React.FC = () => {
     return () => {
       if (html5QrRef.current) {
         html5QrRef.current.stop().catch(() => {});
+        html5QrRef.current = null;
       }
     };
   }, []);
@@ -98,8 +99,8 @@ export const QRScanner: React.FC = () => {
           )}
           {cameraActive && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-52 h-52 border-2 border-amber-400 rounded-lg" style={{
-                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+              <div className="w-52 h-52 border-2 border-white/80 rounded-xl" style={{
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)'
               }} />
             </div>
           )}
@@ -138,7 +139,7 @@ export const QRScanner: React.FC = () => {
               <Button
                 type="submit"
                 disabled={!manualQR.trim()}
-                className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5"
+                className="bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold px-5"
               >
                 Ir
               </Button>

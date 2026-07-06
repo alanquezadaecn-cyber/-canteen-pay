@@ -235,8 +235,21 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
           userId: user.id,
           amount: amountDecimal,
           paymentMethod: 'CASH',
-          status: 'COMPLETED',
-          description: `Recarga en efectivo ${new Date().toLocaleString('es-MX')}`
+          status: 'COMPLETED'
+        }
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'RECHARGE',
+          amount: amountDecimal,
+          balanceBefore,
+          balanceAfter: newBalance,
+          description: `Recarga en efectivo`,
+          cashierId: req.userId,
+          paymentMethod: 'CASH',
+          status: 'COMPLETED'
         }
       });
 
