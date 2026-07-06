@@ -33,139 +33,179 @@ router.get('/debug/companies-count', async (req, res) => {
   }
 });
 
-// CREATE new company (para onboarding)
+// GET available plans (para el formulario de onboarding)
+router.get('/plans', async (req, res) => {
+  try {
+    // Asegurarse de que los planes base existen
+    const plans = await ensurePlansExist();
+    res.json(plans);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function ensurePlansExist() {
+  let lite = await prisma.plan.findUnique({ where: { name: 'LITE' } });
+  if (!lite) {
+    lite = await prisma.plan.create({
+      data: { name: 'LITE', description: 'Plan básico', price: 2500, maxBranches: 1, features: ['1 sucursal', 'Hasta 50 comensales', 'Soporte básico'] }
+    });
+  }
+  let enterprise = await prisma.plan.findUnique({ where: { name: 'ENTERPRISE' } });
+  if (!enterprise) {
+    enterprise = await prisma.plan.create({
+      data: { name: 'ENTERPRISE', description: 'Plan empresarial', price: 6500, maxBranches: 10, features: ['Sucursales ilimitadas', 'Comensales ilimitados', 'Soporte prioritario', 'Reportes avanzados'] }
+    });
+  }
+  return [lite, enterprise];
+}
+
+// CREATE new company — onboarding completo
+// Crea: empresa, suscripción, sucursal, usuario admin, usuario cajero, productos por defecto
 router.post('/companies/create', async (req, res) => {
   try {
-    const { name, email, phone, industry, contactPerson, paymentEmail, planId, subdomain } = req.body;
+    const {
+      companyName, email, phone, contactPerson, industry,
+      planName = 'LITE',
+      branchName = 'Comedor Principal',
+      branchLocation = 'Planta 1',
+      adminPassword
+    } = req.body;
 
-    if (!name || !email || !subdomain || !planId) {
-      return res.status(400).json({ error: 'Campos requeridos: name, email, subdomain, planId' });
+    if (!companyName || !email) {
+      return res.status(400).json({ error: 'Campos requeridos: companyName, email' });
+    }
+    if (!adminPassword || adminPassword.length < 6) {
+      return res.status(400).json({ error: 'La contraseña del admin debe tener al menos 6 caracteres' });
     }
 
-    // Verificar que el subdominio no exista
-    const existingCompany = await prisma.company.findFirst({
-      where: {
-        OR: [
-          { id: subdomain },
-          { name: { mode: 'insensitive', equals: subdomain } }
-        ]
-      }
-    });
-
-    if (existingCompany) {
-      return res.status(409).json({ error: 'El subdominio ya existe' });
-    }
-
-    // Verificar que el email de empresa no exista
-    const existingEmail = await prisma.company.findUnique({
-      where: { email }
-    });
-
+    // Email de empresa no debe existir
+    const existingEmail = await prisma.company.findUnique({ where: { email } });
     if (existingEmail) {
-      return res.status(409).json({ error: 'El email de empresa ya está registrado' });
+      return res.status(409).json({ error: 'Ya existe una empresa con ese email' });
     }
 
-    // Obtener el plan
-    const plan = await prisma.plan.findUnique({
-      where: { id: planId }
-    });
+    // Asegurar planes
+    const plans = await ensurePlansExist();
+    const plan = plans.find(p => p.name === planName.toUpperCase()) || plans[0];
 
-    if (!plan) {
-      return res.status(404).json({ error: 'Plan no encontrado' });
-    }
-
-    // Crear subscription
-    const licenseRenewalDate = new Date();
-    licenseRenewalDate.setFullYear(licenseRenewalDate.getFullYear() + 1);
-
-    const nextBillingDate = new Date();
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
+    // Suscripción (1 año)
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1);
     const subscription = await prisma.subscription.create({
-      data: {
-        planId,
-        startDate: new Date(),
-        endDate: licenseRenewalDate,
-        renewalDate: licenseRenewalDate,
-        status: 'ACTIVE'
-      }
+      data: { planId: plan.id, startDate: new Date(), endDate, status: 'ACTIVE' }
     });
 
-    // Definir fees según plan
-    let licenseFee = 0;
-    let hostingFee = 0;
-
-    if (plan.name === 'ENTERPRISE') {
-      licenseFee = 30000;   // $30k/año
-      hostingFee = 500;     // $500/mes
-    } else if (plan.name === 'LITE') {
-      licenseFee = 5000;    // $5k/año
-      hostingFee = 150;     // $150/mes
-    }
-
-    // Crear company con ID = subdomain (más fácil para routing)
+    // Empresa
     const company = await prisma.company.create({
-      data: {
-        id: subdomain,
-        name,
-        email,
-        phone,
-        industry,
-        contactPerson,
-        paymentEmail,
-        subscriptionId: subscription.id,
-        isActive: true
-      },
-      include: {
-        subscription: { include: { plan: true } }
-      }
+      data: { name: companyName, email, phone, industry, contactPerson, subscriptionId: subscription.id, isActive: true }
     });
 
-    // TODO: Agregar factura de licencia cuando se implemente CompanyInvoice table
+    // Sucursal
+    const branch = await prisma.branch.create({
+      data: { name: branchName, location: branchLocation, companyId: company.id, isActive: true }
+    });
 
-    // Crear Super Admin user para esta empresa
-    const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    const qrCode = QRService.generateUniqueCode();
-
-    const superAdmin = await prisma.user.create({
+    // Admin user
+    const adminPass = adminPassword;
+    const adminHash = await bcrypt.hash(adminPass, 10);
+    const adminUser = await prisma.user.create({
       data: {
-        name: `Admin ${name}`,
-        email: email,
-        password: hashedPassword,
+        name: contactPerson || `Admin ${companyName}`,
+        email,
+        password: adminHash,
         role: 'ADMIN',
         employeeNumber: `ADMIN-${Date.now()}`,
         phone: phone || '+52 0000-0000',
-        qrCode,
+        qrCode: QRService.generateUniqueCode(),
+        branchId: branch.id,
         isActive: true
       }
     });
 
+    // Cajero user
+    const cashierEmail = `cajero@${email.split('@')[1] || 'mealpay.mx'}`;
+    const cashierPass = Math.random().toString(36).slice(-8) + '1A';
+    const cashierHash = await bcrypt.hash(cashierPass, 10);
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
+    const cashierUser = await prisma.user.create({
+      data: {
+        name: `Cajero ${branchName}`,
+        email: cashierEmail,
+        password: cashierHash,
+        role: 'CASHIER',
+        employeeNumber: String(nextNum),
+        phone: phone || '+52 0000-0000',
+        qrCode: QRService.generateUniqueCode(),
+        branchId: branch.id,
+        isActive: true
+      }
+    });
+
+    // Productos por defecto
+    const defaultProducts = [
+      { name: 'Comida corrida', price: 65, category: 'Plato del día' },
+      { name: 'Tacos (3 pzas)', price: 45, category: 'Antojitos' },
+      { name: 'Torta', price: 40, category: 'Antojitos' },
+      { name: 'Agua fresca', price: 15, category: 'Bebidas' },
+      { name: 'Refresco', price: 20, category: 'Bebidas' }
+    ];
+
+    await Promise.all(defaultProducts.map(p =>
+      prisma.product.create({ data: { ...p, branchId: branch.id } })
+    ));
+
+    const APP_URL = process.env.FRONTEND_URL || 'https://optimistic-tranquility-production-941f.up.railway.app';
+
     res.status(201).json({
       success: true,
-      message: 'Empresa creada exitosamente',
-      company: {
-        id: company.id,
-        name: company.name,
-        email: company.email,
-        subdomain: company.id,
-        plan: company.subscription?.plan?.name,
-        pricing: {
-          licenseFee: licenseFee,
-          hostingFee: `$${hostingFee}/mes`,
-          subscriptionEnd: company.subscription?.endDate
+      company: { id: company.id, name: company.name, plan: plan.name },
+      branch: { id: branch.id, name: branch.name, location: branch.location },
+      credentials: {
+        admin: {
+          role: 'Administrador',
+          email: adminUser.email,
+          password: adminPass,
+          url: `${APP_URL}/login`
+        },
+        cashier: {
+          role: 'Cajero',
+          email: cashierUser.email,
+          password: cashierPass,
+          branchUrl: `${APP_URL}/caja/${branch.id}`,
+          loginUrl: `${APP_URL}/login`
         }
       },
-      superAdmin: {
-        id: superAdmin.id,
-        email: superAdmin.email,
-        tempPassword,
-        loginUrl: `https://${subdomain}.cashfood.online/admin`
-      }
+      defaultProducts: defaultProducts.map(p => p.name)
     });
   } catch (err) {
     console.error('❌ Error creando empresa:', err);
     res.status(500).json({ error: 'Error al crear empresa: ' + err.message });
+  }
+});
+
+// RESET datos de prueba (solo borra empresas, sucursales, users no-master-admin, productos, transacciones)
+router.post('/reset-test-data', async (req, res) => {
+  try {
+    const masterEmails = process.env.MASTER_ADMIN_EMAILS?.split(',') || ['alejandro.qt92@gmail.com'];
+    // Borrar en orden correcto por foreign keys
+    await prisma.transactionItem.deleteMany();
+    await prisma.transaction.deleteMany();
+    await prisma.recharge.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.cashierSession.deleteMany();
+    await prisma.user.deleteMany({ where: { email: { notIn: masterEmails } } });
+    await prisma.branch.deleteMany();
+    await prisma.companyPayment.deleteMany();
+    await prisma.company.deleteMany();
+    res.json({ success: true, message: 'Datos de prueba eliminados. Base de datos lista para nueva prueba.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al limpiar: ' + err.message });
   }
 });
 

@@ -26,6 +26,7 @@ import { QRScanner } from './pages/cashier/QRScanner';
 import { CashRecharge } from './pages/cashier/CashRecharge';
 import { CashierHistory } from './pages/cashier/CashierHistory';
 import { CashierActionPanel } from './pages/cashier/CashierActionPanel';
+import { CashierProducts } from './pages/cashier/CashierProducts';
 
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -125,6 +126,7 @@ function App() {
           <Route path="/caja/:branchId"    element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
           <Route path="/cashier/scan"      element={<VendedorRoute><QRScanner /></VendedorRoute>} />
           <Route path="/cashier/recharge"  element={<VendedorRoute><CashRecharge /></VendedorRoute>} />
+          <Route path="/cashier/products"  element={<VendedorRoute><CashierProducts /></VendedorRoute>} />
           <Route path="/cashier/history"   element={<VendedorRoute><CashierHistory /></VendedorRoute>} />
 
           {/* ── ADMINISTRADOR ────────────────────────────────────────────── */}

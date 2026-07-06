@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2 } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -43,6 +43,20 @@ export const MasterAdminDashboard: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [blockReason, setBlockReason] = useState('');
+
+  // Nueva empresa
+  const [showNewCompany, setShowNewCompany] = useState(false);
+  const [newCompanyResult, setNewCompanyResult] = useState<any>(null);
+  const [newCompanyForm, setNewCompanyForm] = useState({
+    companyName: '', email: '', phone: '', contactPerson: '',
+    industry: '', planName: 'LITE',
+    branchName: 'Comedor Principal', branchLocation: 'Planta 1',
+    adminPassword: ''
+  });
+  const [creatingCompany, setCreatingCompany] = useState(false);
+  const [newCompanyError, setNewCompanyError] = useState('');
+  const [copiedField, setCopiedField] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -127,6 +141,48 @@ export const MasterAdminDashboard: React.FC = () => {
     }
   };
 
+  const handleCreateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompanyForm.companyName || !newCompanyForm.email || !newCompanyForm.adminPassword) {
+      setNewCompanyError('Nombre, email y contraseña son requeridos');
+      return;
+    }
+    setCreatingCompany(true);
+    setNewCompanyError('');
+    try {
+      const { data } = await api.post('/master-admin/companies/create', newCompanyForm);
+      setNewCompanyResult(data);
+      fetchData();
+    } catch (err: any) {
+      setNewCompanyError(err.response?.data?.error || 'Error al crear empresa');
+    } finally {
+      setCreatingCompany(false);
+    }
+  };
+
+  const handleResetTestData = async () => {
+    if (!confirm('¿Confirmas que quieres borrar TODAS las empresas, sucursales, usuarios y transacciones? Esto no se puede deshacer.')) return;
+    setResetting(true);
+    try {
+      await api.post('/master-admin/reset-test-data');
+      setCompanies([]);
+      setPayment(null);
+      setOverdue([]);
+      alert('Base de datos limpia. Lista para nuevas pruebas.');
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al limpiar datos');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(''), 2000);
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-slate-600 dark:text-slate-400">Cargando datos...</div>;
   }
@@ -135,19 +191,39 @@ export const MasterAdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
 
-        {/* Header Premium */}
-        <div className="border-b border-slate-200 dark:border-slate-700 pb-8">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl">
-              <Zap className="w-7 h-7 text-white" />
+        {/* Header */}
+        <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-900 dark:bg-slate-100 rounded-xl">
+                <Zap className="w-6 h-6 text-white dark:text-slate-900" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50">
+                  Panel Master Admin
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Gestión de empresas, sucursales y licencias
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-50">
-                Panel Master Admin
-              </h1>
-              <p className="text-base text-slate-600 dark:text-slate-400 mt-1">
-                Gestión centralizada de empresas, licencias, facturación y ubicaciones
-              </p>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={handleResetTestData}
+                disabled={resetting}
+                className="h-10 px-3 rounded-xl border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 flex items-center gap-1"
+                title="Borrar todos los datos de prueba"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Resetear
+              </button>
+              <button
+                onClick={() => { setShowNewCompany(true); setNewCompanyResult(null); setNewCompanyError(''); }}
+                className="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Nueva Empresa
+              </button>
             </div>
           </div>
         </div>
@@ -348,6 +424,164 @@ export const MasterAdminDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal: Nueva Empresa */}
+        {showNewCompany && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full my-8 shadow-2xl border border-slate-200 dark:border-slate-700">
+
+              {/* Resultado exitoso */}
+              {newCompanyResult ? (
+                <div className="p-6 space-y-5">
+                  <div className="text-center">
+                    <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-8 h-8 text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">¡Empresa creada!</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      {newCompanyResult.company.name} — Plan {newCompanyResult.company.plan}
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sucursal creada</p>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300">
+                      <strong>{newCompanyResult.branch.name}</strong> — {newCompanyResult.branch.location}
+                      <p className="text-xs text-slate-500 mt-1">ID: {newCompanyResult.branch.id}</p>
+                    </div>
+
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">Credenciales de acceso</p>
+
+                    {[newCompanyResult.credentials.admin, newCompanyResult.credentials.cashier].map((cred: any) => (
+                      <div key={cred.role} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-2 border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{cred.role}</p>
+                        {[
+                          { label: 'Email', value: cred.email },
+                          { label: 'Contraseña', value: cred.password },
+                          { label: 'URL', value: cred.branchUrl || cred.url }
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+                              <p className="text-sm font-mono text-slate-900 dark:text-slate-50 break-all">{value}</p>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard(value, `${cred.role}-${label}`)}
+                              className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition-colors"
+                            >
+                              {copiedField === `${cred.role}-${label}`
+                                ? <CheckCircle className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+                                : <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              }
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Productos por defecto creados</p>
+                      <div className="flex flex-wrap gap-1">
+                        {newCompanyResult.defaultProducts?.map((p: string) => (
+                          <span key={p} className="text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-600 dark:text-slate-400">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => { setShowNewCompany(false); setNewCompanyResult(null); }}
+                    className="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors"
+                  >
+                    Listo
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateCompany} className="p-6 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Nueva Empresa Cliente</h2>
+                    <button type="button" onClick={() => setShowNewCompany(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {newCompanyError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-sm">
+                      {newCompanyError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Nombre de la empresa *</label>
+                      <Input value={newCompanyForm.companyName} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, companyName: e.target.value })} placeholder="Ej: Grupo Industrial ABC" className="text-slate-900 dark:text-slate-50" required />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Email del admin *</label>
+                      <Input type="email" value={newCompanyForm.email} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, email: e.target.value })} placeholder="admin@empresa.com" className="text-slate-900 dark:text-slate-50" required />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Teléfono</label>
+                      <Input value={newCompanyForm.phone} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, phone: e.target.value })} placeholder="+52 55 1234-5678" className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Persona de contacto</label>
+                      <Input value={newCompanyForm.contactPerson} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, contactPerson: e.target.value })} placeholder="Juan Pérez" className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Industria</label>
+                      <Input value={newCompanyForm.industry} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, industry: e.target.value })} placeholder="Manufactura, Oficinas..." className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Plan *</label>
+                      <select
+                        value={newCompanyForm.planName}
+                        onChange={(e) => setNewCompanyForm({ ...newCompanyForm, planName: e.target.value })}
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-sm focus:outline-none focus:border-slate-400"
+                      >
+                        <option value="LITE">LITE — $2,500/año</option>
+                        <option value="ENTERPRISE">ENTERPRISE — $6,500/año</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Nombre del comedor</label>
+                      <Input value={newCompanyForm.branchName} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, branchName: e.target.value })} placeholder="Comedor Principal" className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Ubicación del comedor</label>
+                      <Input value={newCompanyForm.branchLocation} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, branchLocation: e.target.value })} placeholder="Planta 1" className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Contraseña del admin *</label>
+                      <Input type="password" value={newCompanyForm.adminPassword} onChange={(e) => setNewCompanyForm({ ...newCompanyForm, adminPassword: e.target.value })} placeholder="Mínimo 6 caracteres" className="text-slate-900 dark:text-slate-50" required />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-400">
+                    Se crearán automáticamente: 1 sucursal, 1 usuario administrador, 1 cajero y 5 productos de ejemplo.
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={creatingCompany}
+                      className="flex-1 h-11 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors disabled:opacity-40"
+                    >
+                      {creatingCompany ? 'Creando...' : 'Crear empresa'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCompany(false)}
+                      className="h-11 px-5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm hover:border-slate-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Edit Company Modal */}
         {showEditModal && selectedCompany && editingCompany && (

@@ -7,7 +7,8 @@ import {
   History,
   LogOut,
   Menu,
-  X
+  X,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -21,6 +22,7 @@ export const CashierNav: React.FC = () => {
     { path: `/caja/${branchId}`, label: 'Inicio', icon: Home },
     { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
     { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
+    { path: '/cashier/products', label: 'Productos', icon: ShoppingBag },
     { path: '/cashier/history', label: 'Historial', icon: History }
   ];
 
