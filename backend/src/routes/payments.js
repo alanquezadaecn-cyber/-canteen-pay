@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { stripe } from '../services/stripe.service.js';
 import { preference, payment } from '../services/mp.service.js';
 import { verifyToken } from '../middleware/auth.js';
+import { sendRechargeConfirmation } from '../services/email.service.js';
 
 const router = express.Router();
 
@@ -76,38 +77,48 @@ router.post('/stripe/webhook', express.raw({ type: 'application/json' }), async 
         return res.json({ received: true });
       }
 
-      // Actualizar Recharge y balance en transacción atómica
+      let newBalanceNum = 0;
+      let stripeUser = null;
+
       await prisma.$transaction(async (tx) => {
-        // Actualizar Recharge a COMPLETED
         await tx.recharge.update({
           where: { id: rechargeId },
-          data: {
-            status: 'COMPLETED',
-            reference: paymentIntent.id
-          }
+          data: { status: 'COMPLETED', reference: paymentIntent.id }
         });
 
-        // Obtener usuario y actualizar balance
         const user = await tx.user.findUnique({ where: { id: userId } });
-        const newBalance = user.balance + parseFloat(recharge.amount);
+        const balanceBefore = parseFloat(user.balance);
+        newBalanceNum = balanceBefore + parseFloat(recharge.amount);
+        stripeUser = user;
 
         await tx.user.update({
           where: { id: userId },
-          data: { balance: newBalance }
+          data: { balance: newBalanceNum }
         });
 
-        // Crear Transaction de registro
         await tx.transaction.create({
           data: {
             userId,
             type: 'RECHARGE',
             amount: parseFloat(recharge.amount),
+            balanceBefore,
+            balanceAfter: newBalanceNum,
             paymentMethod: 'STRIPE',
             status: 'COMPLETED',
             description: `Recarga vía Stripe (${paymentIntent.id})`
           }
         });
       });
+
+      if (stripeUser) {
+        sendRechargeConfirmation({
+          to: stripeUser.email,
+          name: stripeUser.name,
+          amount: parseFloat(recharge.amount),
+          newBalance: newBalanceNum,
+          method: 'STRIPE'
+        });
+      }
     } else if (event.type === 'payment_intent.payment_failed') {
       const paymentIntent = event.data.object;
       const { rechargeId } = paymentIntent.metadata;
@@ -212,35 +223,49 @@ router.post('/mp/webhook', async (req, res) => {
     }
 
     if (mpPayment.status === 'approved') {
-      // Actualizar Recharge y balance en transacción atómica
+      let newBalanceNum = 0;
+      let rechargeUser = null;
+
       await prisma.$transaction(async (tx) => {
         await tx.recharge.update({
           where: { id: rechargeId },
-          data: {
-            status: 'COMPLETED',
-            reference: mpPayment.id.toString()
-          }
+          data: { status: 'COMPLETED', reference: mpPayment.id.toString() }
         });
 
         const user = await tx.user.findUnique({ where: { id: recharge.userId } });
-        const newBalance = user.balance + recharge.amount;
+        const balanceBefore = parseFloat(user.balance);
+        newBalanceNum = balanceBefore + parseFloat(recharge.amount);
+        rechargeUser = user;
 
         await tx.user.update({
           where: { id: recharge.userId },
-          data: { balance: newBalance }
+          data: { balance: newBalanceNum }
         });
 
         await tx.transaction.create({
           data: {
             userId: recharge.userId,
             type: 'RECHARGE',
-            amount: recharge.amount,
+            amount: parseFloat(recharge.amount),
+            balanceBefore,
+            balanceAfter: newBalanceNum,
             paymentMethod: 'MERCADOPAGO',
             status: 'COMPLETED',
             description: `Recarga vía MercadoPago (${mpPayment.id})`
           }
         });
       });
+
+      // Email de confirmación
+      if (rechargeUser) {
+        sendRechargeConfirmation({
+          to: rechargeUser.email,
+          name: rechargeUser.name,
+          amount: parseFloat(recharge.amount),
+          newBalance: newBalanceNum,
+          method: 'MERCADOPAGO'
+        });
+      }
     } else if (mpPayment.status === 'rejected' || mpPayment.status === 'cancelled') {
       await prisma.recharge.update({
         where: { id: rechargeId },

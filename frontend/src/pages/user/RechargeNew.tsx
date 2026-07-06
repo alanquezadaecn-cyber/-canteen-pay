@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Label } from '../../components/ui/Label';
-import { AlertCircle, CreditCard, DollarSign, Wallet } from 'lucide-react';
+import { AlertCircle, Wallet, DollarSign } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
-import { StripeForm } from '../../components/StripeForm';
 
 type Step = 'amount' | 'method';
-type PaymentMethod = 'stripe' | 'mercadopago' | 'cash';
+type PaymentMethod = 'mercadopago' | 'cash';
 
 const QUICK_AMOUNTS = [50, 100, 200, 500];
 
@@ -23,18 +18,10 @@ export const RechargeNew: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleQuickAmount = (value: number) => {
-    setAmount(value.toString());
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAmount(e.target.value);
-  };
-
   const handleNextStep = () => {
     const numAmount = parseFloat(amount);
-    if (!amount || numAmount <= 0) {
-      setError('Ingresa un monto válido');
+    if (!amount || numAmount < 10) {
+      setError('El monto mínimo es $10');
       return;
     }
     setError('');
@@ -44,13 +31,10 @@ export const RechargeNew: React.FC = () => {
   const handleMercadoPagoPayment = async () => {
     setLoading(true);
     setError('');
-
     try {
       const { data } = await api.post('/payments/mp/create-preference', {
         amount: parseFloat(amount)
       });
-
-      // Redirigir a MercadoPago
       if (data.init_point) {
         window.location.href = data.init_point;
       }
@@ -62,231 +46,193 @@ export const RechargeNew: React.FC = () => {
 
   if (step === 'amount') {
     return (
-      <div className="min-h-screen bg-slate-50 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
-        <div className="p-4 md:p-8 max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Recargar Saldo</h1>
-          <p className="text-slate-600 mb-8">Paso 1: Selecciona el monto</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0 pb-24 md:pb-0">
+        <div className="max-w-lg mx-auto p-4 md:p-8 pt-8 md:pt-16 space-y-6">
+          <div>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1 mb-4 transition-colors"
+            >
+              ← Volver
+            </button>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">Recargar saldo</h1>
+            <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Selecciona cuánto quieres recargar</p>
+          </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
+            <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <Label className="text-sm font-medium text-slate-700 mb-4 block">
-                Montos Rápidos
-              </Label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-                {QUICK_AMOUNTS.map((quickAmount) => (
-                  <button
-                    key={quickAmount}
-                    onClick={() => handleQuickAmount(quickAmount)}
-                    className={`p-4 rounded-lg border-2 font-bold transition-all ${
-                      amount === quickAmount.toString()
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
-                        : 'border-slate-200 bg-white text-slate-900 hover:border-emerald-300'
-                    }`}
-                  >
-                    ${quickAmount}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-slate-600">o ingresa un monto</span>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="amount" className="text-sm font-medium text-slate-700 mb-2 block">
-                  Monto Personalizado
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-slate-600 font-medium">$</span>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={amount}
-                    onChange={handleAmountChange}
-                    placeholder="0.00"
-                    className="pl-8"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-4">
-            <Button
-              onClick={() => navigate('/dashboard')}
-              variant="outline"
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleNextStep}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            >
-              Siguiente
-            </Button>
+          {/* Saldo actual */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo actual</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-1">
+              ${parseFloat(user?.balance || '0').toFixed(2)}
+            </p>
           </div>
+
+          {/* Montos rápidos */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monto a recargar</p>
+            <div className="grid grid-cols-4 gap-2">
+              {QUICK_AMOUNTS.map(q => (
+                <button
+                  key={q}
+                  onClick={() => setAmount(String(q))}
+                  className={`h-12 rounded-xl text-sm font-semibold border transition-colors ${
+                    amount === String(q)
+                      ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                  }`}
+                >
+                  ${q}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Otro monto..."
+                step="1"
+                min="10"
+                className="w-full h-12 pl-8 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-base focus:outline-none focus:border-slate-400 transition-colors"
+              />
+            </div>
+
+            {amount && parseFloat(amount) >= 10 && (
+              <div className="flex justify-between text-base font-bold text-slate-900 dark:text-slate-50 px-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span>Nuevo saldo</span>
+                <span>${(parseFloat(user?.balance || '0') + parseFloat(amount)).toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleNextStep}
+            disabled={!amount || parseFloat(amount) < 10}
+            className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-base transition-colors disabled:opacity-40"
+          >
+            Continuar
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
-      <div className="p-4 md:p-8 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Recargar Saldo</h1>
-        <p className="text-slate-600 mb-8">Paso 2: Selecciona método de pago</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0 pb-24 md:pb-0">
+      <div className="max-w-lg mx-auto p-4 md:p-8 pt-8 md:pt-16 space-y-5">
+        <div>
+          <button
+            onClick={() => setStep('amount')}
+            className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1 mb-4 transition-colors"
+          >
+            ← Cambiar monto
+          </button>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">Método de pago</h1>
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">¿Cómo quieres pagar?</p>
+        </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
+          <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
-        {/* Resumen */}
-        <Card className="mb-8  border-emerald-200">
-          <CardContent className="pt-6">
-            <p className="text-slate-600 text-sm mb-2">Monto a recargar</p>
-            <p className="text-4xl font-bold text-emerald-600">
-              ${parseFloat(amount).toFixed(2)}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Métodos de Pago */}
-        <div className="space-y-4 mb-8">
-          {/* Stripe Card */}
-          <div
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedMethod === 'stripe'
-                ? 'border-emerald-500 bg-emerald-50'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-            onClick={() => setSelectedMethod('stripe')}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <CreditCard className={`w-6 h-6 ${selectedMethod === 'stripe' ? 'text-emerald-600' : 'text-slate-600'}`} />
-              <div>
-                <p className="font-bold text-slate-900">Tarjeta de Crédito/Débito</p>
-                <p className="text-sm text-slate-600">Visa, Mastercard, Amex</p>
-              </div>
-            </div>
-          </div>
-
-          {/* MercadoPago */}
-          <div
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedMethod === 'mercadopago'
-                ? 'border-blue-500 bg-slate-50'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-            onClick={() => setSelectedMethod('mercadopago')}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <Wallet className={`w-6 h-6 ${selectedMethod === 'mercadopago' ? 'text-slate-700' : 'text-slate-600'}`} />
-              <div>
-                <p className="font-bold text-slate-900">MercadoPago</p>
-                <p className="text-sm text-slate-600">Tarjeta o billetera MP</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Efectivo en Caja */}
-          <div
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedMethod === 'cash'
-                ? 'border-amber-500 bg-amber-50'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-            onClick={() => setSelectedMethod('cash')}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <DollarSign className={`w-6 h-6 ${selectedMethod === 'cash' ? 'text-amber-600' : 'text-slate-600'}`} />
-              <div>
-                <p className="font-bold text-slate-900">Efectivo en Caja</p>
-                <p className="text-sm text-slate-600">Pagar directamente al cajero</p>
-              </div>
-            </div>
-          </div>
+        {/* Resumen del monto */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Recargando</p>
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50 mt-1">
+            ${parseFloat(amount).toFixed(2)}
+          </p>
         </div>
 
-        {/* Formulario de Pago según selección */}
-        {selectedMethod === 'stripe' && (
-          <StripeForm amount={parseFloat(amount)} />
-        )}
+        {/* Métodos */}
+        <div className="space-y-3">
+          {/* MercadoPago */}
+          <button
+            onClick={() => setSelectedMethod('mercadopago')}
+            className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+              selectedMethod === 'mercadopago'
+                ? 'border-slate-900 dark:border-slate-100 bg-white dark:bg-slate-900'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-500'
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                <Wallet className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+              </div>
+              <div>
+                <p className="font-semibold text-base text-slate-900 dark:text-slate-50">MercadoPago</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Tarjeta, OXXO, billetera MP</p>
+              </div>
+              {selectedMethod === 'mercadopago' && (
+                <div className="ml-auto w-5 h-5 rounded-full bg-slate-900 dark:bg-slate-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-white dark:bg-slate-900" />
+                </div>
+              )}
+            </div>
+          </button>
 
+          {/* Efectivo en caja */}
+          <button
+            onClick={() => setSelectedMethod('cash')}
+            className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+              selectedMethod === 'cash'
+                ? 'border-slate-900 dark:border-slate-100 bg-white dark:bg-slate-900'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-500'
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+              </div>
+              <div>
+                <p className="font-semibold text-base text-slate-900 dark:text-slate-50">Efectivo en caja</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Paga directamente con el cajero</p>
+              </div>
+              {selectedMethod === 'cash' && (
+                <div className="ml-auto w-5 h-5 rounded-full bg-slate-900 dark:bg-slate-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-white dark:bg-slate-900" />
+                </div>
+              )}
+            </div>
+          </button>
+        </div>
+
+        {/* Acción según método seleccionado */}
         {selectedMethod === 'mercadopago' && (
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <Button
-                onClick={handleMercadoPagoPayment}
-                disabled={loading}
-                className="w-full bg-slate-500 hover:bg-blue-600"
-              >
-                {loading ? 'Procesando...' : `Pagar $${parseFloat(amount).toFixed(2)} con MercadoPago`}
-              </Button>
-              <p className="text-xs text-slate-500 text-center mt-3">
-                Serás redirigido al sitio de MercadoPago
-              </p>
-            </CardContent>
-          </Card>
+          <button
+            onClick={handleMercadoPagoPayment}
+            disabled={loading}
+            className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-base transition-colors disabled:opacity-40"
+          >
+            {loading ? 'Redirigiendo...' : `Pagar $${parseFloat(amount).toFixed(2)} con MercadoPago`}
+          </button>
         )}
 
         {selectedMethod === 'cash' && (
-          <Card className="mb-8 bg-amber-50 border-amber-200">
-            <CardContent className="pt-6">
-              <p className="text-slate-700 text-center mb-4">
-                Dirígete a la caja del comedor para efectuar el pago en efectivo.
-              </p>
-              <p className="text-sm text-slate-600 text-center mb-6">
-                Tu saldo se actualizará automáticamente una vez que el cajero procese el pago.
-              </p>
-              <Button
-                onClick={() => navigate('/dashboard')}
-                className="w-full bg-amber-600 hover:bg-amber-700"
-              >
-                Cerrar
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {selectedMethod !== null && selectedMethod !== 'stripe' && selectedMethod !== 'mercadopago' && (
-          <div className="flex gap-4">
-            <Button
-              onClick={() => setSelectedMethod(null)}
-              variant="outline"
-              className="flex-1"
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Dirígete a la caja del comedor y dile al cajero que quieres recargar <strong>${parseFloat(amount).toFixed(2)}</strong>.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Tu saldo se actualizará automáticamente en cuanto el cajero procese el pago.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors"
             >
-              Cambiar Monto
-            </Button>
-          </div>
-        )}
-
-        {(selectedMethod === null || selectedMethod === 'stripe') && (
-          <div className="flex gap-4">
-            <Button
-              onClick={() => setStep('amount')}
-              variant="outline"
-              className="flex-1"
-            >
-              Atrás
-            </Button>
+              Entendido
+            </button>
           </div>
         )}
       </div>

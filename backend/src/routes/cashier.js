@@ -1,6 +1,7 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken, checkRole } from '../middleware/auth.js';
+import { sendRechargeConfirmation, sendPurchaseNotification } from '../services/email.service.js';
 
 const router = express.Router();
 
@@ -169,6 +170,18 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       return { transaction, newBalance };
     });
 
+    // Email de notificación (no bloquea la respuesta)
+    const fullUser = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } });
+    if (fullUser) {
+      sendPurchaseNotification({
+        to: fullUser.email,
+        name: fullUser.name,
+        productName: description,
+        amount: amountDecimal,
+        newBalance: result.newBalance
+      });
+    }
+
     res.json({
       success: true,
       transaction: {
@@ -255,6 +268,18 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
 
       return { recharge, newBalance };
     });
+
+    // Email de notificación (no bloquea la respuesta)
+    const fullUser = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } });
+    if (fullUser) {
+      sendRechargeConfirmation({
+        to: fullUser.email,
+        name: fullUser.name,
+        amount: amountDecimal,
+        newBalance: result.newBalance,
+        method: 'CASH'
+      });
+    }
 
     res.json({
       success: true,
