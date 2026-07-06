@@ -568,13 +568,16 @@ router.post('/seed-asinmex-users', async (req, res) => {
         }
 
         const qrCode = randomUUID();
+        // Código numérico único de 5 dígitos basado en índice global
+        const numericBase = 10000 + (totalUsersCreated + branchUsers.length + 1);
+        const employeeNumber = String(numericBase);
 
         const user = await prisma.user.create({
           data: {
             name: `Usuario ${i} - ${branch.name}`,
             email,
             password: hashedPassword,
-            employeeNumber: `${branch.name}-USR-${i}`,
+            employeeNumber,
             phone: `+52 555${i}${i}${i}${i}`,
             qrCode,
             balance: (100 + i * 50),
@@ -734,6 +737,54 @@ router.post('/fix-cashiers-to-users', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Asignar códigos numéricos únicos a usuarios que no los tienen
+router.post('/fix-numeric-codes', async (req, res) => {
+  const secret = req.headers['x-init-secret'] || req.body?.secret;
+  if (secret !== process.env.INIT_SECRET && secret !== 'mealpay-init-2024') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    // Obtener todos los usuarios USER que tienen employeeNumber no numérico
+    const users = await prisma.user.findMany({
+      where: { role: 'USER' },
+      select: { id: true, employeeNumber: true, email: true }
+    });
+
+    let updated = 0;
+    let counter = 10001;
+
+    for (const user of users) {
+      // Si ya es un código numérico de 5 dígitos, saltar
+      if (/^\d{5}$/.test(user.employeeNumber)) continue;
+
+      // Encontrar un código que no esté en uso
+      let code = String(counter++);
+      while (await prisma.user.findFirst({ where: { employeeNumber: code } })) {
+        code = String(counter++);
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { employeeNumber: code }
+      });
+      updated++;
+    }
+
+    const result = await prisma.user.findMany({
+      where: { role: 'USER' },
+      select: { name: true, email: true, employeeNumber: true }
+    });
+
+    res.json({
+      success: true,
+      message: `✅ ${updated} usuarios actualizados con código numérico`,
+      users: result
+    });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

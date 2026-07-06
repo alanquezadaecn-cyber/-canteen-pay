@@ -24,6 +24,8 @@ export const QRCode: React.FC = () => {
     employeeNumber: user?.employeeNumber || ''
   };
 
+  const isNumericCode = /^\d{5}$/.test(qrData.employeeNumber);
+
   const sizeMap = { small: 150, medium: 250, large: 350 };
 
   const downloadQR = (format: 'png' | 'svg' = 'png') => {
@@ -182,21 +184,34 @@ export const QRCode: React.FC = () => {
                 />
               </div>
 
+              {/* Código numérico destacado */}
+              {isNumericCode && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-400 dark:border-emerald-600 rounded-xl p-4 text-center">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-widest mb-1">
+                    Tu código de acceso
+                  </p>
+                  <p className="text-5xl font-black text-emerald-600 dark:text-emerald-400 tracking-widest">
+                    {qrData.employeeNumber}
+                  </p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                    Díselo al cajero si no pueden escanear el QR
+                  </p>
+                </div>
+              )}
+
               {/* User Info */}
-              <div className=" dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
-                <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-2">{qrData.name}</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                  Empleado #{qrData.employeeNumber}
-                </p>
-                <div className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800 p-3 rounded">
-                  <code className="text-xs font-mono text-slate-700 dark:text-slate-300">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-1">{qrData.name}</h3>
+                {!isNumericCode && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Empleado #{qrData.employeeNumber}
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-2 bg-white dark:bg-slate-700 p-3 rounded mt-2">
+                  <code className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
                     {qrData.qrCode}
                   </code>
-                  <Button
-                    size="iconSm"
-                    variant="ghost"
-                    onClick={copyToClipboard}
-                  >
+                  <Button size="iconSm" variant="ghost" onClick={copyToClipboard}>
                     {copied ? (
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     ) : (
