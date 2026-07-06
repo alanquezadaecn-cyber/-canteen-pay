@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -25,7 +25,7 @@ interface Product {
 export const CashierActionPanel: React.FC = () => {
   const { branchId } = useParams<{ branchId: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [mode, setMode] = useState<'select' | 'charge' | 'recharge'>('select');
@@ -42,17 +42,16 @@ export const CashierActionPanel: React.FC = () => {
     if (branchId) loadProducts();
   }, [branchId]);
 
-  // Reaccionar cuando cambia ?qr= en la URL (ej: viene del scanner)
+  // Reaccionar cuando llega ?qr= en la URL (viene del scanner)
   useEffect(() => {
-    const qrCode = searchParams.get('qr');
+    const qrCode = new URLSearchParams(location.search).get('qr');
     if (qrCode && branchId) {
       setUser(null);
       setError('');
+      setMode('select');
       loadUser(qrCode);
-      // Limpiar el param de la URL sin recargar
-      setSearchParams({}, { replace: true });
     }
-  }, [searchParams.get('qr')]);
+  }, [location.search, branchId]);
 
   const loadUser = async (qrCode: string) => {
     try {
