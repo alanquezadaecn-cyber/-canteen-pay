@@ -1,164 +1,151 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Html5QrcodeScanner } from 'html5-qrcode';
-import { AlertCircle, Zap, Keyboard } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
+import { AlertCircle, Camera, Keyboard } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export const QRScanner: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const branchId = user?.branchId;
-  const scannerRef = useRef<HTMLDivElement>(null);
+  const html5QrRef = useRef<Html5Qrcode | null>(null);
   const [manualQR, setManualQR] = useState('');
-  const [error, setError] = useState('');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [scanned, setScanned] = useState(false);
+
+  const startCamera = async () => {
+    try {
+      const qr = new Html5Qrcode('qr-reader-container');
+      html5QrRef.current = qr;
+
+      await qr.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        (decoded) => {
+          if (scanned) return;
+          setScanned(true);
+          qr.stop().catch(() => {});
+          navigate(`/caja/${branchId}?qr=${encodeURIComponent(decoded)}`);
+        },
+        () => {}
+      );
+      setCameraActive(true);
+      setCameraError('');
+    } catch (err: any) {
+      setCameraError('No se pudo activar la cámara. Verifica los permisos e intenta de nuevo.');
+      setCameraActive(false);
+    }
+  };
 
   useEffect(() => {
-    if (!scannerRef.current) return;
-
-    const html5Scanner = new Html5QrcodeScanner(
-      scannerRef.current.id,
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1,
-        disableFlip: false
-      },
-      false
-    );
-
-    html5Scanner.render(
-      (qrCode) => {
-        navigate(`/caja/${branchId}?qr=${encodeURIComponent(qrCode)}`);
-      },
-      (err) => {
-        if (!err.includes('NotFound') && !err.includes('NotFoundException')) {
-          console.error('Scanner error:', err);
-        }
-      }
-    );
-
+    startCamera();
     return () => {
-      html5Scanner.stop().catch(() => {});
+      if (html5QrRef.current) {
+        html5QrRef.current.stop().catch(() => {});
+      }
     };
-  }, [navigate, branchId]);
+  }, []);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualQR.trim()) {
-      setError('Ingresa un código QR válido');
-      return;
-    }
-    setError('');
-    navigate(`/caja/${branchId}?qr=${encodeURIComponent(manualQR)}`);
+    if (!manualQR.trim()) return;
+    navigate(`/caja/${branchId}?qr=${encodeURIComponent(manualQR.trim())}`);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
-      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
-        {/* Header */}
+      <div className="p-4 md:p-8 max-w-lg mx-auto space-y-6">
+
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-1">
             Escanear QR
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Apunta la cámara al código QR del cliente
+          <p className="text-slate-600 dark:text-slate-400 text-sm">
+            Apunta al código QR del comensal
           </p>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg flex items-start gap-3 animate-fade-in">
+        {/* Error de cámara */}
+        {cameraError && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <div>
+              <p className="font-medium">{cameraError}</p>
+              <button
+                onClick={startCamera}
+                className="mt-2 text-sm underline font-medium"
+              >
+                Intentar de nuevo
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Scanner Card */}
-        <Card variant="elevated" className="overflow-hidden">
-          <CardHeader borderBottom className=" dark:from-amber-900/20 dark:to-orange-900/20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg  dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <CardTitle>Scanner QR Activo</CardTitle>
-                <CardDescription>Cámara lista</CardDescription>
+        {/* Visor de cámara */}
+        <div className="bg-black rounded-xl overflow-hidden relative" style={{ aspectRatio: '1/1' }}>
+          <div id="qr-reader-container" className="w-full h-full" />
+          {!cameraActive && !cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="text-center text-white">
+                <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm opacity-70">Iniciando cámara...</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div
-              id="html5-qrcode-container"
-              ref={scannerRef}
-              style={{
-                width: '100%',
-                height: '400px'
-              }}
-              className="bg-black"
-            />
-            <div className="p-4  text-white text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-amber-300" />
-                <span className="font-semibold">Scanner activo</span>
-              </div>
-              <p className="text-sm text-amber-100">
-                Asegúrate de que el QR esté bien iluminado y dentro del cuadro
-              </p>
+          )}
+          {cameraActive && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-52 h-52 border-2 border-amber-400 rounded-lg" style={{
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+              }} />
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
-        {/* Manual Input */}
-        <Card variant="elevated">
-          <CardHeader borderBottom>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg  dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                <Keyboard className="w-5 h-5 text-slate-700 dark:text-blue-400" />
-              </div>
-              <div>
-                <CardTitle>Ingreso Manual</CardTitle>
-                <CardDescription>Si el scanner no funciona</CardDescription>
-              </div>
-            </div>
+        {cameraActive && (
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+            Centra el QR dentro del cuadro amarillo
+          </p>
+        )}
+
+        {/* Separador */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">O INGRESA MANUALMENTE</span>
+          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+        </div>
+
+        {/* Ingreso manual */}
+        <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Keyboard className="w-4 h-4 text-slate-500" />
+              Email o código QR
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleManualSubmit} className="space-y-4">
+          <CardContent>
+            <form onSubmit={handleManualSubmit} className="flex gap-2">
               <Input
                 type="text"
-                placeholder="Código QR del cliente..."
+                placeholder="email@empresa.com"
                 value={manualQR}
                 onChange={(e) => setManualQR(e.target.value)}
-                autoFocus
-                className="text-base"
+                className="flex-1 text-base"
               />
               <Button
                 type="submit"
-                variant="primary"
-                className="w-full  hover:from-amber-600 hover:to-orange-600"
-                size="lg"
+                disabled={!manualQR.trim()}
+                className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5"
               >
-                Continuar
+                Ir
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Tips */}
-        <Card variant="flat">
-          <CardContent className="pt-6">
-            <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <p className="font-semibold text-slate-900 dark:text-slate-50">💡 Tips para mejor escaneo:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Mantén el QR dentro del cuadro rojo</li>
-                <li>Asegúrate de buena iluminación</li>
-                <li>No muevas el dispositivo rápidamente</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
