@@ -56,20 +56,14 @@ export const Login: React.FC = () => {
         branchId: branchId || undefined  // Enviar branchId si existe, para validación
       });
 
-      console.log('🔐 Login success:', data.user);
-
       setAuth(data.user, data.accessToken, data.refreshToken);
 
-      // Redirigir según rol
       const role = data.user.role;
-      console.log('👤 User role:', role);
-
       const destination =
         role === 'ADMIN' ? '/admin/dashboard' :
         role === 'CASHIER' ? `/caja/${data.user.branchId}` :
         '/dashboard';
 
-      console.log('📍 Redirecting to:', destination);
       navigate(destination);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al iniciar sesión');
