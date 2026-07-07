@@ -64,15 +64,13 @@ function getRoleHome(role?: string, branchId?: string, email?: string): string {
 
 const ComensalRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-  if (!accessToken) return <Navigate to="/login" replace />;
-  if (user?.role !== 'USER') return <Navigate to={getRoleHome(user?.role, user?.branchId, user?.email)} replace />;
+  if (!accessToken || user?.role !== 'USER') return <Navigate to="/login" replace />;
   return <><AppNav />{children}</>;
 };
 
 const VendedorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
-  if (!accessToken) return <Navigate to="/login" replace />;
-  if (user?.role !== 'CASHIER') return <Navigate to={getRoleHome(user?.role, user?.branchId, user?.email)} replace />;
+  if (!accessToken || user?.role !== 'CASHIER') return <Navigate to="/login" replace />;
   return <><CashierNav />{children}</>;
 };
 
@@ -80,7 +78,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken, user } = useAuthStore();
   if (!accessToken) return <Navigate to="/login" replace />;
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
-  if (!isAdmin) return <Navigate to={getRoleHome(user?.role, user?.branchId, user?.email)} replace />;
+  if (!isAdmin) return <Navigate to="/login" replace />;
   return <><AdminNav />{children}</>;
 };
 
@@ -88,7 +86,7 @@ const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const { accessToken, user } = useAuthStore();
   if (!accessToken) return <Navigate to="/login" replace />;
   const isMaster = user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
-  if (!isMaster) return <Navigate to={getRoleHome(user?.role, user?.branchId, user?.email)} replace />;
+  if (!isMaster) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
