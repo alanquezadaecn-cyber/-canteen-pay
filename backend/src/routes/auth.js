@@ -130,7 +130,13 @@ router.post('/login', async (req, res) => {
     try {
       // Obtener companyId desde branch o desde subdomain
       const companyId = user.branch?.company?.id || req.companyId;
-      const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, companyId);
+
+      // El email maestro siempre recibe rol MASTER_ADMIN en el token/respuesta,
+      // independientemente del rol almacenado en BD (el enum no tiene MASTER_ADMIN)
+      const MASTER_EMAIL = process.env.MASTER_EMAIL || 'alejandro.qt92@gmail.com';
+      const effectiveRole = user.email === MASTER_EMAIL ? 'MASTER_ADMIN' : user.role;
+
+      const { accessToken, refreshToken } = generateTokens(user.id, effectiveRole, user.email, companyId);
 
       res.json({
         user: {
@@ -138,7 +144,7 @@ router.post('/login', async (req, res) => {
           name: user.name,
           email: user.email,
           company: user.branch?.company?.name || 'N/A',
-          role: user.role,
+          role: effectiveRole,
           balance: (user.balance || 0).toString(),
           companyId,
           branchId: user.branchId,
