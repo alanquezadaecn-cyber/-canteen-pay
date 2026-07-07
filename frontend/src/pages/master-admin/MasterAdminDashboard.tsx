@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2 } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2, LogIn } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -166,6 +166,16 @@ export const MasterAdminDashboard: React.FC = () => {
       setNewCompanyError(err.response?.data?.error || 'Error al crear empresa');
     } finally {
       setCreatingCompany(false);
+    }
+  };
+
+  const handleAccessPanel = async (company: Company) => {
+    try {
+      const { data } = await api.get(`/master-admin/companies/${company.id}/access-link`);
+      const url = `${window.location.origin}${data.redirectUrl}?t=${data.token}`;
+      window.open(url, '_blank');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al generar acceso');
     }
   };
 
@@ -400,6 +410,14 @@ export const MasterAdminDashboard: React.FC = () => {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex gap-2 justify-center flex-wrap">
+                          <Button
+                            onClick={() => handleAccessPanel(company)}
+                            size="sm"
+                            className="px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+                            title="Acceder al panel de admin"
+                          >
+                            <LogIn className="w-4 h-4" />
+                          </Button>
                           <Button
                             onClick={() => { setCopiedUrl(''); setUrlsModal(company); }}
                             size="sm"

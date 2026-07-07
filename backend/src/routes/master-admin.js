@@ -1,9 +1,12 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { Decimal } from '@prisma/client/runtime/library.js';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
 
 const router = express.Router();
 
@@ -617,6 +620,34 @@ router.delete('/companies/:companyId', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al eliminar empresa: ' + err.message });
+  }
+});
+
+// GET access link — genera JWT temporal para acceder al panel de una empresa
+router.get('/companies/:companyId/access-link', async (req, res) => {
+  try {
+    const branches = await prisma.branch.findMany({
+      where: { companyId: req.params.companyId },
+      select: { id: true }
+    });
+    if (!branches.length) return res.status(404).json({ error: 'Sin sucursales' });
+
+    const branchIds = branches.map(b => b.id);
+    const adminUser = await prisma.user.findFirst({
+      where: { branchId: { in: branchIds }, role: 'ADMIN', isActive: true }
+    });
+    if (!adminUser) return res.status(404).json({ error: 'Admin no encontrado para esta empresa' });
+
+    const token = jwt.sign(
+      { sub: adminUser.id, role: adminUser.role, email: adminUser.email, companyId: req.params.companyId },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({ token, redirectUrl: '/admin/dashboard', user: { name: adminUser.name, email: adminUser.email } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error generando acceso: ' + err.message });
   }
 });
 
