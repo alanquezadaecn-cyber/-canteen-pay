@@ -172,7 +172,7 @@ export const MasterAdminDashboard: React.FC = () => {
   const handleAccessPanel = async (company: Company) => {
     try {
       const { data } = await api.get(`/master-admin/companies/${company.id}/access-link`);
-      const url = `${window.location.origin}${data.redirectUrl}?t=${data.token}`;
+      const url = `${window.location.origin}/impersonate?t=${data.token}&to=${encodeURIComponent(data.redirectUrl)}`;
       window.open(url, '_blank');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al generar acceso');

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -9,6 +9,7 @@ import { AdminNav } from './components/AdminNav';
 // Auth
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
+import { Impersonate } from './pages/auth/Impersonate';
 
 // Comensal
 import { Dashboard } from './pages/user/Dashboard';
@@ -93,28 +94,8 @@ const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  const { accessToken, user, _hasHydrated, setAuth } = useAuthStore();
+  const { accessToken, user, _hasHydrated } = useAuthStore();
   const roleHome = getRoleHome(user?.role, user?.branchId, user?.email);
-
-  // Impersonación: master admin abre panel de empresa con ?t=TOKEN
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get('t');
-    if (!t) return;
-    try {
-      // Decodificar sin verificar (la verificación ocurre en cada request al backend)
-      const payload = JSON.parse(atob(t.split('.')[1]));
-      setAuth(
-        { id: payload.sub, name: payload.name || payload.email, email: payload.email, role: payload.role, companyId: payload.companyId, branchId: payload.branchId },
-        t,
-        t
-      );
-    } catch {}
-    // Limpiar el token de la URL
-    const clean = new URL(window.location.href);
-    clean.searchParams.delete('t');
-    window.history.replaceState({}, '', clean.toString());
-  }, []);
 
   if (!_hasHydrated) {
     return (
@@ -130,6 +111,7 @@ function App() {
         <Routes>
 
           {/* ── PÚBLICO ─────────────────────────────────────────────────── */}
+          <Route path="/impersonate" element={<Impersonate />} />
           <Route
             path="/login/:branchId"
             element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
