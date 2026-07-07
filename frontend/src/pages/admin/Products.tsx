@@ -13,6 +13,7 @@ interface Product {
   price: string;
   category: string;
   isActive: boolean;
+  productType: string;
 }
 
 export const Products: React.FC = () => {
@@ -22,7 +23,7 @@ export const Products: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'General' });
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'General', productType: 'PLATILLO' });
 
   useEffect(() => {
     fetchProducts();
@@ -48,7 +49,8 @@ export const Products: React.FC = () => {
       await api.post('/products', {
         ...newProduct,
         price: parseFloat(newProduct.price),
-        branchId
+        branchId,
+        productType: newProduct.productType
       });
 
       setShowNew(false);
@@ -130,6 +132,17 @@ export const Products: React.FC = () => {
                       className="mt-1"
                     />
                   </div>
+                  <div>
+                    <Label>Tipo</Label>
+                    <select
+                      value={newProduct.productType}
+                      onChange={(e) => setNewProduct({ ...newProduct, productType: e.target.value })}
+                      className="mt-1 w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="PLATILLO">Platillo (menú)</option>
+                      <option value="PRODUCTO">Producto físico (inventario)</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit">Crear</Button>
@@ -145,6 +158,7 @@ export const Products: React.FC = () => {
                     <tr className="border-b border-slate-200 dark:border-slate-700">
                       <th className="text-left py-3 px-4">Nombre</th>
                       <th className="text-left py-3 px-4">Categoría</th>
+                      <th className="text-left py-3 px-4">Tipo</th>
                       <th className="text-right py-3 px-4">Precio</th>
                       <th className="text-center py-3 px-4">Acciones</th>
                     </tr>
@@ -154,6 +168,15 @@ export const Products: React.FC = () => {
                       <tr key={product.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-50">{product.name}</td>
                         <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{product.category}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            product.productType === 'PRODUCTO'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-slate-700 text-slate-400'
+                          }`}>
+                            {product.productType === 'PRODUCTO' ? 'Físico' : 'Platillo'}
+                          </span>
+                        </td>
                         <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
                           ${parseFloat(product.price).toFixed(2)}
                         </td>

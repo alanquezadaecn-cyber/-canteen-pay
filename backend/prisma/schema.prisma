@@ -278,17 +278,18 @@ enum RechargeStatus {
 }
 
 model Product {
-  id        String   @id @default(cuid())
-  name      String
-  price     Decimal  @db.Decimal(10, 2)
-  category  String   @default("General")
-  image     String?
-  branchId  String?
-  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  isActive  Boolean  @default(true)
-  stock     Int      @default(-1)
-  minStock  Int      @default(0)
-  isTracked Boolean  @default(false)
+  id          String   @id @default(cuid())
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  category    String   @default("General")
+  image       String?
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  isActive    Boolean  @default(true)
+  productType String   @default("PLATILLO") // PLATILLO | PRODUCTO
+  stock       Int      @default(-1)
+  minStock    Int      @default(0)
+  isTracked   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

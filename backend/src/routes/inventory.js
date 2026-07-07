@@ -5,11 +5,56 @@ import { verifyToken, checkRole } from '../middleware/auth.js';
 const router = express.Router();
 router.use(verifyToken, checkRole(['ADMIN', 'CASHIER']));
 
-// GET inventory for a branch
+// GET branches available for admin inventory view
+router.get('/branches', async (req, res) => {
+  try {
+    const admin = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { branchId: true, role: true }
+    });
+
+    if (admin?.role === 'CASHIER') {
+      const branch = await prisma.branch.findUnique({
+        where: { id: admin.branchId || '' },
+        select: { id: true, name: true }
+      });
+      return res.json(branch ? [branch] : []);
+    }
+
+    // Para ADMIN: obtener todas las sucursales de su empresa
+    if (admin?.branchId) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: admin.branchId },
+        select: { companyId: true }
+      });
+      if (branch) {
+        const branches = await prisma.branch.findMany({
+          where: { companyId: branch.companyId, isActive: true },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' }
+        });
+        return res.json(branches);
+      }
+    }
+
+    // Master admin: todas las sucursales
+    const branches = await prisma.branch.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(branches);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener sucursales' });
+  }
+});
+
+// GET inventory for a branch — solo productos físicos (productType = PRODUCTO)
 router.get('/branch/:branchId', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      where: { branchId: req.params.branchId, isActive: true },
+      where: { branchId: req.params.branchId, isActive: true, productType: 'PRODUCTO' },
       orderBy: [{ category: 'asc' }, { name: 'asc' }]
     });
     res.json(products.map(p => ({
