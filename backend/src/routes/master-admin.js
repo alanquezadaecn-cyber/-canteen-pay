@@ -595,6 +595,8 @@ router.delete('/companies/:companyId', async (req, res) => {
     });
     const userIds = users.map(u => u.id);
 
+    const subscriptionId = company.subscriptionId;
+
     // Borrar en orden FK
     await prisma.transactionItem.deleteMany({ where: { transaction: { userId: { in: userIds } } } });
     await prisma.transaction.deleteMany({ where: { userId: { in: userIds } } });
@@ -604,8 +606,12 @@ router.delete('/companies/:companyId', async (req, res) => {
     await prisma.user.deleteMany({ where: { branchId: { in: branchIds } } });
     await prisma.branch.deleteMany({ where: { companyId } });
     await prisma.companyPayment.deleteMany({ where: { companyId } });
-    await prisma.subscription.deleteMany({ where: { companyId } });
+    // Primero nulificar subscriptionId para liberar FK, luego borrar empresa, luego subscription
+    await prisma.company.update({ where: { id: companyId }, data: { subscriptionId: null } });
     await prisma.company.delete({ where: { id: companyId } });
+    if (subscriptionId) {
+      await prisma.subscription.delete({ where: { id: subscriptionId } });
+    }
 
     res.json({ success: true, message: `Empresa "${company.name}" eliminada` });
   } catch (err) {
