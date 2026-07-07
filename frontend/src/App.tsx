@@ -130,11 +130,11 @@ function App() {
           />
           <Route
             path="/login/admin/:companySlug"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+            element={<Login />}
           />
           <Route
             path="/login/:companySlug/:branchSlug"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+            element={<Login />}
           />
 
           {/* ── COMENSAL ────────────────────────────────────────────────── */}
