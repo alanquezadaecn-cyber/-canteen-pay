@@ -37,6 +37,7 @@ router.get('/:id', async (req, res) => {
           select: { id: true, name: true, email: true, isActive: true }
         },
         users: {
+          where: { role: 'USER' },
           select: { id: true, name: true, email: true, balance: true, isActive: true }
         }
       }

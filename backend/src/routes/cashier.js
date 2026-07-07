@@ -145,6 +145,27 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       });
     }
 
+    // Verificar límite diario
+    const userFull = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { dailyLimit: true }
+    });
+    const dailyLimit = parseFloat(userFull?.dailyLimit || 0);
+    if (dailyLimit > 0) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayPurchases = await prisma.transaction.aggregate({
+        where: { userId: user.id, type: 'PURCHASE', createdAt: { gte: today, lt: tomorrow } },
+        _sum: { amount: true }
+      });
+      const todayTotal = parseFloat(todayPurchases._sum.amount || 0);
+      if (todayTotal + amountDecimal > dailyLimit) {
+        return res.status(400).json({
+          error: `Límite diario alcanzado. Límite: $${dailyLimit.toFixed(2)}, gastado hoy: $${todayTotal.toFixed(2)}`
+        });
+      }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       const balanceBefore = parseFloat(user.balance);
       const newBalance = balanceBefore - amountDecimal;
@@ -170,8 +191,11 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       return { transaction, newBalance };
     });
 
-    // Email de notificación (no bloquea la respuesta)
-    const fullUser = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } });
+    // Email + alerta saldo bajo (no bloquean la respuesta)
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { email: true, name: true, minBalance: true }
+    });
     if (fullUser) {
       sendPurchaseNotification({
         to: fullUser.email,
@@ -180,6 +204,17 @@ router.post('/branch/:branchId/charge', async (req, res) => {
         amount: amountDecimal,
         newBalance: result.newBalance
       });
+
+      const threshold = parseFloat(fullUser.minBalance || 0);
+      if (threshold > 0 && result.newBalance < threshold) {
+        prisma.userAlert.create({
+          data: {
+            userId: user.id,
+            type: 'LOW_BALANCE',
+            message: `Saldo bajo: $${result.newBalance.toFixed(2)} (umbral: $${threshold.toFixed(2)})`
+          }
+        }).catch(console.error);
+      }
     }
 
     res.json({
@@ -515,6 +550,57 @@ router.get('/summary', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener resumen' });
+  }
+});
+
+// GET corte de caja detallado del día
+router.get('/corte', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const cashier = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { name: true, branchId: true }
+    });
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        cashierId: req.userId,
+        createdAt: { gte: today, lt: tomorrow }
+      },
+      include: {
+        user: { select: { name: true, employeeNumber: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const charges = transactions.filter(t => t.type === 'PURCHASE');
+    const recharges = transactions.filter(t => t.type === 'RECHARGE');
+
+    res.json({
+      cashierName: cashier?.name || 'Cajero',
+      date: today.toISOString(),
+      totalCharges: charges.length,
+      totalChargesAmount: charges.reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2),
+      totalRecharges: recharges.length,
+      totalRechargesAmount: recharges.reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2),
+      transactions: transactions.map(t => ({
+        id: t.id,
+        type: t.type,
+        amount: t.amount.toString(),
+        balanceBefore: t.balanceBefore?.toString() || '0',
+        balanceAfter: t.balanceAfter?.toString() || '0',
+        description: t.description,
+        createdAt: t.createdAt,
+        user: t.user
+      }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener corte' });
   }
 });
 

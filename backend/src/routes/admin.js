@@ -65,7 +65,10 @@ router.get('/users', async (req, res) => {
     const { page = 1, limit = 20, search = '', role = '' } = req.query;
     const skip = (page - 1) * limit;
 
+    const masterEmails = (process.env.MASTER_ADMIN_EMAILS || 'alejandro.qt92@gmail.com,master@mealpay.com').split(',');
+
     const where = {
+      email: { notIn: masterEmails },
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -165,48 +168,49 @@ router.get('/users/:id', async (req, res) => {
 
 router.post('/users', async (req, res) => {
   try {
-    const { name, email, password, company, employeeNumber, phone, role = 'USER' } = req.body;
+    const { name, email, password, phone, role = 'USER', branchId: bodyBranchId } = req.body;
 
-    if (!name || !email || !password || !company || !employeeNumber || !phone) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ error: 'Nombre, email, contraseña y teléfono son requeridos' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return res.status(409).json({ error: 'Email ya existe' });
+      return res.status(409).json({ error: 'El email ya está registrado' });
     }
 
+    // Obtener branchId del admin si no se proporcionó
+    const adminUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true } });
+    const finalBranchId = bodyBranchId || adminUser?.branchId;
+
+    // Generar employeeNumber numérico único
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const qrCode = randomUUID();
+    const qrCode = QRService.generateUniqueCode();
 
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        company,
-        employeeNumber,
         phone,
         role,
-        qrCode
+        employeeNumber: String(nextNum),
+        qrCode,
+        branchId: finalBranchId || null,
+        isActive: true
       },
       select: {
-        id: true,
-        name: true,
-        email: true,
-        branchId: true,
-        employeeNumber: true,
-        phone: true,
-        role: true,
-        balance: true,
-        isActive: true
+        id: true, name: true, email: true, branchId: true,
+        employeeNumber: true, phone: true, role: true, balance: true, isActive: true
       }
     });
 
-    res.status(201).json({
-      ...user,
-      balance: user.balance.toString()
-    });
+    res.status(201).json({ ...user, balance: user.balance.toString() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al crear usuario' });
@@ -216,14 +220,13 @@ router.post('/users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, company, employeeNumber, phone, isActive } = req.body;
+    const { name, role, employeeNumber, phone, isActive } = req.body;
 
     const user = await prisma.user.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(role && { role }),
-        ...(company && { company }),
         ...(employeeNumber && { employeeNumber }),
         ...(phone && { phone }),
         ...(typeof isActive === 'boolean' && { isActive })
@@ -371,6 +374,122 @@ router.get('/transactions', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener transacciones' });
+  }
+});
+
+// ── BULK IMPORT ────────────────────────────────────────────────────────────────
+router.post('/users/bulk-import', async (req, res) => {
+  try {
+    const { branchId, users } = req.body;
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ error: 'Se requiere un array de usuarios' });
+    }
+
+    let success = 0;
+    const errors = [];
+
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      try {
+        if (!u.email?.trim() || !u.name?.trim()) {
+          errors.push({ row: i + 2, error: 'Email y nombre son requeridos' });
+          continue;
+        }
+
+        const existing = await prisma.user.findUnique({ where: { email: u.email.trim() } });
+        if (existing) {
+          errors.push({ row: i + 2, error: `Email ya registrado: ${u.email}` });
+          continue;
+        }
+
+        const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+        let nextNum = 10001;
+        const maxStr = maxCode._max?.employeeNumber;
+        if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = await bcrypt.default.hash(u.password || 'MealPay2024!', 10);
+        const { QRService } = await import('../services/qr.service.js');
+        const qrCode = QRService.generateUniqueCode();
+
+        await prisma.user.create({
+          data: {
+            name: u.name.trim(),
+            email: u.email.trim().toLowerCase(),
+            password: hashedPassword,
+            phone: u.phone?.trim() || '+52 5555-0000',
+            role: 'USER',
+            employeeNumber: u.employeeNumber?.trim() || String(nextNum),
+            qrCode,
+            branchId: branchId || null,
+            isActive: true
+          }
+        });
+        success++;
+      } catch (err) {
+        errors.push({ row: i + 2, error: err.message || 'Error desconocido' });
+      }
+    }
+
+    res.json({ success, failed: errors.length, errors });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error en importación masiva' });
+  }
+});
+
+// ── ALERTAS ─────────────────────────────────────────────────────────────────────
+router.get('/alerts', async (req, res) => {
+  try {
+    const { unread } = req.query;
+    const alerts = await prisma.userAlert.findMany({
+      where: unread === 'true' ? { isRead: false } : {},
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        // No hay relación directa, hacemos lookup manual
+      }
+    });
+
+    // Enrich con nombre de usuario
+    const enriched = await Promise.all(alerts.map(async (a) => {
+      const user = await prisma.user.findUnique({
+        where: { id: a.userId },
+        select: { name: true, email: true }
+      });
+      return { ...a, user };
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener alertas' });
+  }
+});
+
+router.put('/alerts/:id/read', async (req, res) => {
+  try {
+    await prisma.userAlert.update({
+      where: { id: req.params.id },
+      data: { isRead: true }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al marcar alerta' });
+  }
+});
+
+router.put('/alerts/read-all', async (req, res) => {
+  try {
+    await prisma.userAlert.updateMany({
+      where: { isRead: false },
+      data: { isRead: true }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al marcar alertas' });
   }
 });
 

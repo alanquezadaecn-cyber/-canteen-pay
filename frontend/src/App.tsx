@@ -37,9 +37,15 @@ import { UsersList } from './pages/admin/UsersList';
 import { UserDetail } from './pages/admin/UserDetail';
 import { TransactionsList } from './pages/admin/TransactionsList';
 import { AdminReports } from './pages/admin/AdminReports';
+import { UserImport } from './pages/admin/UserImport';
 
 // Super Admin
 import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard';
+
+// Nuevas páginas
+import { Inventory } from './pages/admin/Inventory';
+import { CorteDeCaja } from './pages/cashier/CorteDeCaja';
+import { Menu } from './pages/user/Menu';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -89,8 +95,16 @@ const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  const { accessToken, user } = useAuthStore();
+  const { accessToken, user, _hasHydrated } = useAuthStore();
   const roleHome = getRoleHome(user?.role, user?.branchId);
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-slate-600 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>
@@ -110,6 +124,18 @@ function App() {
             path="/register"
             element={accessToken ? <Navigate to={roleHome} replace /> : <Register />}
           />
+          <Route
+            path="/register/:branchId"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Register />}
+          />
+          <Route
+            path="/login/admin/:companySlug"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+          />
+          <Route
+            path="/login/:companySlug/:branchSlug"
+            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+          />
 
           {/* ── COMENSAL ────────────────────────────────────────────────── */}
           <Route path="/dashboard"       element={<ComensalRoute><Dashboard /></ComensalRoute>} />
@@ -121,6 +147,7 @@ function App() {
           <Route path="/payment/failed"  element={<ComensalRoute><PaymentFailed /></ComensalRoute>} />
           <Route path="/statement"       element={<ComensalRoute><Statement /></ComensalRoute>} />
           <Route path="/profile"         element={<ComensalRoute><Profile /></ComensalRoute>} />
+          <Route path="/menu"            element={<ComensalRoute><Menu /></ComensalRoute>} />
 
           {/* ── VENDEDOR ────────────────────────────────────────────────── */}
           <Route path="/caja/:branchId"    element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
@@ -128,6 +155,7 @@ function App() {
           <Route path="/cashier/recharge"  element={<VendedorRoute><CashRecharge /></VendedorRoute>} />
           <Route path="/cashier/products"  element={<VendedorRoute><CashierProducts /></VendedorRoute>} />
           <Route path="/cashier/history"   element={<VendedorRoute><CashierHistory /></VendedorRoute>} />
+          <Route path="/cashier/corte"     element={<VendedorRoute><CorteDeCaja /></VendedorRoute>} />
 
           {/* ── ADMINISTRADOR ────────────────────────────────────────────── */}
           <Route path="/admin/dashboard"                    element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -137,7 +165,9 @@ function App() {
           <Route path="/admin/users"                        element={<AdminRoute><UsersList /></AdminRoute>} />
           <Route path="/admin/users/:id"                    element={<AdminRoute><UserDetail /></AdminRoute>} />
           <Route path="/admin/transactions"                 element={<AdminRoute><TransactionsList /></AdminRoute>} />
-          <Route path="/admin/reports"                      element={<AdminRoute><AdminReports /></AdminRoute>} />
+          <Route path="/admin/reports"                        element={<AdminRoute><AdminReports /></AdminRoute>} />
+          <Route path="/admin/import"                         element={<AdminRoute><UserImport /></AdminRoute>} />
+          <Route path="/admin/inventory"                      element={<AdminRoute><Inventory /></AdminRoute>} />
 
           {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}
           <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />

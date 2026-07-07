@@ -46,6 +46,7 @@ model Subscription {
 model Company {
   id              String    @id @default(cuid())
   name            String
+  slug            String    @unique @default(cuid())
   email           String    @unique
   phone           String?
   industry        String?   // Restaurante, Cafetería, etc.
@@ -131,6 +132,7 @@ model Branch {
   company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   name            String
+  slug            String    @default(cuid())
   location        String?
   isActive        Boolean   @default(true)
 
@@ -201,7 +203,9 @@ model User {
   isActive       Boolean       @default(true)
   isBlocked      Boolean       @default(false)
   blockReason    String?
-  minBalance     Decimal       @default(0) @db.Decimal(10, 2) // Alertar si balance < minBalance
+  minBalance     Decimal       @default(0) @db.Decimal(10, 2)
+  dailyLimit     Decimal       @default(0) @db.Decimal(10, 2)
+  photoUrl       String?
   branchId       String?
   branch         Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
@@ -282,12 +286,45 @@ model Product {
   branchId  String?
   branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   isActive  Boolean  @default(true)
+  stock     Int      @default(-1)
+  minStock  Int      @default(0)
+  isTracked Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   transactionItems TransactionItem[]
+  stockMovements   StockMovement[]
 
   @@index([branchId])
+}
+
+model StockMovement {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String
+  quantity  Int
+  prevStock Int
+  newStock  Int
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model TransactionItem {

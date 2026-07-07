@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { AlertCircle, CheckCircle, ArrowRight, User as UserIcon, TrendingDown, Briefcase } from 'lucide-react';
+import { AlertCircle, CheckCircle, ArrowRight, User as UserIcon, TrendingDown, Briefcase, Printer } from 'lucide-react';
+import { printTicket } from '../../lib/printTicket';
 
 interface UserData {
   id: string;
@@ -40,6 +41,8 @@ export const ChargeUser: React.FC = () => {
   const [charging, setCharging] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<SuccessData | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const balanceBeforeRef = useRef<string>('0');
 
   useEffect(() => {
     if (!qrCode) {
@@ -83,6 +86,7 @@ export const ChargeUser: React.FC = () => {
     }
 
     setCharging(true);
+    balanceBeforeRef.current = user?.balance || '0';
     try {
       const { data } = await api.post('/cashier/charge', {
         qrCode,
@@ -90,9 +94,9 @@ export const ChargeUser: React.FC = () => {
       });
 
       setSuccess(data);
-      setTimeout(() => {
+      redirectTimer.current = setTimeout(() => {
         navigate('/cashier/scan');
-      }, 3000);
+      }, 4000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar pago');
     } finally {
@@ -112,6 +116,20 @@ export const ChargeUser: React.FC = () => {
   }
 
   if (success) {
+    const handlePrint = () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+      printTicket({
+        type: 'PURCHASE',
+        userName: success.userName,
+        employeeNumber: user?.employeeNumber || '',
+        amount: success.transaction.amount,
+        balanceBefore: balanceBeforeRef.current,
+        balanceAfter: success.newBalance,
+        date: new Date(),
+        transactionId: success.transaction.id,
+      });
+    };
+
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
         <Card variant="elevated" className="w-full max-w-md text-center animate-scale-in">
@@ -144,16 +162,26 @@ export const ChargeUser: React.FC = () => {
             </div>
 
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-6 animate-pulse">
-              Redirigiendo al scanner en 3 segundos...
+              Redirigiendo al scanner en 4 segundos...
             </p>
 
-            <Button
-              onClick={() => navigate('/cashier/scan')}
-              variant="primary"
-              className="w-full  hover:from-emerald-600 hover:to-teal-600"
-            >
-              Volver a Escanear
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={handlePrint}
+                variant="outline"
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                Ticket
+              </Button>
+              <Button
+                onClick={() => navigate('/cashier/scan')}
+                variant="primary"
+                className="flex-1"
+              >
+                Escanear
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

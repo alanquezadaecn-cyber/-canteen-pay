@@ -7,6 +7,15 @@ import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
 
+const toSlug = (text) =>
+  text.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 30);
+
 // Middleware: Verificar que sea Master Admin
 const masterAdminOnly = (req, res, next) => {
   const masterAdminEmails = process.env.MASTER_ADMIN_EMAILS?.split(',') || ['alejandro.qt92@gmail.com', 'master@mealpay.com'];
@@ -45,19 +54,69 @@ router.get('/plans', async (req, res) => {
 });
 
 async function ensurePlansExist() {
-  let lite = await prisma.plan.findUnique({ where: { name: 'LITE' } });
-  if (!lite) {
-    lite = await prisma.plan.create({
-      data: { name: 'LITE', description: 'Plan básico', price: 2500, maxBranches: 1, features: ['1 sucursal', 'Hasta 50 comensales', 'Soporte básico'] }
-    });
+  const planDefs = [
+    {
+      name: 'LICENCIA',
+      description: 'Licencia anual — $30,000/año. Equivale a $2,500/mes. Ahorro de $6,000 vs mensual.',
+      price: 30000,
+      billingCycle: 'YEARLY',
+      maxBranches: 10,
+      maxUsersPerBranch: null,
+      features: [
+        'Hasta 10 sucursales',
+        'Comensales ilimitados',
+        'Panel admin + cajero + comensal',
+        'Reportes avanzados',
+        'Soporte WhatsApp gratis 3 meses',
+        'Actualizaciones incluidas',
+        'Ahorro de $6,000 vs plan mensual'
+      ]
+    },
+    {
+      name: 'PRO',
+      description: 'Renta mensual — 2 sucursales + soporte incluido',
+      price: 3000,
+      billingCycle: 'MONTHLY',
+      maxBranches: 2,
+      maxUsersPerBranch: null,
+      features: [
+        'Hasta 2 sucursales',
+        'Comensales ilimitados',
+        'Panel admin + cajero + comensal',
+        'Reportes básicos',
+        'Soporte WhatsApp incluido'
+      ]
+    },
+    {
+      name: 'ENTERPRISE',
+      description: 'Renta mensual — 5 sucursales + soporte prioritario',
+      price: 5500,
+      billingCycle: 'MONTHLY',
+      maxBranches: 5,
+      maxUsersPerBranch: null,
+      features: [
+        'Hasta 5 sucursales',
+        'Comensales ilimitados',
+        'Panel admin + cajero + comensal',
+        'Reportes avanzados',
+        'Soporte prioritario 24/7',
+        'Actualizaciones incluidas'
+      ]
+    }
+  ];
+
+  const results = [];
+  for (const def of planDefs) {
+    let plan = await prisma.plan.findUnique({ where: { name: def.name } });
+    if (!plan) {
+      plan = await prisma.plan.create({ data: def });
+    } else {
+      // Actualizar si ya existe con los nuevos valores
+      plan = await prisma.plan.update({ where: { name: def.name }, data: def });
+    }
+    results.push(plan);
   }
-  let enterprise = await prisma.plan.findUnique({ where: { name: 'ENTERPRISE' } });
-  if (!enterprise) {
-    enterprise = await prisma.plan.create({
-      data: { name: 'ENTERPRISE', description: 'Plan empresarial', price: 6500, maxBranches: 10, features: ['Sucursales ilimitadas', 'Comensales ilimitados', 'Soporte prioritario', 'Reportes avanzados'] }
-    });
-  }
-  return [lite, enterprise];
+  return results;
 }
 
 // CREATE new company — onboarding completo
@@ -66,7 +125,7 @@ router.post('/companies/create', async (req, res) => {
   try {
     const {
       companyName, email, phone, contactPerson, industry,
-      planName = 'LITE',
+      planName = 'LICENCIA',
       branchName = 'Comedor Principal',
       branchLocation = 'Planta 1',
       adminPassword
@@ -96,14 +155,20 @@ router.post('/companies/create', async (req, res) => {
       data: { planId: plan.id, startDate: new Date(), endDate, status: 'ACTIVE' }
     });
 
+    // Generar slugs únicos
+    const baseCompanySlug = toSlug(companyName);
+    const existingSlug = await prisma.company.findUnique({ where: { slug: baseCompanySlug } });
+    const companySlug = existingSlug ? `${baseCompanySlug}-${Date.now().toString().slice(-4)}` : baseCompanySlug;
+
     // Empresa
     const company = await prisma.company.create({
-      data: { name: companyName, email, phone, industry, contactPerson, subscriptionId: subscription.id, isActive: true }
+      data: { name: companyName, slug: companySlug, email, phone, industry, contactPerson, subscriptionId: subscription.id, isActive: true }
     });
 
     // Sucursal
+    const branchSlug = toSlug(branchName);
     const branch = await prisma.branch.create({
-      data: { name: branchName, location: branchLocation, companyId: company.id, isActive: true }
+      data: { name: branchName, slug: branchSlug, location: branchLocation, companyId: company.id, isActive: true }
     });
 
     // Admin user
@@ -163,22 +228,27 @@ router.post('/companies/create', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      company: { id: company.id, name: company.name, plan: plan.name },
-      branch: { id: branch.id, name: branch.name, location: branch.location },
+      company: { id: company.id, name: company.name, slug: company.slug, plan: plan.name },
+      branch: { id: branch.id, name: branch.name, slug: branchSlug, location: branch.location },
       credentials: {
         admin: {
           role: 'Administrador',
           email: adminUser.email,
           password: adminPass,
-          url: `${APP_URL}/login`
+          url: `${APP_URL}/login/admin/${company.slug}`
         },
         cashier: {
           role: 'Cajero',
           email: cashierUser.email,
           password: cashierPass,
-          branchUrl: `${APP_URL}/caja/${branch.id}`,
-          loginUrl: `${APP_URL}/login`
+          url: `${APP_URL}/login/${company.slug}/${branchSlug}`,
+          branchUrl: `${APP_URL}/caja/${branch.id}`
         }
+      },
+      urls: {
+        adminLogin: `${APP_URL}/login/admin/${company.slug}`,
+        cashierLogin: `${APP_URL}/login/${company.slug}/${branchSlug}`,
+        comensalRegister: `${APP_URL}/register/${branch.id}`
       },
       defaultProducts: defaultProducts.map(p => p.name)
     });
@@ -500,6 +570,47 @@ router.get('/branches', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener sucursales' });
+  }
+});
+
+// DELETE /companies/:companyId — borrar empresa y todos sus datos
+router.delete('/companies/:companyId', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+
+    // Obtener todas las branches de esta empresa
+    const branches = await prisma.branch.findMany({
+      where: { companyId },
+      select: { id: true }
+    });
+    const branchIds = branches.map(b => b.id);
+
+    // Obtener todos los usuarios de estas branches
+    const users = await prisma.user.findMany({
+      where: { branchId: { in: branchIds } },
+      select: { id: true }
+    });
+    const userIds = users.map(u => u.id);
+
+    // Borrar en orden FK
+    await prisma.transactionItem.deleteMany({ where: { transaction: { userId: { in: userIds } } } });
+    await prisma.transaction.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.recharge.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.product.deleteMany({ where: { branchId: { in: branchIds } } });
+    await prisma.cashierSession.deleteMany({ where: { branchId: { in: branchIds } } });
+    await prisma.user.deleteMany({ where: { branchId: { in: branchIds } } });
+    await prisma.branch.deleteMany({ where: { companyId } });
+    await prisma.companyPayment.deleteMany({ where: { companyId } });
+    await prisma.subscription.deleteMany({ where: { companyId } });
+    await prisma.company.delete({ where: { id: companyId } });
+
+    res.json({ success: true, message: `Empresa "${company.name}" eliminada` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar empresa: ' + err.message });
   }
 });
 

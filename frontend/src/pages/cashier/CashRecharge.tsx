@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { AlertCircle, CheckCircle, DollarSign, Search, TrendingUp, Briefcase } from 'lucide-react';
+import { AlertCircle, CheckCircle, DollarSign, Search, TrendingUp, Briefcase, Printer } from 'lucide-react';
+import { printTicket, TicketData } from '../../lib/printTicket';
 
 interface UserData {
   id: string;
@@ -31,6 +32,7 @@ export const CashRecharge: React.FC = () => {
   const [charging, setCharging] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<SuccessData | null>(null);
+  const [lastTicket, setLastTicket] = useState<TicketData | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,12 +61,23 @@ export const CashRecharge: React.FC = () => {
     }
 
     setCharging(true);
+    const balanceBefore = user?.balance || '0';
     try {
       const { data } = await api.post('/cashier/recharge', {
         qrCode: qrOrCode,
         amount: amountNum
       });
 
+      const ticket: TicketData = {
+        type: 'RECHARGE',
+        userName: user?.name || data.userName,
+        employeeNumber: user?.employeeNumber || '',
+        amount: amountNum,
+        balanceBefore,
+        balanceAfter: data.newBalance,
+        date: new Date(),
+      };
+      setLastTicket(ticket);
       setSuccess(data);
       setQrOrCode('');
       setAmount('');
@@ -72,7 +85,8 @@ export const CashRecharge: React.FC = () => {
 
       setTimeout(() => {
         setSuccess(null);
-      }, 5000);
+        setLastTicket(null);
+      }, 8000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar recarga');
     } finally {
@@ -95,14 +109,25 @@ export const CashRecharge: React.FC = () => {
 
         {/* Success Alert */}
         {success && (
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-lg flex items-start gap-3 animate-fade-in">
-            <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">¡Recarga Completada!</p>
-              <p className="text-sm mt-1">
-                {success.userName} - Nuevo saldo: ${parseFloat(success.newBalance).toFixed(2)}
-              </p>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 animate-fade-in">
+            <div className="flex items-start gap-3 mb-3">
+              <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex-1">
+                <p className="font-semibold text-emerald-800 dark:text-emerald-300">¡Recarga Completada!</p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-0.5">
+                  {success.userName} — Nuevo saldo: <strong>${parseFloat(success.newBalance).toFixed(2)}</strong>
+                </p>
+              </div>
             </div>
+            {lastTicket && (
+              <button
+                onClick={() => printTicket(lastTicket)}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-emerald-400 dark:border-emerald-600 text-emerald-700 dark:text-emerald-300 text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimir ticket
+              </button>
+            )}
           </div>
         )}
 

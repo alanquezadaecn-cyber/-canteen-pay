@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Label } from '../../components/ui/Label';
+import * as XLSX from 'xlsx';
 import api from '../../lib/api';
-import { Upload, CheckCircle, AlertCircle, Download, Users, FileCheck, Loader } from 'lucide-react';
+import {
+  Upload, CheckCircle, AlertCircle, Download,
+  FileCheck, Loader, Users, FileSpreadsheet
+} from 'lucide-react';
+
+interface ImportRow {
+  name: string;
+  email: string;
+  phone?: string;
+  employeeNumber?: string;
+  password?: string;
+}
 
 interface ImportResult {
   success: number;
@@ -15,41 +23,56 @@ interface ImportResult {
 export const UserImport: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [branch, setBranch] = useState('');
+  const [parsed, setParsed] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
   const [branches, setBranches] = useState<any[]>([]);
 
   React.useEffect(() => {
-    fetchBranches();
+    api.get('/admin/branches').then(r => setBranches(r.data)).catch(console.error);
   }, []);
 
-  const fetchBranches = async () => {
-    try {
-      const { data } = await api.get('/admin/branches');
-      setBranches(data);
-    } catch (err) {
-      console.error('Error fetching branches:', err);
-    }
-  };
-
   const downloadTemplate = () => {
-    const csv = `email,name,phone,company,employeeNumber,branchId
-juan@example.com,Juan Pérez,5551234567,Acme Corp,12345,${branches[0]?.id || 'branch-id'}
-maria@example.com,María García,5559876543,Acme Corp,12346,${branches[0]?.id || 'branch-id'}
-pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || 'branch-id'}`;
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'plantilla_usuarios.csv';
-    link.click();
+    const data = [
+      { name: 'Juan Pérez', email: 'juan@empresa.com', phone: '5551234567', employeeNumber: '001', password: 'MealPay2024!' },
+      { name: 'María García', email: 'maria@empresa.com', phone: '5559876543', employeeNumber: '002', password: 'MealPay2024!' },
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
+    XLSX.writeFile(wb, 'plantilla_usuarios_mealpay.xlsx');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
-    }
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setResult(null);
+    setError('');
+    setParsed([]);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<any>(ws);
+        const mapped: ImportRow[] = rows.map(r => ({
+          name: String(r.name || r.nombre || r.Name || '').trim(),
+          email: String(r.email || r.correo || r.Email || '').trim().toLowerCase(),
+          phone: String(r.phone || r.telefono || r.Phone || '').trim(),
+          employeeNumber: String(r.employeeNumber || r.numero || r.empleado || '').trim(),
+          password: String(r.password || r.contrasena || r.Password || 'MealPay2024!').trim(),
+        }));
+        setParsed(mapped);
+      } catch (err) {
+        setError('No se pudo leer el archivo. Verifica que sea .xlsx o .csv válido.');
+      }
+    };
+    reader.readAsArrayBuffer(f);
   };
 
   const handleImport = async (e: React.FormEvent) => {
@@ -57,29 +80,18 @@ pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || '
     setError('');
     setResult(null);
 
-    if (!file) {
-      setError('Por favor selecciona un archivo CSV');
-      return;
-    }
-
-    if (!branch) {
-      setError('Por favor selecciona una sucursal');
-      return;
-    }
+    if (!parsed.length) { setError('Selecciona un archivo primero'); return; }
+    if (!branch)         { setError('Selecciona una sucursal'); return; }
 
     setImporting(true);
-
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('branchId', branch);
-
-      const { data } = await api.post('/admin/users/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const { data } = await api.post('/admin/users/bulk-import', {
+        branchId: branch,
+        users: parsed,
       });
-
       setResult(data);
       setFile(null);
+      setParsed([]);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al importar usuarios');
     } finally {
@@ -87,207 +99,163 @@ pedro@example.com,Pedro López,5555555555,Acme Corp,12347,${branches[0]?.id || '
     }
   };
 
-  return (
-    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
-      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold  dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
-            Importar Usuarios 📥
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Carga múltiples usuarios de forma masiva desde CSV
-          </p>
-        </div>
+  const inputCls = 'w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500';
 
-        {/* Alerts */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+  return (
+    <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
+      {/* Header */}
+      <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
+            <Upload className="w-4 h-4 text-violet-400" />
+          </div>
+          <h1 className="text-xl font-semibold text-white">Importar Usuarios</h1>
+        </div>
+        <p className="text-sm text-slate-400 ml-11">Carga múltiples comensales desde Excel (.xlsx)</p>
+      </div>
+
+      <div className="p-6 max-w-2xl space-y-5">
+
+        {/* Resultado */}
+        {result && (
+          <div className={`rounded-xl border p-4 ${
+            result.failed === 0
+              ? 'bg-emerald-500/10 border-emerald-500/30'
+              : 'bg-amber-500/10 border-amber-500/30'
+          }`}>
+            <div className="flex items-start gap-3">
+              <CheckCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${result.failed === 0 ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <div className="flex-1">
+                <p className="font-semibold text-white text-sm">Importación completada</p>
+                <p className="text-sm text-slate-300 mt-1">
+                  <span className="text-emerald-400 font-semibold">{result.success} creados</span>
+                  {result.failed > 0 && <span className="text-red-400 font-semibold ml-2">{result.failed} con error</span>}
+                </p>
+                {result.errors.length > 0 && (
+                  <div className="mt-3 bg-slate-900 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    {result.errors.map((e, i) => (
+                      <p key={i} className="text-xs text-slate-400">Fila {e.row}: {e.error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-        {result && (
-          <Card
-            variant={result.failed === 0 ? 'elevated' : 'default'}
-            className={`border-l-4 ${
-              result.failed === 0
-                ? 'border-l-emerald-500 dark:border-l-emerald-400'
-                : 'border-l-amber-500 dark:border-l-amber-400'
-            }`}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  result.failed === 0
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                    : 'bg-amber-100 dark:bg-amber-900/30'
-                }`}>
-                  <CheckCircle className={`w-6 h-6 ${
-                    result.failed === 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-amber-600 dark:text-amber-400'
-                  }`} />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-bold text-lg ${
-                    result.failed === 0
-                      ? 'text-emerald-900 dark:text-emerald-50'
-                      : 'text-amber-900 dark:text-amber-50'
-                  }`}>
-                    Importación Completada
-                  </h3>
-                  <div className="mt-2 space-y-1">
-                    <p className={`text-sm ${
-                      result.failed === 0
-                        ? 'text-emerald-800 dark:text-emerald-300'
-                        : 'text-amber-800 dark:text-amber-300'
-                    }`}>
-                      ✅ <strong>{result.success}</strong> usuarios importados exitosamente
-                    </p>
-                    {result.failed > 0 && (
-                      <p className="text-sm text-red-800 dark:text-red-300">
-                        ❌ <strong>{result.failed}</strong> usuarios con errores
-                      </p>
-                    )}
-                  </div>
-
-                  {result.errors.length > 0 && (
-                    <div className="mt-4 bg-slate-100 dark:bg-slate-800 rounded p-3">
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Errores encontrados:</p>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {result.errors.map((err, idx) => (
-                          <p key={idx} className="text-xs text-slate-600 dark:text-slate-400">
-                            Row {err.row}: {err.error}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
         )}
 
-        {/* Template Info */}
-        <Card variant="flat">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <FileCheck className="w-6 h-6 text-slate-700 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-2">Formato requerido</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                  El archivo CSV debe contener las siguientes columnas:
-                </p>
-                <div className="bg-slate-900 dark:bg-slate-950 rounded p-3 text-xs font-mono text-emerald-400 overflow-x-auto mb-3">
-                  <pre>email,name,phone,company,employeeNumber,branchId</pre>
-                </div>
-                <Button
-                  onClick={downloadTemplate}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Descargar Plantilla
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Import Form */}
-        <Card variant="elevated">
-          <CardHeader borderBottom>
-            <CardTitle>Cargar Usuarios</CardTitle>
-            <CardDescription>Máximo 5000 usuarios por importación</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleImport} className="space-y-6">
-              <div>
-                <Label htmlFor="branch" className="mb-2 block font-medium">
-                  Sucursal *
-                </Label>
-                <select
-                  id="branch"
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                >
-                  <option value="">Selecciona una sucursal</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="file" className="mb-2 block font-medium">
-                  Archivo CSV *
-                </Label>
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-violet-400 dark:hover:border-violet-500 transition-colors">
-                  <input
-                    id="file"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="file"
-                    className="cursor-pointer"
-                  >
-                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-                      {file ? file.name : 'Haz clic para seleccionar archivo'}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      o arrastra aquí (máximo 10MB)
-                    </p>
-                  </label>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={importing || !file || !branch}
-                className="w-full  hover:from-violet-600 hover:to-purple-600 text-white flex items-center justify-center gap-2"
-                size="lg"
+        {/* Plantilla */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <FileCheck className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white mb-1">Formato requerido</p>
+              <p className="text-xs text-slate-400 mb-3">
+                Columnas: <code className="text-violet-400">name, email, phone, employeeNumber, password</code>
+                <br/>La contraseña es opcional (default: MealPay2024!)
+              </p>
+              <button
+                onClick={downloadTemplate}
+                className="flex items-center gap-2 px-3 py-1.5 border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs rounded-lg transition-colors cursor-pointer"
               >
-                {importing ? (
+                <Download className="w-3.5 h-3.5" />
+                Descargar plantilla Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Formulario */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <form onSubmit={handleImport} className="space-y-4">
+            {/* Sucursal */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Sucursal destino *
+              </label>
+              <select value={branch} onChange={e => setBranch(e.target.value)} className={inputCls}>
+                <option value="">Selecciona una sucursal</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+
+            {/* Upload */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Archivo Excel / CSV *
+              </label>
+              <label className={`block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                file ? 'border-violet-500/50 bg-violet-500/5' : 'border-slate-700 hover:border-violet-500/40'
+              }`}>
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden" />
+                <FileSpreadsheet className={`w-8 h-8 mx-auto mb-2 ${file ? 'text-violet-400' : 'text-slate-600'}`} />
+                {file ? (
                   <>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Importando...
+                    <p className="text-sm font-medium text-slate-200">{file.name}</p>
+                    <p className="text-xs text-violet-400 mt-1">{parsed.length} usuarios detectados</p>
                   </>
                 ) : (
                   <>
-                    <Upload className="w-4 h-4" />
-                    Importar Usuarios
+                    <p className="text-sm text-slate-400">Haz clic para seleccionar o arrastra aquí</p>
+                    <p className="text-xs text-slate-600 mt-1">.xlsx, .xls, .csv — máx. 5,000 usuarios</p>
                   </>
                 )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              </label>
+            </div>
+
+            {/* Preview */}
+            {parsed.length > 0 && (
+              <div className="bg-slate-800/50 rounded-lg overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-700">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <p className="text-xs font-semibold text-slate-300">Vista previa ({Math.min(3, parsed.length)} de {parsed.length})</p>
+                </div>
+                <div className="divide-y divide-slate-700/60">
+                  {parsed.slice(0, 3).map((u, i) => (
+                    <div key={i} className="px-4 py-2 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-violet-600/30 text-violet-400 text-xs flex items-center justify-center font-bold">{i+1}</div>
+                      <div>
+                        <p className="text-sm text-slate-200">{u.name || <span className="text-red-400">Sin nombre</span>}</p>
+                        <p className="text-xs text-slate-500">{u.email}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={importing || !file || !branch || parsed.length === 0}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              {importing ? (
+                <><Loader className="w-4 h-4 animate-spin" /> Importando...</>
+              ) : (
+                <><Upload className="w-4 h-4" /> Importar {parsed.length > 0 ? `${parsed.length} usuarios` : 'usuarios'}</>
+              )}
+            </button>
+          </form>
+        </div>
 
         {/* Tips */}
-        <Card variant="flat">
-          <CardContent className="pt-6">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-3">💡 Consejos para importación masiva</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <li>✅ Usa la plantilla descargable como base</li>
-              <li>✅ Verifica que los emails sean únicos</li>
-              <li>✅ El employeeNumber debe ser único por sucursal</li>
-              <li>✅ Para 5000 usuarios, divide en archivos de 1000 cada uno</li>
-              <li>✅ QR se genera automáticamente por usuario</li>
-              <li>✅ Los usuarios reciben contraseña temporal por email</li>
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Consejos</p>
+          <ul className="space-y-1.5 text-xs text-slate-500">
+            <li>• Usa la plantilla para evitar errores de columna</li>
+            <li>• Los emails duplicados se omiten con un reporte de error</li>
+            <li>• El QR se genera automáticamente por usuario</li>
+            <li>• El # empleado se auto-genera si no lo incluyes</li>
+            <li>• Para 5,000+ usuarios, divide en archivos de 1,000</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

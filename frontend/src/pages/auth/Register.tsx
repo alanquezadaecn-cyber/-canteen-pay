@@ -1,108 +1,50 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Label } from '../../components/ui/Label';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
+import { AlertCircle } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { branchId: urlBranchId } = useParams<{ branchId?: string }>();
   const { setAuth } = useAuthStore();
-  const [step, setStep] = useState(1);
+
+  const [branches, setBranches] = useState<{ id: string; name: string; location: string }[]>([]);
+  const [form, setForm] = useState({
+    name: '', email: '', password: '', phone: '',
+    branchId: urlBranchId || ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [branches, setBranches] = useState<any[]>([]);
-  const [loadingBranches, setLoadingBranches] = useState(true);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    branchId: '',
-    employeeNumber: '',
-    phone: ''
-  });
-
-  // Cargar sucursales al montar
-  React.useEffect(() => {
-    const loadBranches = async () => {
-      try {
-        // Obtener sucursales de ASINMEX (hardcoded por ahora)
-        const { data } = await api.get('/branches');
-        setBranches(data);
-      } catch (err) {
-        console.error('Error cargando sucursales:', err);
-        // Datos de fallback
-        setBranches([
-          { id: 'cmr4fwm2j000e2ep6oxls9o7i', name: 'AIVY', location: 'México City' },
-          { id: 'cmr4fwm42000g2ep67c851kg0', name: 'BOCH', location: 'México City' }
-        ]);
-      } finally {
-        setLoadingBranches(false);
-      }
-    };
-    loadBranches();
+  useEffect(() => {
+    // Cargar sucursales disponibles
+    fetch('/api/public/branches')
+      .then(r => r.json())
+      .then(data => setBranches(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const validateStep1 = () => {
-    if (!formData.branchId || !formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Todos los campos son requeridos');
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return false;
-    }
-    if (formData.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return false;
-    }
-    setError('');
-    return true;
-  };
-
-  const validateStep2 = () => {
-    if (!formData.company || !formData.employeeNumber || !formData.phone) {
-      setError('Todos los campos son requeridos');
-      return false;
-    }
-    setError('');
-    return true;
-  };
-
-  const handleNextStep = () => {
-    if (validateStep1()) {
-      setStep(2);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep2()) return;
+    if (!form.branchId) { setError('Selecciona tu sucursal / comedor'); return; }
+    if (form.password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
+    if (!form.phone.trim()) { setError('El teléfono es requerido'); return; }
 
     setLoading(true);
+    setError('');
     try {
       const { data } = await api.post('/auth/register', {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        branchId: formData.branchId,
-        employeeNumber: formData.employeeNumber,
-        phone: formData.phone
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
+        branchId: form.branchId
       });
-
       setAuth(data.user, data.accessToken, data.refreshToken);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al registrarse');
+      setError(err.response?.data?.error || 'Error al crear cuenta');
     } finally {
       setLoading(false);
     }
@@ -110,193 +52,85 @@ export const Register: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white">
-        <CardHeader className="bg-emerald-600 text-white rounded-t-xl">
-          <CardTitle className="text-2xl">
-            {step === 1 ? 'Crear Cuenta' : 'Datos de Empresa'}
-          </CardTitle>
-          <p className="text-sm text-slate-300 mt-1">
-            Paso {step} de 2
-          </p>
-        </CardHeader>
+      <div className="w-full max-w-md">
 
-        <CardContent className="pt-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Crear cuenta</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Regístrate para usar el comedor</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+            <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            {step === 1 ? (
-              <div className="space-y-4">
-                <div>
-                  <Label className="mb-2 block">
-                    🏪 Selecciona tu Sucursal
-                  </Label>
-                  {loadingBranches ? (
-                    <p className="text-gray-500">Cargando sucursales...</p>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {branches.map((branch) => (
-                        <button
-                          key={branch.id}
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, branchId: branch.id }))}
-                          className={`p-3 rounded-lg border-2 transition ${
-                            formData.branchId === branch.id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-blue-300'
-                          }`}
-                        >
-                          <div className="font-semibold text-sm">{branch.name}</div>
-                          <div className="text-xs text-gray-500">{branch.location}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-                <div>
-                  <Label htmlFor="name" className="mb-2 block">
-                    Nombre Completo
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Juan Pérez"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email" className="mb-2 block">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="tu@email.com"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="password" className="mb-2 block">
-                    Contraseña
-                  </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword" className="mb-2 block">
-                    Confirmar Contraseña
-                  </Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="w-full mt-6"
-                  size="lg"
-                >
-                  Siguiente
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="company" className="mb-2 block">
-                    Empresa
-                  </Label>
-                  <Input
-                    id="company"
-                    name="company"
-                    type="text"
-                    value={formData.company}
-                    onChange={handleChange}
-                    placeholder="Mi Empresa S.A."
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="employeeNumber" className="mb-2 block">
-                    Número de Empleado
-                  </Label>
-                  <Input
-                    id="employeeNumber"
-                    name="employeeNumber"
-                    type="text"
-                    value={formData.employeeNumber}
-                    onChange={handleChange}
-                    placeholder="EMP-2024-001"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone" className="mb-2 block">
-                    Teléfono
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="+55 5555-5555"
-                  />
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                    className="flex-1"
-                    size="lg"
-                  >
-                    Atrás
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1"
-                    size="lg"
-                  >
-                    {loading ? 'Registrando...' : 'Crear Cuenta'}
-                  </Button>
+            {/* Selección de sucursal */}
+            {!urlBranchId && branches.length > 0 && (
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">Comedor *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {branches.map(b => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setForm({ ...form, branchId: b.id })}
+                      className={`p-3 rounded-xl border-2 text-left transition-colors ${
+                        form.branchId === b.id
+                          ? 'border-slate-900 dark:border-slate-100 bg-slate-50 dark:bg-slate-800'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{b.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{b.location}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
+
+            {[
+              { id: 'name', label: 'Nombre completo', type: 'text', placeholder: 'Juan Pérez' },
+              { id: 'email', label: 'Email', type: 'email', placeholder: 'juan@empresa.com' },
+              { id: 'password', label: 'Contraseña', type: 'password', placeholder: '••••••••' },
+              { id: 'phone', label: 'Teléfono', type: 'tel', placeholder: '+52 55 1234-5678' }
+            ].map(({ id, label, type, placeholder }) => (
+              <div key={id}>
+                <label htmlFor={id} className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">{label} *</label>
+                <input
+                  id={id}
+                  type={type}
+                  value={(form as any)[id]}
+                  onChange={(e) => setForm({ ...form, [id]: e.target.value })}
+                  placeholder={placeholder}
+                  required
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-sm focus:outline-none focus:border-slate-400 transition-colors"
+                />
+              </div>
+            ))}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-base transition-colors disabled:opacity-40 mt-2"
+            >
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+            </button>
           </form>
 
-          <p className="text-center text-sm text-slate-600 mt-6">
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 pt-2">
             ¿Ya tienes cuenta?{' '}
-            <Link to="/login" className="text-emerald-600 hover:underline font-medium">
-              Inicia sesión
+            <Link to="/login" className="font-semibold text-slate-900 dark:text-slate-50 hover:underline">
+              Iniciar sesión
             </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

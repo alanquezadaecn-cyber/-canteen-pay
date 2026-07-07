@@ -8,7 +8,8 @@ import {
   LogOut,
   Menu,
   X,
-  ShoppingBag
+  ShoppingBag,
+  ClipboardList
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -23,7 +24,8 @@ export const CashierNav: React.FC = () => {
     { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
     { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
     { path: '/cashier/products', label: 'Productos', icon: ShoppingBag },
-    { path: '/cashier/history', label: 'Historial', icon: History }
+    { path: '/cashier/history', label: 'Historial', icon: History },
+    { path: '/cashier/corte', label: 'Corte', icon: ClipboardList }
   ];
 
   const isActive = (path: string) => location.pathname === path;

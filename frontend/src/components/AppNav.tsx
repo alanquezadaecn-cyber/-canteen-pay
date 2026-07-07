@@ -8,7 +8,8 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  UtensilsCrossed
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -19,6 +20,7 @@ export const AppNav: React.FC = () => {
 
   const navItems = [
     { path: '/dashboard', label: 'Inicio', icon: Home },
+    { path: '/menu', label: 'Menú', icon: UtensilsCrossed },
     { path: '/purchases', label: 'Compras', icon: ShoppingCart },
     { path: '/qr', label: 'Mi QR', icon: QrCode },
     { path: '/recharges', label: 'Recargas', icon: CreditCard },

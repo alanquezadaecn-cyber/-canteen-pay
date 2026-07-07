@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2 } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -49,7 +49,7 @@ export const MasterAdminDashboard: React.FC = () => {
   const [newCompanyResult, setNewCompanyResult] = useState<any>(null);
   const [newCompanyForm, setNewCompanyForm] = useState({
     companyName: '', email: '', phone: '', contactPerson: '',
-    industry: '', planName: 'LITE',
+    industry: '', planName: 'LICENCIA',
     branchName: 'Comedor Principal', branchLocation: 'Planta 1',
     adminPassword: ''
   });
@@ -57,6 +57,15 @@ export const MasterAdminDashboard: React.FC = () => {
   const [newCompanyError, setNewCompanyError] = useState('');
   const [copiedField, setCopiedField] = useState('');
   const [resetting, setResetting] = useState(false);
+  const [urlsModal, setUrlsModal] = useState<Company | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState('');
+
+  const APP_URL = window.location.origin;
+  const copyUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(''), 2000);
+  };
 
   useEffect(() => {
     fetchData();
@@ -160,6 +169,16 @@ export const MasterAdminDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteCompany = async (company: Company) => {
+    if (!confirm(`¿Borrar "${company.name}" y todos sus datos? Esto no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/master-admin/companies/${company.id}`);
+      setCompanies(prev => prev.filter(c => c.id !== company.id));
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al borrar empresa');
+    }
+  };
+
   const handleResetTestData = async () => {
     if (!confirm('¿Confirmas que quieres borrar TODAS las empresas, sucursales, usuarios y transacciones? Esto no se puede deshacer.')) return;
     setResetting(true);
@@ -193,33 +212,32 @@ export const MasterAdminDashboard: React.FC = () => {
 
         {/* Header */}
         <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-slate-900 dark:bg-slate-100 rounded-xl">
+              <div className="p-3 bg-slate-900 dark:bg-slate-100 rounded-xl flex-shrink-0">
                 <Zap className="w-6 h-6 text-white dark:text-slate-900" />
               </div>
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50">
-                  Panel Master Admin
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">
+                  Master Admin
                 </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  Gestión de empresas, sucursales y licencias
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  Empresas, sucursales y licencias
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2">
               <button
                 onClick={handleResetTestData}
                 disabled={resetting}
-                className="h-10 px-3 rounded-xl border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 flex items-center gap-1"
-                title="Borrar todos los datos de prueba"
+                className="flex-1 sm:flex-none h-10 px-4 rounded-xl border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Resetear
+                <Trash2 className="w-4 h-4" />
+                Borrar todo
               </button>
               <button
                 onClick={() => { setShowNewCompany(true); setNewCompanyResult(null); setNewCompanyError(''); }}
-                className="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors flex items-center gap-2"
+                className="flex-1 sm:flex-none h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Nueva Empresa
@@ -383,6 +401,14 @@ export const MasterAdminDashboard: React.FC = () => {
                       <td className="py-4 px-4">
                         <div className="flex gap-2 justify-center flex-wrap">
                           <Button
+                            onClick={() => { setCopiedUrl(''); setUrlsModal(company); }}
+                            size="sm"
+                            className="px-3 bg-slate-700 hover:bg-slate-600 text-white"
+                            title="Ver URLs de acceso"
+                          >
+                            <Link2 className="w-4 h-4" />
+                          </Button>
+                          <Button
                             onClick={() => { setSelectedCompany(company); handleEditCompany(company); }}
                             size="sm"
                             className="px-3 bg-blue-600 hover:bg-blue-700 text-white"
@@ -415,6 +441,15 @@ export const MasterAdminDashboard: React.FC = () => {
                               <Lock className="w-4 h-4" />
                             </Button>
                           )}
+                          <Button
+                            onClick={() => handleDeleteCompany(company)}
+                            size="sm"
+                            variant="outline"
+                            className="px-3 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950"
+                            title="Borrar empresa"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -539,8 +574,9 @@ export const MasterAdminDashboard: React.FC = () => {
                         onChange={(e) => setNewCompanyForm({ ...newCompanyForm, planName: e.target.value })}
                         className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 text-sm focus:outline-none focus:border-slate-400"
                       >
-                        <option value="LITE">LITE — $2,500/año</option>
-                        <option value="ENTERPRISE">ENTERPRISE — $6,500/año</option>
+                        <option value="LICENCIA">LICENCIA ANUAL — $30,000/año · 10 sucursales · soporte 3 meses</option>
+                        <option value="PRO">PRO — $3,000/mes · 2 sucursales · soporte incluido</option>
+                        <option value="ENTERPRISE">ENTERPRISE — $5,500/mes · 5 sucursales · soporte 24/7</option>
                       </select>
                     </div>
                     <div>
@@ -748,6 +784,71 @@ export const MasterAdminDashboard: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* Modal URLs de acceso */}
+      {urlsModal && (() => {
+        const slug = (urlsModal as any).slug || urlsModal.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const links = [
+          {
+            label: 'Admin',
+            desc: 'Panel de administración de la empresa',
+            url: `${APP_URL}/login/admin/${slug}`
+          },
+          ...((urlsModal.branches || []).map((b: any) => ({
+            label: `Cajero / Comensal — ${b.name}`,
+            desc: b.location || 'Sucursal',
+            url: `${APP_URL}/login/${slug}/${b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+          }))),
+          ...((urlsModal.branches || []).map((b: any) => ({
+            label: `Registro comensales — ${b.name}`,
+            desc: 'Link para que los comensales se registren',
+            url: `${APP_URL}/register/${b.id}`
+          })))
+        ];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-700 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white">URLs de acceso</h2>
+                  <p className="text-sm text-slate-400">{urlsModal.name}</p>
+                </div>
+                <button onClick={() => setUrlsModal(null)} className="text-slate-500 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {links.map((link, i) => (
+                  <div key={i} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{link.label}</p>
+                    <p className="text-xs text-slate-500 mb-2">{link.desc}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="flex-1 text-xs font-mono text-slate-300 break-all">{link.url}</p>
+                      <button
+                        onClick={() => copyUrl(link.url)}
+                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                      >
+                        {copiedUrl === link.url
+                          ? <CheckCircle className="w-4 h-4 text-white" />
+                          : <Copy className="w-4 h-4 text-slate-400" />
+                        }
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setUrlsModal(null)}
+                className="w-full h-10 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

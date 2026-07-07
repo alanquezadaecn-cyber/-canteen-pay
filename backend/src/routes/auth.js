@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { QRService } from '../services/qr.service.js';
+import { sendWelcomeEmail } from '../services/email.service.js';
 
 const router = express.Router();
 
@@ -26,10 +27,10 @@ const generateTokens = (userId, role, email, companyId) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, branchId, employeeNumber, phone } = req.body;
+    const { name, email, password, branchId, phone } = req.body;
 
-    if (!name || !email || !password || !branchId || !employeeNumber || !phone) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    if (!name || !email || !password || !branchId || !phone) {
+      return res.status(400).json({ error: 'Nombre, email, contraseña, sucursal y teléfono son requeridos' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -47,6 +48,12 @@ router.post('/register', async (req, res) => {
       return res.status(404).json({ error: 'Sucursal no encontrada' });
     }
 
+    // Auto-generar employeeNumber numérico
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const qrCode = QRService.generateUniqueCode();
 
@@ -55,13 +62,16 @@ router.post('/register', async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        employeeNumber,
+        employeeNumber: String(nextNum),
         phone,
         qrCode,
         role: 'USER',
-        branchId: branchId  // Asignar sucursal del registro
+        branchId: branchId
       }
     });
+
+    // Email de bienvenida (no bloquea)
+    sendWelcomeEmail({ to: email, name, qrCode, employeeNumber: String(nextNum) }).catch(console.error);
 
     // Usar companyId de la sucursal
     const { accessToken, refreshToken } = generateTokens(user.id, user.role, user.email, branch.companyId);
@@ -242,8 +252,7 @@ router.post('/admin/create-user', async (req, res) => {
         name: name || email.split('@')[0],
         email,
         password: hashedPassword,
-        company: 'Admin Company',
-        employeeNumber: `EMP-${Date.now()}`,
+        employeeNumber: String(Date.now()).slice(-5),
         phone: '+52 5555-0000',
         role: role || 'ADMIN',
         balance: 0,

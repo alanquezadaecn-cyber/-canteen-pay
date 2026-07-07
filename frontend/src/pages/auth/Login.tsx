@@ -1,143 +1,158 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Label } from '../../components/ui/Label';
 import { useAuthStore } from '../../store/useAuthStore';
+import { AlertCircle } from 'lucide-react';
 import api from '../../lib/api';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { branchId } = useParams<{ branchId?: string }>();
+  // Soporta: /login, /login/:branchId, /login/admin/:companySlug, /login/:companySlug/:branchSlug
+  const { branchId, companySlug, branchSlug } = useParams<{
+    branchId?: string;
+    companySlug?: string;
+    branchSlug?: string;
+  }>();
   const { setAuth } = useAuthStore();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [branchName, setBranchName] = useState('');
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  // Cargar nombre de sucursal sin auth (endpoint público)
+  // Contexto resuelto desde la URL
+  const [context, setContext] = useState<{
+    type: 'generic' | 'admin' | 'branch';
+    companyName?: string;
+    branchName?: string;
+    branchId?: string;
+  }>({ type: 'generic' });
+
   useEffect(() => {
-    if (branchId) {
-      const loadBranchName = async () => {
-        try {
-          const { data } = await api.get(`/public/branch/${branchId}`);
-          setBranchName(data.name);
-        } catch (err) {
-          console.error('Error cargando sucursal:', err);
-        }
-      };
-      loadBranchName();
+    // /login/:branchId (UUID legacy)
+    if (branchId && branchId !== 'admin' && branchId.length > 20) {
+      fetch(`/api/public/branch/${branchId}`)
+        .then(r => r.json())
+        .then(d => setContext({ type: 'branch', branchName: d.name, branchId }))
+        .catch(() => {});
+      return;
     }
-  }, [branchId]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    // /login/admin/:companySlug
+    if (branchId === 'admin' && companySlug) {
+      fetch(`/api/public/slug/${companySlug}`)
+        .then(r => r.json())
+        .then(d => setContext({ type: 'admin', companyName: d.name }))
+        .catch(() => {});
+      return;
+    }
+    // /login/:companySlug/:branchSlug
+    if (companySlug && branchSlug) {
+      fetch(`/api/public/slug/${companySlug}/${branchSlug}`)
+        .then(r => r.json())
+        .then(d => setContext({ type: 'branch', companyName: d.company?.name, branchName: d.branch?.name, branchId: d.branch?.id }))
+        .catch(() => {});
+    }
+  }, [branchId, companySlug, branchSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!formData.email || !formData.password) {
-      setError('Email y contraseña requeridos');
-      return;
-    }
-
+    if (!email || !password) { setError('Email y contraseña requeridos'); return; }
     setLoading(true);
+    setError('');
     try {
       const { data } = await api.post('/auth/login', {
-        email: formData.email,
-        password: formData.password,
-        branchId: branchId || undefined  // Enviar branchId si existe, para validación
+        email,
+        password,
+        branchId: context.branchId || (branchId && branchId.length > 20 ? branchId : undefined)
       });
-
       setAuth(data.user, data.accessToken, data.refreshToken);
-
       const role = data.user.role;
-      const destination =
-        role === 'ADMIN' ? '/admin/dashboard' :
-        role === 'CASHIER' ? `/caja/${data.user.branchId}` :
-        '/dashboard';
-
-      navigate(destination);
+      navigate(
+        role === 'MASTER_ADMIN' ? '/master-admin' :
+        role === 'ADMIN'        ? '/admin/dashboard' :
+        role === 'CASHIER'      ? `/caja/${data.user.branchId}` :
+        '/dashboard'
+      );
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      setError(err.response?.data?.error || 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white">
-        <CardHeader className="bg-emerald-600 text-white rounded-t-xl">
-          <CardTitle className="text-3xl">
-            {branchName ? `${branchName} - Login` : 'MealPay'}
-          </CardTitle>
-          <p className="text-sm text-slate-300 mt-1">
-            {branchName ? 'Acceso a tu sucursal' : 'Sistema de Pago Digital para Comedores'}
-          </p>
-        </CardHeader>
+  const title =
+    context.type === 'admin'  ? `Admin — ${context.companyName || ''}` :
+    context.type === 'branch' ? (context.branchName || 'Comedor') :
+    'MealPay';
 
-        <CardContent className="pt-8">
+  const subtitle =
+    context.type === 'admin'  ? 'Panel de administración' :
+    context.type === 'branch' ? (context.companyName ? `${context.companyName}` : 'Acceso al comedor') :
+    'Sistema de pago digital para comedores';
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+
+        {/* Logo / título */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white">{title}</h1>
+          <p className="text-slate-400 text-sm mt-2">{subtitle}</p>
+        </div>
+
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-4">
+
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+            <div className="p-3 bg-red-950 border border-red-800 text-red-300 rounded-xl flex items-center gap-2 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="mb-2 block">
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Email</label>
+              <input
                 type="email"
-                value={formData.email}
-                onChange={handleChange}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="tu@email.com"
+                required
+                className="w-full h-11 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-slate-500 transition-colors"
               />
             </div>
-
             <div>
-              <Label htmlFor="password" className="mb-2 block">
-                Contraseña
-              </Label>
-              <Input
-                id="password"
-                name="password"
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Contraseña</label>
+              <input
                 type="password"
-                value={formData.password}
-                onChange={handleChange}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                required
+                className="w-full h-11 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-slate-500 transition-colors"
               />
             </div>
-
-            <Button
+            <button
               type="submit"
               disabled={loading}
-              className="w-full"
-              size="lg"
+              className="w-full h-12 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-colors disabled:opacity-40 mt-2"
             >
-              {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-            </Button>
+              {loading ? 'Entrando...' : 'Iniciar sesión'}
+            </button>
           </form>
 
-          <p className="text-center text-sm text-slate-600 mt-6">
-            ¿No tienes cuenta?{' '}
-            <Link to="/register" className="text-emerald-600 hover:underline font-medium">
-              Regístrate aquí
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+          {context.type === 'branch' && (
+            <p className="text-center text-xs text-slate-500 pt-1">
+              ¿Sin cuenta?{' '}
+              <Link
+                to={context.branchId ? `/register/${context.branchId}` : '/register'}
+                className="text-slate-300 hover:text-white font-semibold"
+              >
+                Regístrate aquí
+              </Link>
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

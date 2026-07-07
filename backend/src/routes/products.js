@@ -4,14 +4,17 @@ import { verifyToken, checkRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET products by branch (accesible para ADMIN y CASHIER)
-router.get('/branch/:branchId', verifyToken, checkRole(['ADMIN', 'CASHIER']), async (req, res) => {
+// GET products by branch (accesible para todos los roles autenticados, incluyendo USER para el menú)
+router.get('/branch/:branchId', verifyToken, checkRole(['ADMIN', 'CASHIER', 'USER']), async (req, res) => {
   try {
     const products = await prisma.product.findMany({
       where: { branchId: req.params.branchId, isActive: true },
-      orderBy: { category: 'asc' }
+      orderBy: [{ category: 'asc' }, { name: 'asc' }]
     });
-    res.json(products);
+    res.json(products.map(p => ({
+      ...p,
+      price: p.price.toString()
+    })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener productos' });

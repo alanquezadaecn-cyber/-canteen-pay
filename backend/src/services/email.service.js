@@ -59,6 +59,26 @@ export async function sendRechargeConfirmation({ to, name, amount, newBalance, m
   );
 }
 
+export async function sendWelcomeEmail({ to, name, qrCode, employeeNumber }) {
+  await send(
+    to,
+    `Bienvenido a MealPay — Tu monedero de comedor`,
+    `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+      <h2 style="color:#0f172a">¡Bienvenido, ${name}!</h2>
+      <p style="color:#475569">Tu cuenta en MealPay ha sido creada. Ya puedes usar tu monedero digital en el comedor.</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+        <p style="color:#64748b;font-size:13px;margin:0 0 4px">Tu número de empleado</p>
+        <p style="color:#0f172a;font-size:28px;font-weight:700;margin:0;font-family:monospace">#${employeeNumber}</p>
+      </div>
+      <p style="color:#475569;font-size:14px">Tu código QR: <strong style="font-family:monospace">${String(qrCode).slice(0, 12)}...</strong></p>
+      <a href="${APP_URL}/login" style="display:block;background:#6d28d9;color:#fff;text-align:center;padding:12px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px">Iniciar sesión</a>
+      <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center">MealPay — Sistema de pagos para comedores</p>
+    </div>
+    `
+  );
+}
+
 export async function sendPurchaseNotification({ to, name, productName, amount, newBalance }) {
   await send(
     to,

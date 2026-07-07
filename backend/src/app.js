@@ -71,10 +71,54 @@ app.get('/api/public/branch/:branchId', async (req, res) => {
     const { prisma } = await import('./lib/prisma.js');
     const branch = await prisma.branch.findUnique({
       where: { id: req.params.branchId },
-      select: { id: true, name: true }
+      select: { id: true, name: true, location: true }
     });
     if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
     res.json(branch);
+  } catch (err) {
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
+// Lookup por slug: /api/public/slug/:companySlug  → info de empresa + sucursales
+app.get('/api/public/slug/:companySlug', async (req, res) => {
+  try {
+    const { prisma } = await import('./lib/prisma.js');
+    const company = await prisma.company.findUnique({
+      where: { slug: req.params.companySlug },
+      select: {
+        id: true, name: true, slug: true,
+        branches: { where: { isActive: true, isBlocked: false }, select: { id: true, name: true, slug: true, location: true } }
+      }
+    });
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+    res.json(company);
+  } catch (err) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Lookup por slug: /api/public/slug/:companySlug/:branchSlug → info de sucursal
+app.get('/api/public/slug/:companySlug/:branchSlug', async (req, res) => {
+  try {
+    const { prisma } = await import('./lib/prisma.js');
+    const company = await prisma.company.findUnique({
+      where: { slug: req.params.companySlug },
+      select: { id: true, name: true, slug: true, branches: { where: { slug: req.params.branchSlug }, select: { id: true, name: true, slug: true, location: true } } }
+    });
+    if (!company || !company.branches[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
+    res.json({ company: { id: company.id, name: company.name, slug: company.slug }, branch: company.branches[0] });
+  } catch (err) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Endpoint público para listar sucursales activas (para autoregistro de comensales)
+app.get('/api/public/branches', async (req, res) => {
+  try {
+    const { prisma } = await import('./lib/prisma.js');
+    const branches = await prisma.branch.findMany({
+      where: { isActive: true, isBlocked: false },
+      select: { id: true, name: true, location: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(branches);
   } catch (err) {
     res.status(500).json({ error: 'Error' });
   }
@@ -94,6 +138,7 @@ import userMgmtRoutes from './routes/user-management.js';
 import cashierSessionRoutes from './routes/cashier-sessions.js';
 import masterAdminRoutes from './routes/master-admin.js';
 import initRoutes from './routes/init.js';
+import inventoryRoutes from './routes/inventory.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -108,6 +153,7 @@ app.use('/api/user-management', userMgmtRoutes);
 app.use('/api/cashier-sessions', cashierSessionRoutes);
 app.use('/api/master-admin', masterAdminRoutes);
 app.use('/api/init', initRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // SPA Fallback - sirve index.html para cualquier ruta que no sea API
 app.get('*', (req, res) => {
