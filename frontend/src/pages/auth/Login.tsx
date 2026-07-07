@@ -4,6 +4,15 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { AlertCircle } from 'lucide-react';
 import api from '../../lib/api';
 
+const MASTER_EMAIL = 'alejandro.qt92@gmail.com';
+
+function getRoleHome(role?: string, branchId?: string, email?: string): string {
+  if (role === 'MASTER_ADMIN' || email === MASTER_EMAIL) return '/master-admin';
+  if (role === 'CASHIER') return `/caja/${branchId || ''}`;
+  if (role === 'ADMIN') return '/admin/dashboard';
+  return '/dashboard';
+}
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   // Soporta: /login, /login/:branchId, /login/admin/:companySlug, /login/:companySlug/:branchSlug
@@ -12,7 +21,7 @@ export const Login: React.FC = () => {
     companySlug?: string;
     branchSlug?: string;
   }>();
-  const { setAuth } = useAuthStore();
+  const { setAuth, accessToken, user } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -89,9 +98,27 @@ export const Login: React.FC = () => {
     context.type === 'branch' ? (context.companyName ? `${context.companyName}` : 'Acceso al comedor') :
     'Sistema de pago digital para comedores';
 
+  const isBrandedUrl = !!(companySlug || (branchId === 'admin'));
+  const isLoggedIn = !!accessToken;
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+
+        {/* Banner: ya tienes sesión activa */}
+        {isLoggedIn && isBrandedUrl && (
+          <div className="mb-4 p-3 bg-slate-800 border border-slate-600 rounded-xl flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-300">
+              Sesión activa como <span className="font-semibold text-white">{user?.name}</span>
+            </p>
+            <button
+              onClick={() => navigate(getRoleHome(user?.role, user?.branchId, user?.email))}
+              className="flex-shrink-0 text-xs font-semibold text-slate-400 hover:text-white underline"
+            >
+              Volver a mi panel
+            </button>
+          </div>
+        )}
 
         {/* Logo / título */}
         <div className="text-center mb-8">
