@@ -2,8 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Download, Printer, Share2, Copy, CheckCircle } from 'lucide-react';
+import { Download, Printer, Share2, Copy, CheckCircle, Loader } from 'lucide-react';
 import QRCodeComponent from 'qrcode.react';
+import api from '../../lib/api';
 
 interface QRData {
   qrCode: string;
@@ -13,16 +14,30 @@ interface QRData {
 
 export const QRCode: React.FC = () => {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [size, setSize] = useState<'small' | 'medium' | 'large'>('large');
   const qrRef = useRef<HTMLDivElement>(null);
 
-  const qrData: QRData = {
+  // Datos frescos del backend — el store puede tener una sesión vieja sin QR
+  const [qrData, setQrData] = useState<QRData>({
     qrCode: user?.qrCode || '',
     name: user?.name || '',
     employeeNumber: user?.employeeNumber || ''
-  };
+  });
+
+  useEffect(() => {
+    api.get('/users/me')
+      .then(({ data }) => {
+        setQrData({
+          qrCode: data.qrCode || '',
+          name: data.name || '',
+          employeeNumber: data.employeeNumber || ''
+        });
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   const isNumericCode = /^\d{5}$/.test(qrData.employeeNumber);
 
@@ -149,6 +164,25 @@ export const QRCode: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 flex items-center justify-center">
+        <Loader className="w-8 h-8 text-slate-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!qrData.qrCode) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <p className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-2">QR no disponible</p>
+          <p className="text-sm text-slate-500">Tu código QR aún no está generado. Contacta al administrador del comedor.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">

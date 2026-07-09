@@ -18,6 +18,7 @@ interface ImportResult {
   success: number;
   failed: number;
   errors: Array<{ row: number; error: string }>;
+  created?: Array<{ name: string; email: string; employeeNumber: string; qrCode: string; password: string }>;
 }
 
 export const UserImport: React.FC = () => {
@@ -32,6 +33,22 @@ export const UserImport: React.FC = () => {
   React.useEffect(() => {
     api.get('/admin/branches').then(r => setBranches(r.data)).catch(console.error);
   }, []);
+
+  const downloadResults = () => {
+    if (!result?.created?.length) return;
+    const data = result.created.map(u => ({
+      nombre: u.name,
+      email: u.email,
+      numeroEmpleado: u.employeeNumber,
+      contrasena: u.password,
+      codigoQR: u.qrCode
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Comensales');
+    XLSX.writeFile(wb, `comensales_importados_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const downloadTemplate = () => {
     const data = [
@@ -137,6 +154,15 @@ export const UserImport: React.FC = () => {
                       <p key={i} className="text-xs text-slate-400">Fila {e.row}: {e.error}</p>
                     ))}
                   </div>
+                )}
+                {(result.created?.length ?? 0) > 0 && (
+                  <button
+                    onClick={downloadResults}
+                    className="mt-3 flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Descargar Excel con números de empleado y QR asignados
+                  </button>
                 )}
               </div>
             </div>

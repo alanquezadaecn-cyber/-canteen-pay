@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/useAuthStore';
+import { useAuthStore, Panel } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppNav } from './components/AppNav';
 import { CashierNav } from './components/CashierNav';
@@ -62,40 +62,70 @@ function getRoleHome(role?: string, branchId?: string, email?: string): string {
 }
 
 // ── Guards ───────────────────────────────────────────────────────────────────
+// Cada guard lee SU propia sesión (multi-sesión por panel) y solo renderiza
+// cuando su panel está activo, garantizando que los hijos usen el token correcto.
+
+function usePanelGuard(panel: Panel) {
+  const { sessions, activePanel } = useAuthStore();
+  const session = sessions[panel];
+  React.useEffect(() => {
+    if (session && activePanel !== panel) {
+      useAuthStore.getState().activatePanel(panel);
+    }
+  }, [session, activePanel, panel]);
+  return { session, ready: activePanel === panel };
+}
+
+const PanelSpinner = () => (
+  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-slate-600 border-t-white rounded-full animate-spin" />
+  </div>
+);
 
 const ComensalRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accessToken, user } = useAuthStore();
-  if (!accessToken || user?.role !== 'USER') return <Navigate to="/login" replace />;
+  const { session, ready } = usePanelGuard('user');
+  if (!session) return <Navigate to="/login" replace />;
+  if (!ready) return <PanelSpinner />;
   return <><AppNav />{children}</>;
 };
 
 const VendedorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accessToken, user } = useAuthStore();
-  if (!accessToken || user?.role !== 'CASHIER') return <Navigate to="/login" replace />;
+  const { session, ready } = usePanelGuard('cashier');
+  if (!session) return <Navigate to="/login" replace />;
+  if (!ready) return <PanelSpinner />;
   return <><CashierNav />{children}</>;
 };
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accessToken, user } = useAuthStore();
-  if (!accessToken) return <Navigate to="/login" replace />;
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
-  if (!isAdmin) return <Navigate to="/login" replace />;
+  const { session, ready } = usePanelGuard('admin');
+  if (!session) return <Navigate to="/login" replace />;
+  if (!ready) return <PanelSpinner />;
   return <><AdminNav />{children}</>;
 };
 
 const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accessToken, user } = useAuthStore();
-  if (!accessToken) return <Navigate to="/login" replace />;
-  const isMaster = user?.role === 'MASTER_ADMIN' || user?.email === MASTER_EMAIL;
-  if (!isMaster) return <Navigate to="/login" replace />;
+  const { session, ready } = usePanelGuard('master');
+  if (!session) return <Navigate to="/login" replace />;
+  if (!ready) return <PanelSpinner />;
   return <>{children}</>;
+};
+
+// Redirige la raíz al panel con sesión activa (prioridad: master > admin > cajero > comensal)
+const RootRedirect: React.FC = () => {
+  const { sessions } = useAuthStore();
+  const order: Panel[] = ['master', 'admin', 'cashier', 'user'];
+  const panel = order.find(p => sessions[p]);
+  if (!panel) return <Navigate to="/login" replace />;
+  const u = sessions[panel]!.user;
+  return <Navigate to={getRoleHome(u.role, u.branchId, u.email)} replace />;
 };
 
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  const { accessToken, user, _hasHydrated } = useAuthStore();
-  const roleHome = getRoleHome(user?.role, user?.branchId, user?.email);
+  const { sessions, _hasHydrated } = useAuthStore();
+  // Para /login y /register genéricos: redirigir solo si hay sesión de comensal
+  const comensalHome = sessions.user ? '/dashboard' : null;
 
   if (!_hasHydrated) {
     return (
@@ -114,19 +144,19 @@ function App() {
           <Route path="/impersonate" element={<Impersonate />} />
           <Route
             path="/login/:branchId"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+            element={comensalHome ? <Navigate to={comensalHome} replace /> : <Login />}
           />
           <Route
             path="/login"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Login />}
+            element={<Login />}
           />
           <Route
             path="/register"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Register />}
+            element={comensalHome ? <Navigate to={comensalHome} replace /> : <Register />}
           />
           <Route
             path="/register/:branchId"
-            element={accessToken ? <Navigate to={roleHome} replace /> : <Register />}
+            element={comensalHome ? <Navigate to={comensalHome} replace /> : <Register />}
           />
           <Route
             path="/login/admin/:companySlug"
@@ -173,8 +203,8 @@ function App() {
           <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />
 
           {/* ── DEFAULT ─────────────────────────────────────────────────── */}
-          <Route path="/" element={<Navigate to={accessToken ? roleHome : '/login'} replace />} />
-          <Route path="*" element={<Navigate to={accessToken ? roleHome : '/login'} replace />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="*" element={<RootRedirect />} />
 
         </Routes>
       </Router>

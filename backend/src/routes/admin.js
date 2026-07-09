@@ -387,6 +387,16 @@ router.post('/users/bulk-import', async (req, res) => {
 
     let success = 0;
     const errors = [];
+    const created = [];
+
+    const bcrypt = await import('bcrypt');
+    const { QRService } = await import('../services/qr.service.js');
+
+    // Calcular el siguiente número de empleado UNA vez y avanzar en memoria
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
 
     for (let i = 0; i < users.length; i++) {
       const u = users[i];
@@ -396,34 +406,37 @@ router.post('/users/bulk-import', async (req, res) => {
           continue;
         }
 
-        const existing = await prisma.user.findUnique({ where: { email: u.email.trim() } });
+        const email = u.email.trim().toLowerCase();
+        const existing = await prisma.user.findUnique({ where: { email } });
         if (existing) {
           errors.push({ row: i + 2, error: `Email ya registrado: ${u.email}` });
           continue;
         }
 
-        const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
-        let nextNum = 10001;
-        const maxStr = maxCode._max?.employeeNumber;
-        if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
-
-        const bcrypt = await import('bcrypt');
-        const hashedPassword = await bcrypt.default.hash(u.password || 'MealPay2024!', 10);
-        const { QRService } = await import('../services/qr.service.js');
+        const employeeNumber = u.employeeNumber?.trim() || String(nextNum++);
+        const password = u.password || 'MealPay2024!';
+        const hashedPassword = await bcrypt.default.hash(password, 10);
         const qrCode = QRService.generateUniqueCode();
 
-        await prisma.user.create({
+        const newUser = await prisma.user.create({
           data: {
             name: u.name.trim(),
-            email: u.email.trim().toLowerCase(),
+            email,
             password: hashedPassword,
             phone: u.phone?.trim() || '+52 5555-0000',
             role: 'USER',
-            employeeNumber: u.employeeNumber?.trim() || String(nextNum),
+            employeeNumber,
             qrCode,
             branchId: branchId || null,
             isActive: true
           }
+        });
+        created.push({
+          name: newUser.name,
+          email: newUser.email,
+          employeeNumber: newUser.employeeNumber,
+          qrCode: newUser.qrCode,
+          password
         });
         success++;
       } catch (err) {
@@ -431,7 +444,7 @@ router.post('/users/bulk-import', async (req, res) => {
       }
     }
 
-    res.json({ success, failed: errors.length, errors });
+    res.json({ success, failed: errors.length, errors, created });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error en importación masiva' });
