@@ -156,6 +156,11 @@ export const Login: React.FC = () => {
             </p>
           )}
         </div>
+
+        {/* Marca del software */}
+        <p className="text-center text-xs text-slate-600 mt-6">
+          Desarrollado con <span className="font-semibold text-slate-500">MealPay</span> — pago digital para comedores
+        </p>
       </div>
     </div>
   );

@@ -139,6 +139,9 @@ export const AdminNav: React.FC = () => {
             <LogOut className="w-4 h-4" />
             <span>Cerrar sesión</span>
           </button>
+          <p className="text-center text-[10px] text-slate-600 mt-3 tracking-wide">
+            Powered by <span className="font-semibold text-slate-500">MealPay</span>
+          </p>
         </div>
       </div>
 
