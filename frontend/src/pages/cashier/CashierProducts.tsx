@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, Pencil, Check, X, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
 
@@ -30,10 +30,10 @@ export const CashierProducts: React.FC = () => {
 
   const load = async () => {
     try {
-      const { data } = await api.get(`/products/branch/${branchId}`);
+      const { data } = await api.get('/products/cashier/branch');
       setProducts(data);
     } catch (err) {
-      setError('Error al cargar productos');
+      setError('Error al cargar el menú');
     } finally {
       setLoading(false);
     }
@@ -82,15 +82,20 @@ export const CashierProducts: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este producto?')) return;
+  const toggleAvailability = async (product: Product) => {
     try {
-      await api.delete(`/products/cashier/${id}`);
+      if (product.isActive) {
+        await api.delete(`/products/cashier/${product.id}`);
+      } else {
+        await api.put(`/products/cashier/${product.id}/activate`);
+      }
       await load();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al eliminar');
+      setError(err.response?.data?.error || 'Error al actualizar disponibilidad');
     }
   };
+
+  const availableCount = products.filter(p => p.isActive).length;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0 pb-24 md:pb-0">
@@ -98,12 +103,14 @@ export const CashierProducts: React.FC = () => {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">Productos</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Menú que cobras a los comensales</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">Menú del día</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              {availableCount} disponibles hoy · lo que ven los comensales y lo que cobras en caja
+            </p>
           </div>
           <button
             onClick={() => { setShowNew(true); setError(''); }}
-            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors"
+            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             Agregar
@@ -186,7 +193,14 @@ export const CashierProducts: React.FC = () => {
         ) : (
           <div className="space-y-2">
             {products.map(product => (
-              <div key={product.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+              <div
+                key={product.id}
+                className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 transition-opacity ${
+                  product.isActive
+                    ? 'border-slate-200 dark:border-slate-700'
+                    : 'border-slate-200 dark:border-slate-800 opacity-50'
+                }`}
+              >
                 {editingId === product.id ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
@@ -229,26 +243,41 @@ export const CashierProducts: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-base text-slate-900 dark:text-slate-50">{product.name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-base text-slate-900 dark:text-slate-50 truncate">{product.name}</p>
+                        {!product.isActive && (
+                          <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-500">
+                            No disponible hoy
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{product.category}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xl font-bold text-slate-900 dark:text-slate-50">
                         ${parseFloat(product.price).toFixed(2)}
                       </span>
                       <button
-                        onClick={() => startEdit(product)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition-colors"
+                        onClick={() => toggleAvailability(product)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                          product.isActive
+                            ? 'border-emerald-200 dark:border-emerald-900 hover:bg-emerald-50 dark:hover:bg-emerald-950'
+                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                        title={product.isActive ? 'Quitar del menú de hoy' : 'Poner en el menú de hoy'}
                       >
-                        <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                        {product.isActive
+                          ? <Eye className="w-3.5 h-3.5 text-emerald-500" />
+                          : <EyeOff className="w-3.5 h-3.5 text-slate-400" />}
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                        onClick={() => startEdit(product)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition-colors"
+                        title="Editar"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                       </button>
                     </div>
                   </div>

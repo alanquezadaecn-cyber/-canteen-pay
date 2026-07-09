@@ -35,8 +35,8 @@ app.use(detectSubdomain);
 // Raw body middleware para Stripe webhook (ANTES de express.json())
 app.use('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Servir archivos estáticos del frontend
 const publicPath = join(__dirname, '../public');
@@ -71,10 +71,10 @@ app.get('/api/public/branch/:branchId', async (req, res) => {
     const { prisma } = await import('./lib/prisma.js');
     const branch = await prisma.branch.findUnique({
       where: { id: req.params.branchId },
-      select: { id: true, name: true, location: true }
+      select: { id: true, name: true, location: true, company: { select: { logoUrl: true, name: true } } }
     });
     if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
-    res.json(branch);
+    res.json({ ...branch, logoUrl: branch.company?.logoUrl || null });
   } catch (err) {
     res.status(500).json({ error: 'Error' });
   }
@@ -87,7 +87,7 @@ app.get('/api/public/slug/:companySlug', async (req, res) => {
     const company = await prisma.company.findUnique({
       where: { slug: req.params.companySlug },
       select: {
-        id: true, name: true, slug: true,
+        id: true, name: true, slug: true, logoUrl: true,
         branches: { where: { isActive: true, isBlocked: false }, select: { id: true, name: true, slug: true, location: true } }
       }
     });
@@ -102,10 +102,10 @@ app.get('/api/public/slug/:companySlug/:branchSlug', async (req, res) => {
     const { prisma } = await import('./lib/prisma.js');
     const company = await prisma.company.findUnique({
       where: { slug: req.params.companySlug },
-      select: { id: true, name: true, slug: true, branches: { where: { slug: req.params.branchSlug }, select: { id: true, name: true, slug: true, location: true } } }
+      select: { id: true, name: true, slug: true, logoUrl: true, branches: { where: { slug: req.params.branchSlug }, select: { id: true, name: true, slug: true, location: true } } }
     });
     if (!company || !company.branches[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
-    res.json({ company: { id: company.id, name: company.name, slug: company.slug }, branch: company.branches[0] });
+    res.json({ company: { id: company.id, name: company.name, slug: company.slug, logoUrl: company.logoUrl }, branch: company.branches[0] });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
 });
 
@@ -139,6 +139,7 @@ import cashierSessionRoutes from './routes/cashier-sessions.js';
 import masterAdminRoutes from './routes/master-admin.js';
 import initRoutes from './routes/init.js';
 import inventoryRoutes from './routes/inventory.js';
+import brandingRoutes from './routes/branding.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -154,6 +155,7 @@ app.use('/api/cashier-sessions', cashierSessionRoutes);
 app.use('/api/master-admin', masterAdminRoutes);
 app.use('/api/init', initRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/branding', brandingRoutes);
 
 // SPA Fallback - sirve index.html para cualquier ruta que no sea API
 app.get('*', (req, res) => {

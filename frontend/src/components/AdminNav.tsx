@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, BarChart3, LogOut, Menu, X,
-  BarChart2, Bell, Check, Package
+  BarChart2, Bell, Check, Package, ImagePlus
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useBranding } from '../hooks/useBranding';
 import api from '../lib/api';
 
 interface Alert {
@@ -19,6 +20,7 @@ interface Alert {
 export const AdminNav: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuthStore();
+  const branding = useBranding();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
@@ -29,6 +31,7 @@ export const AdminNav: React.FC = () => {
     { path: '/admin/transactions', label: 'Transacciones',  icon: BarChart3 },
     { path: '/admin/reports',      label: 'Reportes',       icon: BarChart2 },
     { path: '/admin/inventory',    label: 'Inventario',     icon: Package },
+    { path: '/admin/branding',     label: 'Marca',          icon: ImagePlus },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -92,7 +95,8 @@ export const AdminNav: React.FC = () => {
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-slate-900 md:text-white">
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">MealPay</h1>
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-7 h-7 object-contain rounded" />}
+            <h1 className="text-xl font-bold">{branding?.name || 'MealPay'}</h1>
             <span className="px-2 py-0.5 bg-violet-600 text-white text-xs font-bold rounded">Admin</span>
           </div>
           {/* Bell */}
@@ -142,7 +146,8 @@ export const AdminNav: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 bg-slate-900 text-white md:hidden z-40">
         <div className="flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold">MealPay</h1>
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain rounded" />}
+            <h1 className="text-base font-bold">{branding?.name || 'MealPay'}</h1>
             <span className="px-2 py-0.5 bg-violet-600 text-white text-xs font-bold rounded">Admin</span>
           </div>
           <div className="flex items-center gap-2">

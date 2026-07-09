@@ -12,10 +12,12 @@ import {
   UtensilsCrossed
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useBranding } from '../hooks/useBranding';
 
 export const AppNav: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuthStore();
+  const branding = useBranding();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const navItems = [
@@ -38,8 +40,9 @@ export const AppNav: React.FC = () => {
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-slate-900 md:text-white">
-        <div className="flex items-center justify-center h-16 border-b border-slate-800">
-          <h1 className="text-xl font-bold">MealPay</h1>
+        <div className="flex items-center justify-center gap-2 h-16 border-b border-slate-800">
+          {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-7 h-7 object-contain rounded" />}
+          <h1 className="text-xl font-bold">{branding?.name || 'MealPay'}</h1>
         </div>
         <nav className="flex-1 px-4 py-8 space-y-2">
           {navItems.map(({ path, label, icon: Icon }) => (
@@ -71,7 +74,10 @@ export const AppNav: React.FC = () => {
       {/* Mobile Header */}
       <div className="fixed top-0 left-0 right-0 bg-slate-900 text-white md:hidden z-40">
         <div className="flex items-center justify-between h-16 px-4">
-          <h1 className="text-lg font-bold">MealPay</h1>
+          <div className="flex items-center gap-2">
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain rounded" />}
+            <h1 className="text-lg font-bold">{branding?.name || 'MealPay'}</h1>
+          </div>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-2"

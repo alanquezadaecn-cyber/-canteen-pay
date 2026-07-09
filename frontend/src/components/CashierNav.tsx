@@ -12,10 +12,12 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useBranding } from '../hooks/useBranding';
 
 export const CashierNav: React.FC = () => {
   const location = useLocation();
   const { logout, user } = useAuthStore();
+  const branding = useBranding();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const branchId = user?.branchId || '';
 
@@ -23,7 +25,7 @@ export const CashierNav: React.FC = () => {
     { path: `/caja/${branchId}`, label: 'Inicio', icon: Home },
     { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
     { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
-    { path: '/cashier/products', label: 'Productos', icon: ShoppingBag },
+    { path: '/cashier/products', label: 'Menú del día', icon: ShoppingBag },
     { path: '/cashier/history', label: 'Historial', icon: History },
     { path: '/cashier/corte', label: 'Corte', icon: ClipboardList }
   ];
@@ -39,9 +41,10 @@ export const CashierNav: React.FC = () => {
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-slate-900 md:text-white">
-        <div className="flex items-center justify-center h-16 border-b border-slate-800">
-          <h1 className="text-xl font-bold">MealPay</h1>
-          <span className="ml-2 px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded">
+        <div className="flex items-center justify-center gap-2 h-16 border-b border-slate-800">
+          {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-7 h-7 object-contain rounded" />}
+          <h1 className="text-xl font-bold">{branding?.name || 'MealPay'}</h1>
+          <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded">
             Caja
           </span>
         </div>
@@ -76,7 +79,8 @@ export const CashierNav: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 bg-slate-900 text-white md:hidden z-40">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold">MealPay</h1>
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain rounded" />}
+            <h1 className="text-lg font-bold">{branding?.name || 'MealPay'}</h1>
             <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded">
               Caja
             </span>

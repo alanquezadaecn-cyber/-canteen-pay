@@ -25,6 +25,7 @@ export const Login: React.FC = () => {
     companyName?: string;
     branchName?: string;
     branchId?: string;
+    logoUrl?: string | null;
   }>({ type: 'generic' });
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export const Login: React.FC = () => {
     if (branchId && branchId !== 'admin' && branchId.length > 20) {
       fetch(`/api/public/branch/${branchId}`)
         .then(r => r.json())
-        .then(d => setContext({ type: 'branch', branchName: d.name, branchId }))
+        .then(d => setContext({ type: 'branch', branchName: d.name, branchId, logoUrl: d.logoUrl }))
         .catch(() => {});
       return;
     }
@@ -40,7 +41,7 @@ export const Login: React.FC = () => {
     if (branchId === 'admin' && companySlug) {
       fetch(`/api/public/slug/${companySlug}`)
         .then(r => r.json())
-        .then(d => setContext({ type: 'admin', companyName: d.name }))
+        .then(d => setContext({ type: 'admin', companyName: d.name, logoUrl: d.logoUrl }))
         .catch(() => {});
       return;
     }
@@ -48,7 +49,7 @@ export const Login: React.FC = () => {
     if (companySlug && branchSlug) {
       fetch(`/api/public/slug/${companySlug}/${branchSlug}`)
         .then(r => r.json())
-        .then(d => setContext({ type: 'branch', companyName: d.company?.name, branchName: d.branch?.name, branchId: d.branch?.id }))
+        .then(d => setContext({ type: 'branch', companyName: d.company?.name, branchName: d.branch?.name, branchId: d.branch?.id, logoUrl: d.company?.logoUrl }))
         .catch(() => {});
     }
   }, [branchId, companySlug, branchSlug]);
@@ -95,6 +96,9 @@ export const Login: React.FC = () => {
 
         {/* Logo / título */}
         <div className="text-center mb-8">
+          {context.logoUrl && (
+            <img src={context.logoUrl} alt={context.companyName || 'Logo'} className="w-20 h-20 object-contain mx-auto mb-4 rounded-xl bg-white/5 p-2" />
+          )}
           <h1 className="text-3xl font-bold text-white">{title}</h1>
           <p className="text-slate-400 text-sm mt-2">{subtitle}</p>
         </div>

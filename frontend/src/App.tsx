@@ -32,7 +32,6 @@ import { CashierProducts } from './pages/cashier/CashierProducts';
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { BranchDetail } from './pages/admin/BranchDetail';
-import { Products } from './pages/admin/Products';
 import { BranchReports } from './pages/admin/BranchReports';
 import { UsersList } from './pages/admin/UsersList';
 import { UserDetail } from './pages/admin/UserDetail';
@@ -47,6 +46,7 @@ import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard'
 import { Inventory } from './pages/admin/Inventory';
 import { CorteDeCaja } from './pages/cashier/CorteDeCaja';
 import { Menu } from './pages/user/Menu';
+import { Branding } from './pages/admin/Branding';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -190,7 +190,6 @@ function App() {
           {/* ── ADMINISTRADOR ────────────────────────────────────────────── */}
           <Route path="/admin/dashboard"                    element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/branches/:id"                 element={<AdminRoute><BranchDetail /></AdminRoute>} />
-          <Route path="/admin/branches/:branchId/products"  element={<AdminRoute><Products /></AdminRoute>} />
           <Route path="/admin/branches/:branchId/reports"   element={<AdminRoute><BranchReports /></AdminRoute>} />
           <Route path="/admin/users"                        element={<AdminRoute><UsersList /></AdminRoute>} />
           <Route path="/admin/users/:id"                    element={<AdminRoute><UserDetail /></AdminRoute>} />
@@ -198,6 +197,7 @@ function App() {
           <Route path="/admin/reports"                        element={<AdminRoute><AdminReports /></AdminRoute>} />
           <Route path="/admin/branches/:branchId/import"      element={<AdminRoute><UserImport /></AdminRoute>} />
           <Route path="/admin/inventory"                      element={<AdminRoute><Inventory /></AdminRoute>} />
+          <Route path="/admin/branding"                        element={<AdminRoute><Branding /></AdminRoute>} />
 
           {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}
           <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />

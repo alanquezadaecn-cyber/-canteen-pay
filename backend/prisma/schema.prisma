@@ -50,6 +50,7 @@ model Company {
   email           String    @unique
   phone           String?
   industry        String?   // Restaurante, Cafetería, etc.
+  logoUrl         String?   @db.Text // data URL (base64) del logo personalizado
 
   // Plan y Suscripción (one-to-one)
   subscriptionId  String?   @unique

@@ -160,9 +160,6 @@ export const BranchDetail: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => navigate(`/admin/branches/${id}/products`)} size="sm">
-              📦 Menú
-            </Button>
             <Button onClick={() => navigate(`/admin/branches/${id}/reports`)} size="sm" variant="outline">
               📊 Reportes
             </Button>
@@ -184,6 +181,9 @@ export const BranchDetail: React.FC = () => {
                 Nuevo Cajero
               </Button>
             </div>
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
+              El menú del día lo gestiona cada cajero desde su propio panel.
+            </p>
           </CardHeader>
           <CardContent className="pt-6">
             {showNewCashier && (
