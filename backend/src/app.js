@@ -18,7 +18,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://optimistic-tranquility-production-941f.up.railway.app',
+  'https://mealpay.up.railway.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
