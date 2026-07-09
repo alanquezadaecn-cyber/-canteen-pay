@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, BarChart3, LogOut, Menu, X,
-  BarChart2, Bell, Check, Package, ImagePlus
+  BarChart2, Bell, Check, Package
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -31,7 +31,6 @@ export const AdminNav: React.FC = () => {
     { path: '/admin/transactions', label: 'Transacciones',  icon: BarChart3 },
     { path: '/admin/reports',      label: 'Reportes',       icon: BarChart2 },
     { path: '/admin/inventory',    label: 'Inventario',     icon: Package },
-    { path: '/admin/branding',     label: 'Marca',          icon: ImagePlus },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -64,23 +63,23 @@ export const AdminNav: React.FC = () => {
   const unreadCount = alerts.filter(a => !a.isRead).length;
 
   const AlertPanel = () => (
-    <div className="absolute right-0 top-10 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-        <span className="text-sm font-semibold text-white">Alertas ({unreadCount})</span>
+    <div className="absolute right-0 top-10 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+        <span className="text-sm font-semibold text-slate-900 dark:text-white">Alertas ({unreadCount})</span>
         {unreadCount > 0 && (
-          <button onClick={markAllRead} className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 cursor-pointer">
+          <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1 cursor-pointer">
             <Check className="w-3 h-3" /> Marcar todas
           </button>
         )}
       </div>
-      <div className="max-h-72 overflow-y-auto divide-y divide-slate-700">
+      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
         {alerts.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-6">Sin alertas</p>
+          <p className="text-sm text-slate-400 text-center py-6">Sin alertas</p>
         ) : alerts.map(a => (
           <div key={a.id} className="px-4 py-3">
-            <p className="text-xs font-semibold text-violet-400">{a.user?.name || 'Usuario'}</p>
-            <p className="text-xs text-slate-300 mt-0.5">{a.message}</p>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs font-semibold text-emerald-600">{a.user?.name || 'Usuario'}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{a.message}</p>
+            <p className="text-xs text-slate-400 mt-1">
               {new Date(a.createdAt).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
             </p>
           </div>
@@ -91,19 +90,19 @@ export const AdminNav: React.FC = () => {
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-slate-900 md:text-white">
-        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-7 h-7 object-contain rounded" />}
-            <h1 className="text-xl font-bold">{branding?.name || 'MealPay'}</h1>
-            <span className="px-2 py-0.5 bg-violet-600 text-white text-xs font-bold rounded">Admin</span>
+      {/* Desktop Sidebar — claro */}
+      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-white md:dark:bg-slate-900 md:border-r md:border-slate-100 md:dark:border-slate-800 z-40">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 min-w-0">
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-7 h-7 object-contain rounded flex-shrink-0" />}
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">{branding?.name || 'MealPay'}</h1>
+            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full flex-shrink-0">Admin</span>
           </div>
           {/* Bell */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setShowAlerts(!showAlerts)}
-              className="relative p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="relative p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -120,10 +119,10 @@ export const AdminNav: React.FC = () => {
             <Link
               key={path}
               to={path}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm ${
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-colors text-sm font-medium ${
                 isActive(path)
-                  ? 'bg-violet-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -131,31 +130,31 @@ export const AdminNav: React.FC = () => {
             </Link>
           ))}
         </nav>
-        <div className="border-t border-slate-800 p-4">
+        <div className="border-t border-slate-100 dark:border-slate-800 p-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors text-sm cursor-pointer"
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors text-sm font-medium cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Cerrar sesión</span>
           </button>
-          <p className="text-center text-[10px] text-slate-600 mt-3 tracking-wide">
+          <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-3 tracking-wide">
             Powered by <span className="font-semibold text-slate-500">MealPay</span>
           </p>
         </div>
       </div>
 
-      {/* Mobile Header */}
-      <div className="fixed top-0 left-0 right-0 bg-slate-900 text-white md:hidden z-40">
+      {/* Mobile Header — verde marca */}
+      <div className="fixed top-0 left-0 right-0 bg-emerald-600 text-white md:hidden z-40">
         <div className="flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
-            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain rounded" />}
-            <h1 className="text-base font-bold">{branding?.name || 'MealPay'}</h1>
-            <span className="px-2 py-0.5 bg-violet-600 text-white text-xs font-bold rounded">Admin</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-6 h-6 object-contain rounded bg-white/20 p-0.5 flex-shrink-0" />}
+            <h1 className="text-base font-bold truncate">{branding?.name || 'MealPay'}</h1>
+            <span className="px-2 py-0.5 bg-white/25 text-white text-[10px] font-bold rounded-full flex-shrink-0">Admin</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="relative">
-              <button onClick={() => setShowAlerts(!showAlerts)} className="relative p-1.5 text-slate-400 cursor-pointer">
+              <button onClick={() => setShowAlerts(!showAlerts)} className="relative p-1.5 text-emerald-100 cursor-pointer">
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
@@ -174,15 +173,17 @@ export const AdminNav: React.FC = () => {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="fixed top-14 left-0 right-0 bg-slate-900 text-white md:hidden z-30 border-b border-slate-800">
+        <div className="fixed top-14 left-0 right-0 bg-white dark:bg-slate-900 md:hidden z-30 border-b border-slate-100 dark:border-slate-800 shadow-lg">
           <nav className="p-3 space-y-1">
             {navItems.map(({ path, label, icon: Icon }) => (
               <Link
                 key={path}
                 to={path}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm ${
-                  isActive(path) ? 'bg-violet-600 text-white' : 'text-slate-400 hover:bg-slate-800'
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-colors text-sm font-medium ${
+                  isActive(path)
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -191,7 +192,7 @@ export const AdminNav: React.FC = () => {
             ))}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-slate-400 hover:bg-slate-800 rounded-lg transition-colors text-sm mt-1 cursor-pointer"
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors text-sm font-medium mt-1 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>Cerrar sesión</span>
@@ -200,19 +201,19 @@ export const AdminNav: React.FC = () => {
         </div>
       )}
 
-      {/* Mobile Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 md:hidden z-30">
-        <div className="flex justify-around">
+      {/* Mobile Bottom Nav — barra flotante redondeada */}
+      <div className="fixed bottom-3 left-3 right-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-[1.75rem] shadow-xl shadow-slate-900/10 border border-slate-100 dark:border-slate-800 md:hidden z-30">
+        <div className="flex justify-around px-1">
           {navItems.map(({ path, label, icon: Icon }) => (
             <Link
               key={path}
               to={path}
-              className={`flex-1 flex flex-col items-center justify-center py-2 text-xs gap-0.5 ${
-                isActive(path) ? 'text-violet-400' : 'text-slate-500'
+              className={`flex-1 flex flex-col items-center justify-center pt-2.5 pb-2 gap-0.5 transition-colors ${
+                isActive(path) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px]">{label}</span>
+              <Icon className="w-5 h-5" strokeWidth={isActive(path) ? 2.2 : 1.8} />
+              <span className={`text-[10px] ${isActive(path) ? 'font-bold' : 'font-medium'}`}>{label}</span>
             </Link>
           ))}
         </div>
