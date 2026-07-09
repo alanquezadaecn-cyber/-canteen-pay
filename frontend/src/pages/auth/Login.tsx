@@ -91,22 +91,26 @@ export const Login: React.FC = () => {
     'Sistema de pago digital para comedores';
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-600 via-emerald-500 to-emerald-400 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* brillos decorativos */}
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-20 w-72 h-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-sm relative">
 
         {/* Logo / título */}
         <div className="text-center mb-8">
           {context.logoUrl && (
-            <img src={context.logoUrl} alt={context.companyName || 'Logo'} className="w-20 h-20 object-contain mx-auto mb-4 rounded-xl bg-white/5 p-2" />
+            <img src={context.logoUrl} alt={context.companyName || 'Logo'} className="w-20 h-20 object-contain mx-auto mb-4 rounded-2xl bg-white p-2 shadow-lg" />
           )}
           <h1 className="text-3xl font-bold text-white">{title}</h1>
-          <p className="text-slate-400 text-sm mt-2">{subtitle}</p>
+          <p className="text-emerald-100 text-sm mt-2">{subtitle}</p>
         </div>
 
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-4">
+        <div className="bg-white rounded-3xl shadow-2xl shadow-emerald-900/20 p-6 space-y-4">
 
           {error && (
-            <div className="p-3 bg-red-950 border border-red-800 text-red-300 rounded-xl flex items-center gap-2 text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl flex items-center gap-2 text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -114,42 +118,42 @@ export const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Email</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="tu@email.com"
                 required
-                className="w-full h-11 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-slate-500 transition-colors"
+                className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Contraseña</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Contraseña</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full h-11 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-slate-500 transition-colors"
+                className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-colors disabled:opacity-40 mt-2"
+              className="w-full h-13 py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors disabled:opacity-40 mt-2 shadow-lg shadow-emerald-600/30 cursor-pointer"
             >
               {loading ? 'Entrando...' : 'Iniciar sesión'}
             </button>
           </form>
 
           {context.type === 'branch' && (
-            <p className="text-center text-xs text-slate-500 pt-1">
+            <p className="text-center text-xs text-slate-400 pt-1">
               ¿Sin cuenta?{' '}
               <Link
                 to={context.branchId ? `/register/${context.branchId}` : '/register'}
-                className="text-slate-300 hover:text-white font-semibold"
+                className="text-emerald-600 hover:text-emerald-500 font-semibold"
               >
                 Regístrate aquí
               </Link>
@@ -158,8 +162,8 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Marca del software */}
-        <p className="text-center text-xs text-slate-600 mt-6">
-          Desarrollado con <span className="font-semibold text-slate-500">MealPay</span> — pago digital para comedores
+        <p className="text-center text-xs text-emerald-100/80 mt-6">
+          Desarrollado con <span className="font-semibold text-white">MealPay</span> — pago digital para comedores
         </p>
       </div>
     </div>

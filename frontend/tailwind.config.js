@@ -8,23 +8,55 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand colors (refined for premium)
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          600: '#0284c7',
-          900: '#0F172A'
+        // ── MARCA MEALPAY: wallet consumer, verde vibrante ──
+        // violet remapeado a verde: todos los acentos violeta de la app se repintan solos
+        violet: {
+          50:  '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+          950: '#022c22'
         },
-        // User panel - Emerald (premium shade)
+        purple: {
+          50:  '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+          950: '#022c22'
+        },
+        primary: {
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          500: '#10b981',
+          600: '#059669',
+          900: '#064e3b'
+        },
+        // Azul brillante para CTA principal (botón Recargar)
+        cta: {
+          400: '#38BDF8',
+          500: '#0EA5E9',
+          600: '#0284C7'
+        },
         user: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#10B981',
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          500: '#10b981',
           600: '#059669',
           700: '#047857',
           900: '#064e3b'
         },
-        // Cashier panel - Amber (warm)
         cashier: {
           50: '#fffbeb',
           100: '#fef3c7',
@@ -33,25 +65,24 @@ export default {
           700: '#B45309',
           900: '#78350f'
         },
-        // Admin panel - Violet (sophisticated)
         admin: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          500: '#8B5CF6',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          900: '#4c1d95'
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          900: '#064e3b'
         },
-        // Supporting colors
         status: {
-          success: '#14B8A6',
-          warning: '#EA580C',
+          success: '#10B981',
+          warning: '#F59E0B',
           error: '#DC2626',
-          info: '#3B82F6'
+          info: '#0EA5E9'
         }
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Poppins', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace']
       },
       fontSize: {

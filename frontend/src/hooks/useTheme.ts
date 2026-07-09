@@ -50,7 +50,8 @@ export const useTheme = () => {
   // Inicializar tema al montar
   useEffect(() => {
     const savedMode = localStorage.getItem('theme-mode') as ThemeMode | null;
-    const initialMode: ThemeMode = savedMode || 'system';
+    // Light por defecto: la identidad wallet de MealPay es clara
+    const initialMode: ThemeMode = savedMode || 'light';
     const isDark = getEffectiveTheme(initialMode);
 
     setTheme({ mode: initialMode, isDark });

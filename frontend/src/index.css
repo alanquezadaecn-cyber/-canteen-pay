@@ -19,11 +19,21 @@ html {
 body {
   @apply bg-slate-50 text-slate-900 transition-colors duration-300;
   font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', sans-serif;
+  font-feature-settings: 'tnum' 1; /* cifras tabulares: los montos alinean como caja registradora */
 }
 
 /* Dark mode */
 :is(html.dark) body {
   @apply bg-slate-950 text-slate-50;
+}
+
+/* ============================================
+   TIPOGRAFÍA DE MARCA — títulos Poppins
+   ============================================ */
+
+h1, h2, h3 {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  letter-spacing: -0.01em;
 }
 
 /* ============================================
