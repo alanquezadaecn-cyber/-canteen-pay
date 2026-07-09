@@ -85,7 +85,7 @@ app.get('/api/public/slug/:companySlug', async (req, res) => {
   try {
     const { prisma } = await import('./lib/prisma.js');
     const company = await prisma.company.findUnique({
-      where: { slug: req.params.companySlug },
+      where: { slug: req.params.companySlug.toLowerCase() },
       select: {
         id: true, name: true, slug: true, logoUrl: true,
         branches: { where: { isActive: true, isBlocked: false }, select: { id: true, name: true, slug: true, location: true } }
@@ -101,8 +101,8 @@ app.get('/api/public/slug/:companySlug/:branchSlug', async (req, res) => {
   try {
     const { prisma } = await import('./lib/prisma.js');
     const company = await prisma.company.findUnique({
-      where: { slug: req.params.companySlug },
-      select: { id: true, name: true, slug: true, logoUrl: true, branches: { where: { slug: req.params.branchSlug }, select: { id: true, name: true, slug: true, location: true } } }
+      where: { slug: req.params.companySlug.toLowerCase() },
+      select: { id: true, name: true, slug: true, logoUrl: true, branches: { where: { slug: req.params.branchSlug.toLowerCase() }, select: { id: true, name: true, slug: true, location: true } } }
     });
     if (!company || !company.branches[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
     res.json({ company: { id: company.id, name: company.name, slug: company.slug, logoUrl: company.logoUrl }, branch: company.branches[0] });

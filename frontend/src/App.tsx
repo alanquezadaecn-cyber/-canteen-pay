@@ -180,6 +180,8 @@ function App() {
           <Route path="/menu"            element={<ComensalRoute><Menu /></ComensalRoute>} />
 
           {/* ── VENDEDOR ────────────────────────────────────────────────── */}
+          <Route path="/cashier"           element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
+          <Route path="/cashier/:companySlug/:branchSlug" element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
           <Route path="/caja/:branchId"    element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
           <Route path="/cashier/scan"      element={<VendedorRoute><QRScanner /></VendedorRoute>} />
           <Route path="/cashier/recharge"  element={<VendedorRoute><CashRecharge /></VendedorRoute>} />

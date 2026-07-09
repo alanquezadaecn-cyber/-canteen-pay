@@ -16,10 +16,8 @@ export const CashierNav: React.FC = () => {
   const location = useLocation();
   const { logout, user } = useAuthStore();
   const branding = useBranding();
-  const branchId = user?.branchId || '';
-
   const navItems = [
-    { path: `/caja/${branchId}`, label: 'Inicio', icon: Home },
+    { path: '/cashier', label: 'Inicio', icon: Home },
     { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
     { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
     { path: '/cashier/products', label: 'Menú', icon: ShoppingBag },
@@ -27,7 +25,15 @@ export const CashierNav: React.FC = () => {
     { path: '/cashier/corte', label: 'Corte', icon: ClipboardList }
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/cashier') {
+      // Inicio activo en /cashier, /caja/:id y /cashier/:empresa/:sucursal
+      return location.pathname === '/cashier'
+        || location.pathname.startsWith('/caja/')
+        || /^\/cashier\/[^/]+\/[^/]+$/.test(location.pathname);
+    }
+    return location.pathname === path;
+  };
 
   const handleLogout = () => {
     logout();

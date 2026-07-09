@@ -818,6 +818,11 @@ export const MasterAdminDashboard: React.FC = () => {
             url: `${APP_URL}/login/${slug}/${b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
           }))),
           ...((urlsModal.branches || []).map((b: any) => ({
+            label: `Panel de caja — ${b.name}`,
+            desc: 'Acceso directo a la caja de la sucursal',
+            url: `${APP_URL}/cashier/${slug}/${b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+          }))),
+          ...((urlsModal.branches || []).map((b: any) => ({
             label: `Registro comensales — ${b.name}`,
             desc: 'Link para que los comensales se registren',
             url: `${APP_URL}/register/${b.id}`

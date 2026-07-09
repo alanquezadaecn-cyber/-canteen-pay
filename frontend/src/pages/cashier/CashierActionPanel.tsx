@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { AlertCircle, ShoppingCart, Plus, Search } from 'lucide-react';
 import api from '../../lib/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface User {
   id: string;
@@ -23,9 +24,28 @@ interface Product {
 }
 
 export const CashierActionPanel: React.FC = () => {
-  const { branchId } = useParams<{ branchId: string }>();
+  const { branchId: paramBranchId, companySlug, branchSlug } = useParams<{
+    branchId?: string;
+    companySlug?: string;
+    branchSlug?: string;
+  }>();
+  const { user: cashierSession } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Resolver sucursal: /caja/:branchId (legacy), /cashier/:empresa/:sucursal (slugs), o /cashier (sesión)
+  const [branchId, setBranchId] = useState<string | undefined>(
+    paramBranchId || (companySlug ? undefined : cashierSession?.branchId)
+  );
+
+  useEffect(() => {
+    if (companySlug && branchSlug) {
+      fetch(`/api/public/slug/${companySlug.toLowerCase()}/${branchSlug.toLowerCase()}`)
+        .then(r => r.json())
+        .then(d => { if (d.branch?.id) setBranchId(d.branch.id); })
+        .catch(() => {});
+    }
+  }, [companySlug, branchSlug]);
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [mode, setMode] = useState<'select' | 'charge' | 'recharge'>('select');
@@ -97,7 +117,7 @@ export const CashierActionPanel: React.FC = () => {
       setMode('select');
       setTimeout(() => {
         setSuccess('');
-        navigate(`/caja/${branchId}`);
+        setUser(null);
       }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar cobro');
@@ -125,7 +145,7 @@ export const CashierActionPanel: React.FC = () => {
       setMode('select');
       setTimeout(() => {
         setSuccess('');
-        navigate(`/caja/${branchId}`);
+        setUser(null);
       }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar recarga');

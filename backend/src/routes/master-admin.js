@@ -245,7 +245,7 @@ router.post('/companies/create', async (req, res) => {
           email: cashierUser.email,
           password: cashierPass,
           url: `${APP_URL}/login/${company.slug}/${branchSlug}`,
-          branchUrl: `${APP_URL}/caja/${branch.id}`
+          branchUrl: `${APP_URL}/cashier/${company.slug}/${branchSlug}`
         }
       },
       urls: {
