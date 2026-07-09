@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { ArrowLeft, Plus, Trash2, Users, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users, Zap, Upload } from 'lucide-react';
 
 interface Branch {
   id: string;
@@ -281,10 +281,16 @@ export const BranchDetail: React.FC = () => {
                   <CardTitle>Comensales ({branch.users.length})</CardTitle>
                 </div>
               </div>
-              <Button onClick={() => setShowNewUser(!showNewUser)} size="sm" className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Nuevo Usuario
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => navigate(`/admin/branches/${id}/import`)} size="sm" variant="outline" className="flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Importar Excel
+                </Button>
+                <Button onClick={() => setShowNewUser(!showNewUser)} size="sm" className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nuevo Usuario
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pt-6">

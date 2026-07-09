@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import {
   Upload, CheckCircle, AlertCircle, Download,
-  FileCheck, Loader, Users, FileSpreadsheet
+  FileCheck, Loader, Users, FileSpreadsheet, ArrowLeft
 } from 'lucide-react';
 
 interface ImportRow {
@@ -22,17 +23,19 @@ interface ImportResult {
 }
 
 export const UserImport: React.FC = () => {
+  const { branchId } = useParams<{ branchId: string }>();
+  const navigate = useNavigate();
+  const [branchName, setBranchName] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [branch, setBranch] = useState('');
   const [parsed, setParsed] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
-  const [branches, setBranches] = useState<any[]>([]);
 
   React.useEffect(() => {
-    api.get('/admin/branches').then(r => setBranches(r.data)).catch(console.error);
-  }, []);
+    if (!branchId) return;
+    api.get(`/branches/${branchId}`).then(r => setBranchName(r.data.name)).catch(console.error);
+  }, [branchId]);
 
   const downloadResults = () => {
     if (!result?.created?.length) return;
@@ -98,12 +101,12 @@ export const UserImport: React.FC = () => {
     setResult(null);
 
     if (!parsed.length) { setError('Selecciona un archivo primero'); return; }
-    if (!branch)         { setError('Selecciona una sucursal'); return; }
+    if (!branchId)       { setError('Sucursal no especificada'); return; }
 
     setImporting(true);
     try {
       const { data } = await api.post('/admin/users/bulk-import', {
-        branchId: branch,
+        branchId,
         users: parsed,
       });
       setResult(data);
@@ -116,19 +119,25 @@ export const UserImport: React.FC = () => {
     }
   };
 
-  const inputCls = 'w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500';
-
   return (
     <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
+        <button
+          onClick={() => navigate(`/admin/branches/${branchId}`)}
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 mb-3 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Volver a la sucursal
+        </button>
         <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
             <Upload className="w-4 h-4 text-violet-400" />
           </div>
-          <h1 className="text-xl font-semibold text-white">Importar Usuarios</h1>
+          <h1 className="text-xl font-semibold text-white">Importar Comensales</h1>
         </div>
-        <p className="text-sm text-slate-400 ml-11">Carga múltiples comensales desde Excel (.xlsx)</p>
+        <p className="text-sm text-slate-400 ml-11">
+          Sucursal: <span className="text-violet-400 font-medium">{branchName || '...'}</span>
+        </p>
       </div>
 
       <div className="p-6 max-w-2xl space-y-5">
@@ -185,7 +194,7 @@ export const UserImport: React.FC = () => {
               <p className="text-sm font-semibold text-white mb-1">Formato requerido</p>
               <p className="text-xs text-slate-400 mb-3">
                 Columnas: <code className="text-violet-400">name, email, phone, employeeNumber, password</code>
-                <br/>La contraseña es opcional (default: MealPay2024!)
+                <br/>El número de empleado y la contraseña son opcionales (se generan automáticamente)
               </p>
               <button
                 onClick={downloadTemplate}
@@ -201,17 +210,6 @@ export const UserImport: React.FC = () => {
         {/* Formulario */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <form onSubmit={handleImport} className="space-y-4">
-            {/* Sucursal */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Sucursal destino *
-              </label>
-              <select value={branch} onChange={e => setBranch(e.target.value)} className={inputCls}>
-                <option value="">Selecciona una sucursal</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-
             {/* Upload */}
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
@@ -259,7 +257,7 @@ export const UserImport: React.FC = () => {
 
             <button
               type="submit"
-              disabled={importing || !file || !branch || parsed.length === 0}
+              disabled={importing || !file || parsed.length === 0}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
             >
               {importing ? (

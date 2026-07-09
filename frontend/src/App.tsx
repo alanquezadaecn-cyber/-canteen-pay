@@ -196,7 +196,7 @@ function App() {
           <Route path="/admin/users/:id"                    element={<AdminRoute><UserDetail /></AdminRoute>} />
           <Route path="/admin/transactions"                 element={<AdminRoute><TransactionsList /></AdminRoute>} />
           <Route path="/admin/reports"                        element={<AdminRoute><AdminReports /></AdminRoute>} />
-          <Route path="/admin/import"                         element={<AdminRoute><UserImport /></AdminRoute>} />
+          <Route path="/admin/branches/:branchId/import"      element={<AdminRoute><UserImport /></AdminRoute>} />
           <Route path="/admin/inventory"                      element={<AdminRoute><Inventory /></AdminRoute>} />
 
           {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}

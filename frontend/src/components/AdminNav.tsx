@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, BarChart3, LogOut, Menu, X,
-  BarChart2, Upload, Bell, Check, Package
+  BarChart2, Bell, Check, Package
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import api from '../lib/api';
@@ -29,7 +29,6 @@ export const AdminNav: React.FC = () => {
     { path: '/admin/transactions', label: 'Transacciones',  icon: BarChart3 },
     { path: '/admin/reports',      label: 'Reportes',       icon: BarChart2 },
     { path: '/admin/inventory',    label: 'Inventario',     icon: Package },
-    { path: '/admin/import',       label: 'Importar',       icon: Upload },
   ];
 
   const isActive = (path: string) => location.pathname === path;
