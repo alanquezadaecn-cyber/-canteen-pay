@@ -22,7 +22,7 @@ function getTransporter() {
 }
 
 const FROM = process.env.EMAIL_FROM || 'MealPay <noreply@mealpay.mx>';
-const APP_URL = process.env.FRONTEND_URL || 'https://mealpay.up.railway.app';
+const APP_URL = process.env.FRONTEND_URL || 'https://cashfood.online';
 
 async function send(to, subject, html) {
   const t = getTransporter();

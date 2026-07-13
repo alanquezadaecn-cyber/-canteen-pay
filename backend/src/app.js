@@ -19,11 +19,19 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
   'https://mealpay.up.railway.app',
+  'https://cashfood.online',
+  'https://www.cashfood.online',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Permitir requests sin origin (apps móviles, curl) y los orígenes en la lista
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    // Permitir cualquier subdominio de cashfood.online y dominios railway
+    if (/\.cashfood\.online$/.test(origin) || /\.up\.railway\.app$/.test(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

@@ -227,7 +227,7 @@ router.post('/companies/create', async (req, res) => {
       prisma.product.create({ data: { ...p, branchId: branch.id } })
     ));
 
-    const APP_URL = process.env.FRONTEND_URL || 'https://mealpay.up.railway.app';
+    const APP_URL = process.env.FRONTEND_URL || 'https://cashfood.online';
 
     res.status(201).json({
       success: true,
