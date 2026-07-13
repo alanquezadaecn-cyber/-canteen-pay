@@ -806,21 +806,22 @@ export const MasterAdminDashboard: React.FC = () => {
       {/* Modal URLs de acceso */}
       {urlsModal && (() => {
         const slug = (urlsModal as any).slug || urlsModal.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const branchSlugOf = (b: any) => b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const links = [
           {
             label: 'Admin',
             desc: 'Panel de administración de la empresa',
-            url: `${APP_URL}/login/admin/${slug}`
+            url: `${APP_URL}/${slug}/admin`
           },
           ...((urlsModal.branches || []).map((b: any) => ({
-            label: `Cajero / Comensal — ${b.name}`,
-            desc: b.location || 'Sucursal',
-            url: `${APP_URL}/login/${slug}/${b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+            label: `Caja — ${b.name}`,
+            desc: 'Panel de caja de la sucursal',
+            url: `${APP_URL}/${slug}/${branchSlugOf(b)}/caja`
           }))),
           ...((urlsModal.branches || []).map((b: any) => ({
-            label: `Panel de caja — ${b.name}`,
-            desc: 'Acceso directo a la caja de la sucursal',
-            url: `${APP_URL}/cashier/${slug}/${b.slug || b.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+            label: `Comensales — ${b.name}`,
+            desc: 'App del comensal (saldo, QR, menú)',
+            url: `${APP_URL}/${slug}/${branchSlugOf(b)}/user`
           }))),
           ...((urlsModal.branches || []).map((b: any) => ({
             label: `Registro comensales — ${b.name}`,

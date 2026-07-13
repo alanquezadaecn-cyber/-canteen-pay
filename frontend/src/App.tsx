@@ -120,6 +120,27 @@ const RootRedirect: React.FC = () => {
   return <Navigate to={getRoleHome(u.role, u.branchId, u.email)} replace />;
 };
 
+// ── URLs jerárquicas por empresa ─────────────────────────────────────────────
+// /:empresa/admin → panel admin | /:empresa/:sucursal/caja → caja | /:empresa/:sucursal/user → comensal
+
+const CompanyAdminRoute: React.FC = () => {
+  const { sessions } = useAuthStore();
+  if (!sessions.admin) return <Login mode="admin" />;
+  return <Navigate to="/admin/dashboard" replace />;
+};
+
+const BranchCajaRoute: React.FC = () => {
+  const { sessions } = useAuthStore();
+  if (!sessions.cashier) return <Login mode="branch" />;
+  return <VendedorRoute><CashierActionPanel /></VendedorRoute>;
+};
+
+const BranchUserRoute: React.FC = () => {
+  const { sessions } = useAuthStore();
+  if (!sessions.user) return <Login mode="branch" />;
+  return <ComensalRoute><Dashboard /></ComensalRoute>;
+};
+
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -203,6 +224,12 @@ function App() {
 
           {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}
           <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />
+
+          {/* ── URLS POR EMPRESA: /:empresa/admin · /:empresa/:sucursal/caja · /:empresa/:sucursal/user ── */}
+          <Route path="/:companySlug/admin" element={<CompanyAdminRoute />} />
+          <Route path="/:companySlug/:branchSlug/caja" element={<BranchCajaRoute />} />
+          <Route path="/:companySlug/:branchSlug/user" element={<BranchUserRoute />} />
+          <Route path="/:companySlug/:branchSlug" element={<Login mode="branch" />} />
 
           {/* ── DEFAULT ─────────────────────────────────────────────────── */}
           <Route path="/" element={<RootRedirect />} />

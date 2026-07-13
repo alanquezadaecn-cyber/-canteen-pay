@@ -238,19 +238,20 @@ router.post('/companies/create', async (req, res) => {
           role: 'Administrador',
           email: adminUser.email,
           password: adminPass,
-          url: `${APP_URL}/login/admin/${company.slug}`
+          url: `${APP_URL}/${company.slug}/admin`
         },
         cashier: {
           role: 'Cajero',
           email: cashierUser.email,
           password: cashierPass,
-          url: `${APP_URL}/login/${company.slug}/${branchSlug}`,
-          branchUrl: `${APP_URL}/cashier/${company.slug}/${branchSlug}`
+          url: `${APP_URL}/${company.slug}/${branchSlug}`,
+          branchUrl: `${APP_URL}/${company.slug}/${branchSlug}/caja`
         }
       },
       urls: {
-        adminLogin: `${APP_URL}/login/admin/${company.slug}`,
-        cashierLogin: `${APP_URL}/login/${company.slug}/${branchSlug}`,
+        adminLogin: `${APP_URL}/${company.slug}/admin`,
+        cashierPanel: `${APP_URL}/${company.slug}/${branchSlug}/caja`,
+        comensalPanel: `${APP_URL}/${company.slug}/${branchSlug}/user`,
         comensalRegister: `${APP_URL}/register/${branch.id}`
       },
       defaultProducts: defaultProducts.map(p => p.name)

@@ -4,15 +4,22 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { AlertCircle } from 'lucide-react';
 import api from '../../lib/api';
 
-export const Login: React.FC = () => {
+interface LoginProps {
+  mode?: 'admin' | 'branch';
+}
+
+export const Login: React.FC<LoginProps> = ({ mode }) => {
   const navigate = useNavigate();
-  // Soporta: /login, /login/:branchId, /login/admin/:companySlug, /login/:companySlug/:branchSlug
+  // Soporta: /login, /login/:branchId, /login/admin/:companySlug, /login/:companySlug/:branchSlug,
+  // /:companySlug/admin (mode='admin'), /:companySlug/:branchSlug (mode='branch')
   const { branchId, companySlug, branchSlug } = useParams<{
     branchId?: string;
     companySlug?: string;
     branchSlug?: string;
   }>();
   const { setAuth } = useAuthStore();
+
+  const isAdminLogin = mode === 'admin' || (branchId === 'admin' && !!companySlug) || window.location.pathname.startsWith('/login/admin/');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,22 +44,22 @@ export const Login: React.FC = () => {
         .catch(() => {});
       return;
     }
-    // /login/admin/:companySlug
-    if (branchId === 'admin' && companySlug) {
-      fetch(`/api/public/slug/${companySlug}`)
+    // Login de admin de empresa
+    if (isAdminLogin && companySlug) {
+      fetch(`/api/public/slug/${companySlug.toLowerCase()}`)
         .then(r => r.json())
         .then(d => setContext({ type: 'admin', companyName: d.name, logoUrl: d.logoUrl }))
         .catch(() => {});
       return;
     }
-    // /login/:companySlug/:branchSlug
+    // Login de sucursal (cajero/comensal)
     if (companySlug && branchSlug) {
-      fetch(`/api/public/slug/${companySlug}/${branchSlug}`)
+      fetch(`/api/public/slug/${companySlug.toLowerCase()}/${branchSlug.toLowerCase()}`)
         .then(r => r.json())
         .then(d => setContext({ type: 'branch', companyName: d.company?.name, branchName: d.branch?.name, branchId: d.branch?.id, logoUrl: d.company?.logoUrl }))
         .catch(() => {});
     }
-  }, [branchId, companySlug, branchSlug]);
+  }, [branchId, companySlug, branchSlug, isAdminLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,11 +74,13 @@ export const Login: React.FC = () => {
       });
       setAuth(data.user, data.accessToken, data.refreshToken);
       const role = data.user.role;
+      // URLs jerárquicas: empresa/admin · empresa/sucursal/caja · empresa/sucursal/user
+      const slugs = companySlug && branchSlug ? { c: companySlug.toLowerCase(), b: branchSlug.toLowerCase() } : null;
       navigate(
         role === 'MASTER_ADMIN' ? '/master-admin' :
         role === 'ADMIN'        ? '/admin/dashboard' :
-        role === 'CASHIER'      ? `/caja/${data.user.branchId}` :
-        '/dashboard'
+        role === 'CASHIER'      ? (slugs ? `/${slugs.c}/${slugs.b}/caja` : `/caja/${data.user.branchId}`) :
+        (slugs ? `/${slugs.c}/${slugs.b}/user` : '/dashboard')
       );
     } catch (err: any) {
       setError(err.response?.data?.error || 'Credenciales incorrectas');
