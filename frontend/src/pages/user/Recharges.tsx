@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/Button';
 import api from '../../lib/api';
 import { Plus, TrendingUp, CreditCard, Wallet, DollarSign } from 'lucide-react';
+import { usePanelBase } from '../../hooks/usePanelBase';
 
 interface Recharge {
   id: string;
@@ -15,6 +16,7 @@ interface Recharge {
 
 export const Recharges: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [recharges, setRecharges] = useState<Recharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -141,7 +143,7 @@ export const Recharges: React.FC = () => {
             </p>
           </div>
           <Button
-            onClick={() => navigate('/recharge/new')}
+            onClick={() => navigate(`${base}/recharge/new`)}
             variant="primary"
             className="flex items-center gap-2"
           >
@@ -283,7 +285,7 @@ export const Recharges: React.FC = () => {
               <p className="text-slate-600 dark:text-slate-400 mb-6">
                 Recarga tu saldo para comenzar a usar MealPay
               </p>
-              <Button variant="primary" onClick={() => navigate('/recharge/new')}>
+              <Button variant="primary" onClick={() => navigate(`${base}/recharge/new`)}>
                 Realizar Primera Recarga
               </Button>
             </CardContent>

@@ -83,7 +83,12 @@ router.post('/register', async (req, res) => {
         email: user.email,
         role: user.role,
         companyId: branch.companyId,
-        branchId: branch.id
+        branchId: branch.id,
+        companySlug: branch.company?.slug || null,
+        branchSlug: branch.slug || null,
+        qrCode: user.qrCode,
+        employeeNumber: user.employeeNumber,
+        balance: '0'
       },
       accessToken,
       refreshToken
@@ -148,6 +153,8 @@ router.post('/login', async (req, res) => {
           balance: (user.balance || 0).toString(),
           companyId,
           branchId: user.branchId,
+          companySlug: user.branch?.company?.slug || null,
+          branchSlug: user.branch?.slug || null,
           qrCode: user.qrCode,
           employeeNumber: user.employeeNumber,
           phone: user.phone

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
+import { usePanelBase } from '../hooks/usePanelBase';
 import api from '../lib/api';
 
 interface Alert {
@@ -21,19 +22,20 @@ export const AdminNav: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuthStore();
   const branding = useBranding();
+  const base = usePanelBase();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
 
   const navItems = [
-    { path: '/admin/dashboard',    label: 'Dashboard',      icon: Home },
-    { path: '/admin/users',        label: 'Usuarios',       icon: Users },
-    { path: '/admin/transactions', label: 'Transacciones',  icon: BarChart3 },
-    { path: '/admin/reports',      label: 'Reportes',       icon: BarChart2 },
-    { path: '/admin/inventory',    label: 'Inventario',     icon: Package },
+    { path: base,                  label: 'Dashboard',      icon: Home },
+    { path: `${base}/users`,        label: 'Usuarios',       icon: Users },
+    { path: `${base}/transactions`, label: 'Transacciones',  icon: BarChart3 },
+    { path: `${base}/reports`,      label: 'Reportes',       icon: BarChart2 },
+    { path: `${base}/inventory`,    label: 'Inventario',     icon: Package },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || location.pathname === path + '/';
 
   const fetchAlerts = async () => {
     try {

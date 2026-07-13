@@ -42,7 +42,8 @@ export const Register: React.FC = () => {
         branchId: form.branchId
       });
       setAuth(data.user, data.accessToken, data.refreshToken);
-      navigate('/dashboard');
+      const u = data.user;
+      navigate(u.companySlug && u.branchSlug ? `/${u.companySlug}/${u.branchSlug}/user` : '/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al crear cuenta');
     } finally {

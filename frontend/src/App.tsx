@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore, Panel } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppNav } from './components/AppNav';
@@ -52,13 +52,22 @@ import { Branding } from './pages/admin/Branding';
 
 const MASTER_EMAIL = 'alejandro.qt92@gmail.com';
 
-function getRoleHome(role?: string, branchId?: string, email?: string): string {
-  if (role === 'MASTER_ADMIN' || email === MASTER_EMAIL) return '/master-admin';
-  switch (role) {
-    case 'CASHIER': return `/caja/${branchId || ''}`;
-    case 'ADMIN':   return '/admin/dashboard';
-    default:        return '/dashboard';
-  }
+interface SessionUser {
+  role?: string;
+  email?: string;
+  companySlug?: string | null;
+  branchSlug?: string | null;
+  branchId?: string;
+}
+
+// Devuelve la home del usuario SIEMPRE con prefijo empresa/sucursal cuando hay slugs
+function getRoleHome(u?: SessionUser): string {
+  if (!u) return '/login';
+  if (u.role === 'MASTER_ADMIN' || u.email === MASTER_EMAIL) return '/master-admin';
+  const c = u.companySlug, b = u.branchSlug;
+  if (u.role === 'ADMIN')   return c ? `/${c}/admin` : '/admin';
+  if (u.role === 'CASHIER') return c && b ? `/${c}/${b}/caja` : '/cashier';
+  return c && b ? `/${c}/${b}/user` : '/dashboard';
 }
 
 // ── Guards ───────────────────────────────────────────────────────────────────
@@ -82,25 +91,28 @@ const PanelSpinner = () => (
   </div>
 );
 
-const ComensalRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Layouts: renderizan nav + Outlet. Si no hay sesión, muestran el login inline
+// (conservando la URL con empresa/sucursal).
+
+const ComensalLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('user');
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
-  return <><AppNav />{children}</>;
+  return <><AppNav /><Outlet /></>;
 };
 
-const VendedorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const CajaLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('cashier');
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
-  return <><CashierNav />{children}</>;
+  return <><CashierNav /><Outlet /></>;
 };
 
-const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AdminLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('admin');
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;
-  return <><AdminNav />{children}</>;
+  return <><AdminNav /><Outlet /></>;
 };
 
 const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -116,29 +128,7 @@ const RootRedirect: React.FC = () => {
   const order: Panel[] = ['master', 'admin', 'cashier', 'user'];
   const panel = order.find(p => sessions[p]);
   if (!panel) return <Navigate to="/login" replace />;
-  const u = sessions[panel]!.user;
-  return <Navigate to={getRoleHome(u.role, u.branchId, u.email)} replace />;
-};
-
-// ── URLs jerárquicas por empresa ─────────────────────────────────────────────
-// /:empresa/admin → panel admin | /:empresa/:sucursal/caja → caja | /:empresa/:sucursal/user → comensal
-
-const CompanyAdminRoute: React.FC = () => {
-  const { sessions } = useAuthStore();
-  if (!sessions.admin) return <Login mode="admin" />;
-  return <Navigate to="/admin/dashboard" replace />;
-};
-
-const BranchCajaRoute: React.FC = () => {
-  const { sessions } = useAuthStore();
-  if (!sessions.cashier) return <Login mode="branch" />;
-  return <VendedorRoute><CashierActionPanel /></VendedorRoute>;
-};
-
-const BranchUserRoute: React.FC = () => {
-  const { sessions } = useAuthStore();
-  if (!sessions.user) return <Login mode="branch" />;
-  return <ComensalRoute><Dashboard /></ComensalRoute>;
+  return <Navigate to={getRoleHome(sessions[panel]!.user)} replace />;
 };
 
 // ── App ──────────────────────────────────────────────────────────────────────
@@ -188,48 +178,57 @@ function App() {
             element={<Login />}
           />
 
-          {/* ── COMENSAL ────────────────────────────────────────────────── */}
-          <Route path="/dashboard"       element={<ComensalRoute><Dashboard /></ComensalRoute>} />
-          <Route path="/qr"              element={<ComensalRoute><QRCode /></ComensalRoute>} />
-          <Route path="/purchases"       element={<ComensalRoute><Purchases /></ComensalRoute>} />
-          <Route path="/recharges"       element={<ComensalRoute><Recharges /></ComensalRoute>} />
-          <Route path="/recharge/new"    element={<ComensalRoute><RechargeNew /></ComensalRoute>} />
-          <Route path="/payment/success" element={<ComensalRoute><PaymentSuccess /></ComensalRoute>} />
-          <Route path="/payment/failed"  element={<ComensalRoute><PaymentFailed /></ComensalRoute>} />
-          <Route path="/statement"       element={<ComensalRoute><Statement /></ComensalRoute>} />
-          <Route path="/profile"         element={<ComensalRoute><Profile /></ComensalRoute>} />
-          <Route path="/menu"            element={<ComensalRoute><Menu /></ComensalRoute>} />
-
-          {/* ── VENDEDOR ────────────────────────────────────────────────── */}
-          <Route path="/cashier"           element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
-          <Route path="/cashier/:companySlug/:branchSlug" element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
-          <Route path="/caja/:branchId"    element={<VendedorRoute><CashierActionPanel /></VendedorRoute>} />
-          <Route path="/cashier/scan"      element={<VendedorRoute><QRScanner /></VendedorRoute>} />
-          <Route path="/cashier/recharge"  element={<VendedorRoute><CashRecharge /></VendedorRoute>} />
-          <Route path="/cashier/products"  element={<VendedorRoute><CashierProducts /></VendedorRoute>} />
-          <Route path="/cashier/history"   element={<VendedorRoute><CashierHistory /></VendedorRoute>} />
-          <Route path="/cashier/corte"     element={<VendedorRoute><CorteDeCaja /></VendedorRoute>} />
-
-          {/* ── ADMINISTRADOR ────────────────────────────────────────────── */}
-          <Route path="/admin/dashboard"                    element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/admin/branches/:id"                 element={<AdminRoute><BranchDetail /></AdminRoute>} />
-          <Route path="/admin/branches/:branchId/reports"   element={<AdminRoute><BranchReports /></AdminRoute>} />
-          <Route path="/admin/users"                        element={<AdminRoute><UsersList /></AdminRoute>} />
-          <Route path="/admin/users/:id"                    element={<AdminRoute><UserDetail /></AdminRoute>} />
-          <Route path="/admin/transactions"                 element={<AdminRoute><TransactionsList /></AdminRoute>} />
-          <Route path="/admin/reports"                        element={<AdminRoute><AdminReports /></AdminRoute>} />
-          <Route path="/admin/branches/:branchId/import"      element={<AdminRoute><UserImport /></AdminRoute>} />
-          <Route path="/admin/inventory"                      element={<AdminRoute><Inventory /></AdminRoute>} />
-          <Route path="/admin/branding"                        element={<AdminRoute><Branding /></AdminRoute>} />
-
           {/* ── SUPER ADMINISTRADOR ─────────────────────────────────────── */}
           <Route path="/master-admin" element={<SuperAdminRoute><MasterAdminDashboard /></SuperAdminRoute>} />
 
-          {/* ── URLS POR EMPRESA: /:empresa/admin · /:empresa/:sucursal/caja · /:empresa/:sucursal/user ── */}
-          <Route path="/:companySlug/admin" element={<CompanyAdminRoute />} />
-          <Route path="/:companySlug/:branchSlug/caja" element={<BranchCajaRoute />} />
-          <Route path="/:companySlug/:branchSlug/user" element={<BranchUserRoute />} />
+          {/* ═══ URLS JERÁRQUICAS: empresa/sucursal en TODAS las páginas ═══ */}
+
+          {/* ── ADMIN: /:empresa/admin/* ── */}
+          <Route path="/:companySlug/admin" element={<AdminLayout />}>
+            <Route index                          element={<AdminDashboard />} />
+            <Route path="users"                   element={<UsersList />} />
+            <Route path="users/:id"               element={<UserDetail />} />
+            <Route path="transactions"            element={<TransactionsList />} />
+            <Route path="reports"                 element={<AdminReports />} />
+            <Route path="inventory"               element={<Inventory />} />
+            <Route path="branding"                element={<Branding />} />
+            <Route path="branches/:id"            element={<BranchDetail />} />
+            <Route path="branches/:branchId/reports" element={<BranchReports />} />
+            <Route path="branches/:branchId/import"  element={<UserImport />} />
+          </Route>
+
+          {/* ── CAJERO: /:empresa/:sucursal/caja/* ── */}
+          <Route path="/:companySlug/:branchSlug/caja" element={<CajaLayout />}>
+            <Route index            element={<CashierActionPanel />} />
+            <Route path="scan"      element={<QRScanner />} />
+            <Route path="recharge"  element={<CashRecharge />} />
+            <Route path="products"  element={<CashierProducts />} />
+            <Route path="history"   element={<CashierHistory />} />
+            <Route path="corte"     element={<CorteDeCaja />} />
+          </Route>
+
+          {/* ── COMENSAL: /:empresa/:sucursal/user/* ── */}
+          <Route path="/:companySlug/:branchSlug/user" element={<ComensalLayout />}>
+            <Route index              element={<Dashboard />} />
+            <Route path="qr"          element={<QRCode />} />
+            <Route path="purchases"   element={<Purchases />} />
+            <Route path="recharges"   element={<Recharges />} />
+            <Route path="recharge/new" element={<RechargeNew />} />
+            <Route path="payment/success" element={<PaymentSuccess />} />
+            <Route path="payment/failed"  element={<PaymentFailed />} />
+            <Route path="statement"   element={<Statement />} />
+            <Route path="profile"     element={<Profile />} />
+            <Route path="menu"        element={<Menu />} />
+          </Route>
+
+          {/* Login de sucursal (cajero/comensal eligen su panel tras entrar) */}
           <Route path="/:companySlug/:branchSlug" element={<Login mode="branch" />} />
+
+          {/* ── LEGACY: redirigen al home con prefijo (compat con links viejos) ── */}
+          <Route path="/dashboard"      element={<RootRedirect />} />
+          <Route path="/cashier"        element={<RootRedirect />} />
+          <Route path="/caja/:branchId" element={<RootRedirect />} />
+          <Route path="/admin/dashboard" element={<RootRedirect />} />
 
           {/* ── DEFAULT ─────────────────────────────────────────────────── */}
           <Route path="/" element={<RootRedirect />} />

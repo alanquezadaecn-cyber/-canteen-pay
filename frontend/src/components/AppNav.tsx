@@ -11,23 +11,25 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
+import { usePanelBase } from '../hooks/usePanelBase';
 
 export const AppNav: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuthStore();
   const branding = useBranding();
+  const base = usePanelBase();
 
   const navItems = [
-    { path: '/dashboard', label: 'Inicio', icon: Home },
-    { path: '/menu', label: 'Menú', icon: UtensilsCrossed },
-    { path: '/qr', label: 'Mi QR', icon: QrCode },
-    { path: '/recharges', label: 'Recargas', icon: CreditCard },
-    { path: '/profile', label: 'Perfil', icon: User }
+    { path: base, label: 'Inicio', icon: Home },
+    { path: `${base}/menu`, label: 'Menú', icon: UtensilsCrossed },
+    { path: `${base}/qr`, label: 'Mi QR', icon: QrCode },
+    { path: `${base}/recharges`, label: 'Recargas', icon: CreditCard },
+    { path: `${base}/profile`, label: 'Perfil', icon: User }
   ];
 
   const desktopItems = [
     ...navItems.slice(0, 2),
-    { path: '/purchases', label: 'Compras', icon: ShoppingCart },
+    { path: `${base}/purchases`, label: 'Compras', icon: ShoppingCart },
     ...navItems.slice(2)
   ];
 

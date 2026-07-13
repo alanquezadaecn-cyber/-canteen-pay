@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import { ArrowLeft, Plus, Trash2, Users, Zap, Upload } from 'lucide-react';
 
 interface Branch {
@@ -30,6 +31,7 @@ interface Branch {
 export const BranchDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [branch, setBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNewCashier, setShowNewCashier] = useState(false);
@@ -130,7 +132,7 @@ export const BranchDetail: React.FC = () => {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-600 dark:text-slate-400">Sucursal no encontrada</p>
-          <Button onClick={() => navigate('/admin')} className="mt-4">
+          <Button onClick={() => navigate(base)} className="mt-4">
             Volver
           </Button>
         </div>
@@ -145,7 +147,7 @@ export const BranchDetail: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button onClick={() => navigate('/admin')} variant="outline" size="sm">
+            <Button onClick={() => navigate(base)} variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
@@ -160,7 +162,7 @@ export const BranchDetail: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => navigate(`/admin/branches/${id}/reports`)} size="sm" variant="outline">
+            <Button onClick={() => navigate(`${base}/branches/${id}/reports`)} size="sm" variant="outline">
               📊 Reportes
             </Button>
           </div>
@@ -282,7 +284,7 @@ export const BranchDetail: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={() => navigate(`/admin/branches/${id}/import`)} size="sm" variant="outline" className="flex items-center gap-2">
+                <Button onClick={() => navigate(`${base}/branches/${id}/import`)} size="sm" variant="outline" className="flex items-center gap-2">
                   <Upload className="w-4 h-4" />
                   Importar Excel
                 </Button>

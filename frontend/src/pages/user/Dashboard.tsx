@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TransactionItem } from '../../components/TransactionItem';
 import { useAuthStore } from '../../store/useAuthStore';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import api from '../../lib/api';
 import {
   QrCode, Plus, UtensilsCrossed, FileText, Download, Printer,
@@ -19,6 +20,7 @@ interface Transaction {
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const { user } = useAuthStore();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,8 +91,8 @@ export const Dashboard: React.FC = () => {
 
   const quickActions = [
     { label: 'Mi QR', icon: QrCode, onClick: () => setShowQRModal(true), main: false },
-    { label: 'Recargar', icon: Plus, onClick: () => navigate('/recharge/new'), main: true },
-    { label: 'Menú', icon: UtensilsCrossed, onClick: () => navigate('/menu'), main: false },
+    { label: 'Recargar', icon: Plus, onClick: () => navigate(`${base}/recharge/new`), main: true },
+    { label: 'Menú', icon: UtensilsCrossed, onClick: () => navigate(`${base}/menu`), main: false },
   ];
 
   return (
@@ -148,14 +150,14 @@ export const Dashboard: React.FC = () => {
           {/* Pills de navegación */}
           <div className="flex gap-3 mt-8">
             <button
-              onClick={() => navigate('/purchases')}
+              onClick={() => navigate(`${base}/purchases`)}
               className="flex-1 flex items-center justify-between bg-white/20 backdrop-blur rounded-full px-5 py-3 text-white text-sm font-semibold cursor-pointer hover:bg-white/30 transition-colors"
             >
               <span className="flex items-center gap-2"><Receipt className="w-4 h-4" /> Mis compras</span>
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => navigate('/statement')}
+              onClick={() => navigate(`${base}/statement`)}
               className="flex-1 flex items-center justify-between bg-white/20 backdrop-blur rounded-full px-5 py-3 text-white text-sm font-semibold cursor-pointer hover:bg-white/30 transition-colors"
             >
               <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> Estado de cuenta</span>
@@ -170,7 +172,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Historial</h2>
           <button
-            onClick={() => navigate('/purchases')}
+            onClick={() => navigate(`${base}/purchases`)}
             className="flex items-center gap-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400 cursor-pointer"
           >
             {new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}

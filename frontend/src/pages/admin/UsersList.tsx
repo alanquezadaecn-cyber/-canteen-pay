@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Power, Plus, X, AlertCircle } from 'lucide-react';
 import api from '../../lib/api';
+import { usePanelBase } from '../../hooks/usePanelBase';
 
 const MASTER_EMAILS = ['alejandro.qt92@gmail.com', 'master@mealpay.com'];
 const isMaster = (email: string) => MASTER_EMAILS.includes(email);
@@ -25,6 +26,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export const UsersList: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
@@ -177,7 +179,7 @@ export const UsersList: React.FC = () => {
                         <td className="py-3 px-4">
                           <div className="flex justify-center gap-1">
                             <button
-                              onClick={() => navigate(`/admin/users/${user.id}`)}
+                              onClick={() => navigate(`${base}/users/${user.id}`)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition-colors"
                               title="Ver detalle"
                             >

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Wallet, DollarSign } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import api from '../../lib/api';
 
 type Step = 'amount' | 'method';
@@ -11,6 +12,7 @@ const QUICK_AMOUNTS = [50, 100, 200, 500];
 
 export const RechargeNew: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const { user } = useAuthStore();
   const [step, setStep] = useState<Step>('amount');
   const [amount, setAmount] = useState('');
@@ -50,7 +52,7 @@ export const RechargeNew: React.FC = () => {
         <div className="max-w-lg mx-auto p-4 md:p-8 pt-8 md:pt-16 space-y-6">
           <div>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(base)}
               className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1 mb-4 transition-colors"
             >
               ← Volver
@@ -228,7 +230,7 @@ export const RechargeNew: React.FC = () => {
               Tu saldo se actualizará automáticamente en cuanto el cajero procese el pago.
             </p>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(base)}
               className="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-sm transition-colors"
             >
               Entendido

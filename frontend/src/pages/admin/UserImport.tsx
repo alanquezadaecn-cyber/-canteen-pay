@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import {
@@ -25,6 +26,7 @@ interface ImportResult {
 export const UserImport: React.FC = () => {
   const { branchId } = useParams<{ branchId: string }>();
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [branchName, setBranchName] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ImportRow[]>([]);
@@ -124,7 +126,7 @@ export const UserImport: React.FC = () => {
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
         <button
-          onClick={() => navigate(`/admin/branches/${branchId}`)}
+          onClick={() => navigate(`${base}/branches/${branchId}`)}
           className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Volver a la sucursal

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import { Plus, Edit2, Trash2, ChevronRight, Building2, Users, Zap, Link2, Copy, Check, X } from 'lucide-react';
 
 interface Branch {
@@ -20,6 +21,7 @@ interface Branch {
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBranch, setShowNewBranch] = useState(false);
@@ -176,7 +178,7 @@ export const AdminDashboard: React.FC = () => {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => navigate(`/admin/branches/${branch.id}`)}
+                    onClick={() => navigate(`${base}/branches/${branch.id}`)}
                     className="flex-1 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-50 dark:hover:bg-slate-200 dark:text-slate-900 font-semibold gap-2"
                     size="sm"
                   >

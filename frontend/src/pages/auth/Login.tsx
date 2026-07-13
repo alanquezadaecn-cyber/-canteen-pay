@@ -73,14 +73,16 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
         branchId: context.branchId || (branchId && branchId.length > 20 ? branchId : undefined)
       });
       setAuth(data.user, data.accessToken, data.refreshToken);
-      const role = data.user.role;
+      const u = data.user;
       // URLs jerárquicas: empresa/admin · empresa/sucursal/caja · empresa/sucursal/user
-      const slugs = companySlug && branchSlug ? { c: companySlug.toLowerCase(), b: branchSlug.toLowerCase() } : null;
+      // Preferir slugs del user (BD); si faltan, usar los de la URL actual
+      const c = u.companySlug || companySlug?.toLowerCase();
+      const b = u.branchSlug || branchSlug?.toLowerCase();
       navigate(
-        role === 'MASTER_ADMIN' ? '/master-admin' :
-        role === 'ADMIN'        ? '/admin/dashboard' :
-        role === 'CASHIER'      ? (slugs ? `/${slugs.c}/${slugs.b}/caja` : `/caja/${data.user.branchId}`) :
-        (slugs ? `/${slugs.c}/${slugs.b}/user` : '/dashboard')
+        u.role === 'MASTER_ADMIN' ? '/master-admin' :
+        u.role === 'ADMIN'        ? (c ? `/${c}/admin` : '/master-admin') :
+        u.role === 'CASHIER'      ? (c && b ? `/${c}/${b}/caja` : `/caja/${u.branchId}`) :
+        (c && b ? `/${c}/${b}/user` : '/dashboard')
       );
     } catch (err: any) {
       setError(err.response?.data?.error || 'Credenciales incorrectas');

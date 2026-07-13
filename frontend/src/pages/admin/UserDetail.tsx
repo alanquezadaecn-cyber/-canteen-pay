@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
+import { usePanelBase } from '../../hooks/usePanelBase';
 import { AlertCircle, CheckCircle, ArrowLeft, DollarSign } from 'lucide-react';
 
 interface UserData {
@@ -24,6 +25,7 @@ interface UserData {
 export const UserDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const base = usePanelBase();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -109,7 +111,7 @@ export const UserDetail: React.FC = () => {
               {error || 'El usuario que buscas no existe'}
             </p>
             <Button
-              onClick={() => navigate('/admin/users')}
+              onClick={() => navigate(`${base}/users`)}
               className="w-full"
             >
               Volver a Usuarios
@@ -125,7 +127,7 @@ export const UserDetail: React.FC = () => {
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
         {/* Header */}
         <Button
-          onClick={() => navigate('/admin/users')}
+          onClick={() => navigate(`${base}/users`)}
           variant="outline"
           className="mb-6 flex items-center gap-2"
         >

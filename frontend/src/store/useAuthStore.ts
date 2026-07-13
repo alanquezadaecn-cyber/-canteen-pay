@@ -10,6 +10,8 @@ interface User {
   qrCode: string;
   branchId: string;
   companyId?: string;
+  companySlug?: string | null;
+  branchSlug?: string | null;
   employeeNumber?: string;
   phone?: string;
   company?: string;

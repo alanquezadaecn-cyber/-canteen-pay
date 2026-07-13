@@ -6,9 +6,11 @@ import { Button } from '../../components/ui/Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import { AlertCircle, Camera, Keyboard } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { usePanelBase } from '../../hooks/usePanelBase';
 
 export const QRScanner: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
   const { user } = useAuthStore();
   const branchId = user?.branchId;
   const html5QrRef = useRef<Html5Qrcode | null>(null);
@@ -29,7 +31,7 @@ export const QRScanner: React.FC = () => {
           if (scanned) return;
           setScanned(true);
           // Navegar directo — el cleanup del useEffect para la cámara al desmontar
-          navigate(`/caja/${branchId}?qr=${encodeURIComponent(decoded)}`);
+          navigate(`${base}?qr=${encodeURIComponent(decoded)}`);
         },
         () => {}
       );
@@ -54,7 +56,7 @@ export const QRScanner: React.FC = () => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualQR.trim()) return;
-    navigate(`/caja/${branchId}?qr=${encodeURIComponent(manualQR.trim())}`);
+    navigate(`${base}?qr=${encodeURIComponent(manualQR.trim())}`);
   };
 
   return (

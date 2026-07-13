@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { XCircle } from 'lucide-react';
+import { usePanelBase } from '../../hooks/usePanelBase';
 
 export const PaymentFailed: React.FC = () => {
   const navigate = useNavigate();
+  const base = usePanelBase();
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0 pb-24 md:pb-0 flex items-center justify-center p-4">
@@ -32,13 +34,13 @@ export const PaymentFailed: React.FC = () => {
 
         <div className="space-y-2">
           <button
-            onClick={() => navigate('/recharge/new')}
+            onClick={() => navigate(`${base}/recharge/new`)}
             className="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white font-semibold text-base transition-colors"
           >
             Intentar de nuevo
           </button>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(base)}
             className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-base hover:border-slate-400 transition-colors"
           >
             Volver al panel

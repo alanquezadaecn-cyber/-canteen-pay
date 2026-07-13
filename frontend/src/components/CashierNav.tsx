@@ -11,29 +11,23 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
+import { usePanelBase } from '../hooks/usePanelBase';
 
 export const CashierNav: React.FC = () => {
   const location = useLocation();
-  const { logout, user } = useAuthStore();
+  const { logout } = useAuthStore();
   const branding = useBranding();
+  const base = usePanelBase();
   const navItems = [
-    { path: '/cashier', label: 'Inicio', icon: Home },
-    { path: '/cashier/scan', label: 'Escanear', icon: QrCode },
-    { path: '/cashier/recharge', label: 'Recargar', icon: DollarSign },
-    { path: '/cashier/products', label: 'Menú', icon: ShoppingBag },
-    { path: '/cashier/history', label: 'Historial', icon: History },
-    { path: '/cashier/corte', label: 'Corte', icon: ClipboardList }
+    { path: base, label: 'Inicio', icon: Home },
+    { path: `${base}/scan`, label: 'Escanear', icon: QrCode },
+    { path: `${base}/recharge`, label: 'Recargar', icon: DollarSign },
+    { path: `${base}/products`, label: 'Menú', icon: ShoppingBag },
+    { path: `${base}/history`, label: 'Historial', icon: History },
+    { path: `${base}/corte`, label: 'Corte', icon: ClipboardList }
   ];
 
-  const isActive = (path: string) => {
-    if (path === '/cashier') {
-      // Inicio activo en /cashier, /caja/:id y /cashier/:empresa/:sucursal
-      return location.pathname === '/cashier'
-        || location.pathname.startsWith('/caja/')
-        || /^\/cashier\/[^/]+\/[^/]+$/.test(location.pathname);
-    }
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path || location.pathname === path + '/';
 
   const handleLogout = () => {
     logout();
