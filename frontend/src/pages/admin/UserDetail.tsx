@@ -36,6 +36,32 @@ export const UserDetail: React.FC = () => {
     amount: '',
     reason: ''
   });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', employeeNumber: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEdit = () => {
+    if (!user) return;
+    setEditForm({ name: user.name, email: user.email, phone: user.phone, employeeNumber: user.employeeNumber });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingEdit(true);
+    setError('');
+    try {
+      const { data } = await api.put(`/admin/users/${id}`, editForm);
+      setUser(user ? { ...user, ...data } : null);
+      setSuccess('Datos actualizados correctamente');
+      setShowEditModal(false);
+      setTimeout(() => setSuccess(''), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al actualizar');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -157,13 +183,21 @@ export const UserDetail: React.FC = () => {
                 <h2 className="text-3xl font-bold">{user.name}</h2>
                 <p className="text-slate-300 mt-2">{user.email}</p>
               </div>
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                user.isActive
-                  ? 'bg-emerald-500/20 text-emerald-200'
-                  : 'bg-red-500/20 text-red-200'
-              }`}>
-                {user.isActive ? '✓ Activo' : '✗ Inactivo'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                  user.isActive
+                    ? 'bg-emerald-500/20 text-emerald-200'
+                    : 'bg-red-500/20 text-red-200'
+                }`}>
+                  {user.isActive ? '✓ Activo' : '✗ Inactivo'}
+                </span>
+                <button
+                  onClick={openEdit}
+                  className="px-4 py-2 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
+                >
+                  Editar
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700">
@@ -206,6 +240,47 @@ export const UserDetail: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Modal de Editar Datos */}
+          {showEditModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <Card className="w-full max-w-md">
+                <CardHeader>
+                  <CardTitle>Editar datos de {user.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateUser} className="space-y-4">
+                    <div>
+                      <Label className="mb-1 block">Nombre</Label>
+                      <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block">Email</Label>
+                      <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="text-slate-900 dark:text-slate-50" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="mb-1 block"># Empleado</Label>
+                        <Input value={editForm.employeeNumber} onChange={(e) => setEditForm({ ...editForm, employeeNumber: e.target.value })} className="text-slate-900 dark:text-slate-50" />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block">Teléfono</Label>
+                        <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="text-slate-900 dark:text-slate-50" />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <Button type="submit" disabled={savingEdit} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white">
+                        {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
+                        Cancelar
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Modal de Ajuste */}
           {showBalanceModal && (

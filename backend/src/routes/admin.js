@@ -220,12 +220,19 @@ router.post('/users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, employeeNumber, phone, isActive } = req.body;
+    const { name, email, role, employeeNumber, phone, isActive } = req.body;
+
+    // Si cambia el email, verificar que no exista en otro usuario
+    if (email) {
+      const clash = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase(), id: { not: id } } });
+      if (clash) return res.status(409).json({ error: 'Ese email ya está en uso' });
+    }
 
     const user = await prisma.user.update({
       where: { id },
       data: {
         ...(name && { name }),
+        ...(email && { email: email.trim().toLowerCase() }),
         ...(role && { role }),
         ...(employeeNumber && { employeeNumber }),
         ...(phone && { phone }),

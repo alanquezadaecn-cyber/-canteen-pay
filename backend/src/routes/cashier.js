@@ -181,6 +181,88 @@ router.post('/branch/:branchId/register', async (req, res) => {
   }
 });
 
+// LIST comensales de la sucursal (para el panel de caja)
+router.get('/branch/:branchId/users', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { search } = req.query;
+
+    const cashier = await prisma.user.findUnique({
+      where: { id: req.userId }, select: { branchId: true, role: true }
+    });
+    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const where = {
+      branchId,
+      role: 'USER',
+      ...(search ? {
+        OR: [
+          { name: { contains: String(search), mode: 'insensitive' } },
+          { email: { contains: String(search), mode: 'insensitive' } },
+          { employeeNumber: { contains: String(search) } }
+        ]
+      } : {})
+    };
+
+    const users = await prisma.user.findMany({
+      where,
+      select: { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true },
+      orderBy: { name: 'asc' },
+      take: 100
+    });
+
+    res.json(users.map(u => ({ ...u, balance: u.balance.toString() })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener comensales' });
+  }
+});
+
+// EDIT comensal de la sucursal (nombre, teléfono, email, # empleado, activo)
+router.put('/branch/:branchId/users/:userId', async (req, res) => {
+  try {
+    const { branchId, userId } = req.params;
+    const { name, phone, email, employeeNumber, isActive } = req.body;
+
+    const cashier = await prisma.user.findUnique({
+      where: { id: req.userId }, select: { branchId: true, role: true }
+    });
+    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    // El comensal debe pertenecer a esta sucursal
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { branchId: true, role: true } });
+    if (!target || target.branchId !== branchId || target.role !== 'USER') {
+      return res.status(403).json({ error: 'Comensal no encontrado en esta sucursal' });
+    }
+
+    if (email) {
+      const clash = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase(), id: { not: userId } } });
+      if (clash) return res.status(409).json({ error: 'Ese email ya está en uso' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...(phone !== undefined && { phone: phone?.trim() || '+52 0000-0000' }),
+        ...(email && { email: email.trim().toLowerCase() }),
+        ...(employeeNumber && { employeeNumber: employeeNumber.trim() }),
+        ...(typeof isActive === 'boolean' && { isActive })
+      },
+      select: { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true }
+    });
+
+    res.json({ ...user, balance: user.balance.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar comensal' });
+  }
+});
+
 // CHARGE en sucursal específica
 router.post('/branch/:branchId/charge', async (req, res) => {
   try {
