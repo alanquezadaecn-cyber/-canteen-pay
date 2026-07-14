@@ -57,8 +57,8 @@ export const UserImport: React.FC = () => {
 
   const downloadTemplate = () => {
     const data = [
-      { name: 'Juan Pérez', email: 'juan@empresa.com', phone: '5551234567', employeeNumber: '001', password: 'MealPay2024!' },
-      { name: 'María García', email: 'maria@empresa.com', phone: '5559876543', employeeNumber: '002', password: 'MealPay2024!' },
+      { name: 'Juan Pérez', email: 'juan@empresa.com', phone: '5551234567', employeeNumber: '001', password: 'CashFood2024!' },
+      { name: 'María García', email: 'maria@empresa.com', phone: '5559876543', employeeNumber: '002', password: 'CashFood2024!' },
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
@@ -87,7 +87,7 @@ export const UserImport: React.FC = () => {
           email: String(r.email || r.correo || r.Email || '').trim().toLowerCase(),
           phone: String(r.phone || r.telefono || r.Phone || '').trim(),
           employeeNumber: String(r.employeeNumber || r.numero || r.empleado || '').trim(),
-          password: String(r.password || r.contrasena || r.Password || 'MealPay2024!').trim(),
+          password: String(r.password || r.contrasena || r.Password || 'CashFood2024!').trim(),
         }));
         setParsed(mapped);
       } catch (err) {

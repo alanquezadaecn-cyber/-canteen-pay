@@ -206,7 +206,7 @@ export const CorteDeCaja: React.FC = () => {
       {data && (
         <div className="hidden print:block p-8 text-black font-mono text-sm">
           <div className="text-center mb-6">
-            <p className="text-2xl font-bold">MealPay</p>
+            <p className="text-2xl font-bold">CashFood</p>
             <p className="text-base">Corte de Caja</p>
             <p className="text-sm text-gray-600">{today}</p>
             <p className="text-sm">Cajero: {data.cashierName}</p>

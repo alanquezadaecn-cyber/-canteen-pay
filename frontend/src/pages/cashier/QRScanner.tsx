@@ -46,9 +46,16 @@ export const QRScanner: React.FC = () => {
   useEffect(() => {
     startCamera();
     return () => {
-      if (html5QrRef.current) {
-        html5QrRef.current.stop().catch(() => {});
-        html5QrRef.current = null;
+      const qr = html5QrRef.current;
+      html5QrRef.current = null;
+      if (!qr) return;
+      // stop() puede lanzar SÍNCRONAMENTE si el escáner nunca arrancó
+      // (cámara denegada). Envolver en try/catch evita que tumbe React.
+      try {
+        const p = qr.stop();
+        if (p && typeof (p as any).catch === 'function') (p as Promise<void>).catch(() => {});
+      } catch {
+        /* el escáner no estaba corriendo — ignorar */
       }
     };
   }, []);

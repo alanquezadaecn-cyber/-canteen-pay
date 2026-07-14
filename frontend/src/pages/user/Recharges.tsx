@@ -283,7 +283,7 @@ export const Recharges: React.FC = () => {
                 Sin recargas aún
               </h3>
               <p className="text-slate-600 dark:text-slate-400 mb-6">
-                Recarga tu saldo para comenzar a usar MealPay
+                Recarga tu saldo para comenzar a usar CashFood
               </p>
               <Button variant="primary" onClick={() => navigate(`${base}/recharge/new`)}>
                 Realizar Primera Recarga

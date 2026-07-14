@@ -147,7 +147,7 @@ export const Branding: React.FC = () => {
             </div>
             {!logoUrl && (
               <p className="text-xs text-slate-500 text-center max-w-xs">
-                Sin logo personalizado — se muestra "MealPay" por defecto
+                Sin logo personalizado — se muestra "CashFood" por defecto
               </p>
             )}
           </div>

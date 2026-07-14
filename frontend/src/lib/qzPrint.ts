@@ -111,7 +111,7 @@ function buildESCPOS(data: TicketData): string {
     // ── Pie ────────────────────────────────────────
     CMD.CENTER,
     '\n',
-    '* Gracias por usar MealPay *\n',
+    '* Gracias por usar CashFood *\n',
     'Conserve este comprobante\n',
     '\n\n\n',
 

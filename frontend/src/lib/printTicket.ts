@@ -50,7 +50,7 @@ function printTicketHTML(data: TicketData) {
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>Ticket MealPay</title>
+<title>Ticket CashFood</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -125,7 +125,7 @@ function printTicketHTML(data: TicketData) {
   <div class="sep-solid"></div>
 
   <div class="center footer" style="margin-top:6px;line-height:1.6">
-    <p>¡Gracias por usar MealPay!</p>
+    <p>¡Gracias por usar CashFood!</p>
     <p>Conserve este comprobante</p>
   </div>
 </body>

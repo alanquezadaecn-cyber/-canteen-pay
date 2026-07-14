@@ -112,7 +112,7 @@ export const Dashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-white font-semibold text-lg leading-tight">¡Hola, {firstName}!</p>
-              <p className="text-emerald-100 text-xs">{user?.company || 'MealPay'}</p>
+              <p className="text-emerald-100 text-xs">{user?.company || 'CashFood'}</p>
             </div>
           </div>
 

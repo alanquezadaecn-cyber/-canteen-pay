@@ -94,7 +94,7 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
   const title =
     context.type === 'admin'  ? `Admin — ${context.companyName || ''}` :
     context.type === 'branch' ? (context.branchName || 'Comedor') :
-    'MealPay';
+    'CashFood';
 
   const subtitle =
     context.type === 'admin'  ? 'Panel de administración' :
@@ -174,7 +174,7 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
 
         {/* Marca del software */}
         <p className="text-center text-xs text-emerald-100/80 mt-6">
-          Desarrollado con <span className="font-semibold text-white">MealPay</span> — pago digital para comedores
+          by <span className="font-semibold text-white">th3seo.com</span>
         </p>
       </div>
     </div>

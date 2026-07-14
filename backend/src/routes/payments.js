@@ -168,7 +168,7 @@ router.post('/mp/create-preference', verifyToken, async (req, res) => {
       body: {
         items: [
           {
-            title: 'Recarga MealPay',
+            title: 'Recarga CashFood',
             unit_price: parseFloat(amount),
             quantity: 1
           }

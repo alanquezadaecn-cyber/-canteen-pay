@@ -422,7 +422,7 @@ router.post('/users/bulk-import', async (req, res) => {
         }
 
         const employeeNumber = u.employeeNumber?.trim() || String(nextNum++);
-        const password = u.password || 'MealPay2024!';
+        const password = u.password || 'CashFood2024!';
         const hashedPassword = await bcrypt.default.hash(password, 10);
         const qrCode = QRService.generateUniqueCode();
 
