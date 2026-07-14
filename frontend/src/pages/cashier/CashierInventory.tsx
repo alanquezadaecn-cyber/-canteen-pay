@@ -11,6 +11,7 @@ interface Producto {
   stock: number;
   minStock: number;
   isTracked: boolean;
+  productType: 'PRODUCTO' | 'INSUMO';
 }
 
 const fmt = (n: string | number) => `$${parseFloat(String(n)).toFixed(2)}`;
@@ -24,7 +25,8 @@ export const CashierInventory: React.FC = () => {
   const [error, setError] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', price: '', category: 'General', stock: '', minStock: '' });
+  const [tab, setTab] = useState<'PRODUCTO' | 'INSUMO'>('PRODUCTO');
+  const [form, setForm] = useState({ name: '', price: '', category: 'General', stock: '', minStock: '', type: 'PRODUCTO' as 'PRODUCTO' | 'INSUMO' });
   const [restockId, setRestockId] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState('');
 
@@ -49,9 +51,10 @@ export const CashierInventory: React.FC = () => {
     try {
       await api.post(`/inventory/branch/${branchId}/create`, {
         name: form.name, price: form.price || 0, category: form.category,
-        stock: form.stock || 0, minStock: form.minStock || 0
+        stock: form.stock || 0, minStock: form.minStock || 0, type: form.type
       });
-      setForm({ name: '', price: '', category: 'General', stock: '', minStock: '' });
+      setTab(form.type);
+      setForm({ name: '', price: '', category: 'General', stock: '', minStock: '', type: form.type });
       setShowNew(false);
       load();
     } catch (err: any) {
@@ -84,7 +87,9 @@ export const CashierInventory: React.FC = () => {
     try { await api.delete(`/inventory/${id}`); load(); } catch {}
   };
 
+  const visible = items.filter(i => i.productType === tab);
   const lowStock = items.filter(i => i.isTracked && i.stock <= i.minStock).length;
+  const countByType = (t: string) => items.filter(i => i.productType === t).length;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pb-28 md:pb-8 pt-16 md:pt-8">
@@ -99,8 +104,18 @@ export const CashierInventory: React.FC = () => {
               <p className="text-sm text-slate-500">{items.length} productos{lowStock > 0 ? ` · ${lowStock} con stock bajo` : ''}</p>
             </div>
           </div>
-          <button onClick={() => setShowNew(true)} className="flex items-center gap-2 h-10 px-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors cursor-pointer flex-shrink-0">
+          <button onClick={() => { setForm(f => ({ ...f, type: tab })); setShowNew(true); }} className="flex items-center gap-2 h-10 px-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors cursor-pointer flex-shrink-0">
             <Plus className="w-4 h-4" /> Nuevo
+          </button>
+        </div>
+
+        {/* Tabs: para vender vs insumos de operación */}
+        <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+          <button onClick={() => setTab('PRODUCTO')} className={`flex-1 h-9 rounded-full text-sm font-semibold transition-colors cursor-pointer ${tab === 'PRODUCTO' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>
+            Para vender ({countByType('PRODUCTO')})
+          </button>
+          <button onClick={() => setTab('INSUMO')} className={`flex-1 h-9 rounded-full text-sm font-semibold transition-colors cursor-pointer ${tab === 'INSUMO' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>
+            Insumos ({countByType('INSUMO')})
           </button>
         </div>
 
@@ -110,14 +125,18 @@ export const CashierInventory: React.FC = () => {
 
         {loading ? (
           <div className="text-center py-12 text-slate-400 text-sm">Cargando...</div>
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-8 text-center">
             <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-500 text-sm">Sin productos en inventario. Agrega el primero (ej. refrescos, aguas, snacks).</p>
+            <p className="text-slate-500 text-sm">
+              {tab === 'PRODUCTO'
+                ? 'Sin productos para vender. Agrega el primero (ej. refrescos, aguas, snacks).'
+                : 'Sin insumos de operación. Agrega el primero (ej. servilletas, vasos, aceite, guantes).'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {items.map(p => {
+            {visible.map(p => {
               const low = p.isTracked && p.stock <= p.minStock;
               return (
                 <div key={p.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
@@ -127,7 +146,7 @@ export const CashierInventory: React.FC = () => {
                         <p className="font-semibold text-slate-900 dark:text-slate-50 truncate">{p.name}</p>
                         {low && <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-950 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Bajo</span>}
                       </div>
-                      <p className="text-xs text-slate-400">{p.category} · {fmt(p.price)}</p>
+                      <p className="text-xs text-slate-400">{p.category}{p.productType === 'PRODUCTO' ? ` · ${fmt(p.price)}` : ''}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {/* Stepper de stock */}
@@ -164,16 +183,30 @@ export const CashierInventory: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <form onSubmit={create} className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Nuevo producto</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Nuevo {form.type === 'INSUMO' ? 'insumo' : 'producto'}</h2>
               <button type="button" onClick={() => setShowNew(false)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer"><X className="w-4 h-4 text-slate-500" /></button>
             </div>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nombre (ej. Refresco 600ml)" autoFocus required
+
+            {/* Tipo */}
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+              <button type="button" onClick={() => setForm({ ...form, type: 'PRODUCTO' })} className={`flex-1 h-9 rounded-full text-xs font-semibold cursor-pointer ${form.type === 'PRODUCTO' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Para vender</button>
+              <button type="button" onClick={() => setForm({ ...form, type: 'INSUMO' })} className={`flex-1 h-9 rounded-full text-xs font-semibold cursor-pointer ${form.type === 'INSUMO' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Insumo de operación</button>
+            </div>
+
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={form.type === 'INSUMO' ? 'Nombre (ej. Servilletas, Vasos, Aceite)' : 'Nombre (ej. Refresco 600ml)'} autoFocus required
               className="w-full h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
             <div className="grid grid-cols-2 gap-3">
-              <input type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="Precio"
-                className="h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
-              <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Categoría"
-                className="h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+              {form.type === 'PRODUCTO' ? (
+                <input type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="Precio de venta"
+                  className="h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+              ) : (
+                <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Unidad (pza, kg, caja)"
+                  className="h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+              )}
+              {form.type === 'PRODUCTO' ? (
+                <input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Categoría"
+                  className="h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+              ) : <div />}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} placeholder="Stock inicial"

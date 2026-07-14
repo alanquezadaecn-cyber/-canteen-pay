@@ -51,11 +51,14 @@ router.get('/branches', async (req, res) => {
 });
 
 // CREATE producto físico (inventario) en una sucursal
+// type: 'PRODUCTO' (se vende) | 'INSUMO' (operación, no se vende)
 router.post('/branch/:branchId/create', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { name, price, category, stock, minStock } = req.body;
+    const { name, price, category, stock, minStock, type, unit } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'El nombre es requerido' });
+
+    const productType = type === 'INSUMO' ? 'INSUMO' : 'PRODUCTO';
 
     // El cajero solo en su sucursal
     const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
@@ -67,10 +70,10 @@ router.post('/branch/:branchId/create', async (req, res) => {
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
-        price: parseFloat(price) || 0,
-        category: category?.trim() || 'General',
+        price: productType === 'INSUMO' ? 0 : (parseFloat(price) || 0),
+        category: category?.trim() || (unit?.trim() || 'General'),
         branchId,
-        productType: 'PRODUCTO',
+        productType,
         stock: isNaN(initialStock) ? 0 : initialStock,
         minStock: parseInt(minStock) || 0,
         isTracked: true,
@@ -101,12 +104,12 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET inventory for a branch — solo productos físicos (productType = PRODUCTO)
+// GET inventory for a branch — productos físicos (PRODUCTO, se venden) + insumos (INSUMO, operación)
 router.get('/branch/:branchId', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      where: { branchId: req.params.branchId, isActive: true, productType: 'PRODUCTO' },
-      orderBy: [{ category: 'asc' }, { name: 'asc' }]
+      where: { branchId: req.params.branchId, isActive: true, productType: { in: ['PRODUCTO', 'INSUMO'] } },
+      orderBy: [{ productType: 'asc' }, { category: 'asc' }, { name: 'asc' }]
     });
     res.json(products.map(p => ({
       ...p,
