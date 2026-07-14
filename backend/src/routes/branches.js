@@ -8,22 +8,67 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['ADMIN']));
 
-// GET all branches
+const toSlug = (text) =>
+  text.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 30);
+
+// Resuelve el companyId del admin autenticado (desde token o vía su sucursal)
+async function resolveCompanyId(req) {
+  if (req.userCompanyId) return req.userCompanyId;
+  const admin = await prisma.user.findUnique({
+    where: { id: req.userId },
+    include: { branch: true }
+  });
+  return admin?.branch?.companyId || null;
+}
+
+// GET all branches (scoped a la empresa del admin) + info de plan
 router.get('/', async (req, res) => {
   try {
+    const companyId = await resolveCompanyId(req);
+    if (!companyId) return res.json([]);
+
     const branches = await prisma.branch.findMany({
+      where: { companyId },
       include: {
-        _count: {
-          select: { cashiers: true, users: true }
-        }
+        _count: { select: { users: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(branches);
+    // Contar cajeros y comensales por separado (ambos son User)
+    const withCounts = await Promise.all(branches.map(async (b) => {
+      const cashiers = await prisma.user.count({ where: { branchId: b.id, role: 'CASHIER' } });
+      const users = await prisma.user.count({ where: { branchId: b.id, role: 'USER' } });
+      return { ...b, _count: { cashiers, users } };
+    }));
+
+    res.json(withCounts);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener sucursales' });
+  }
+});
+
+// GET plan info (límite de sucursales y uso actual)
+router.get('/plan-info', async (req, res) => {
+  try {
+    const companyId = await resolveCompanyId(req);
+    if (!companyId) return res.json({ maxBranches: 1, used: 0, planName: null });
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { subscription: { include: { plan: true } } }
+    });
+    const maxBranches = company?.subscription?.plan?.maxBranches ?? 1;
+    const used = await prisma.branch.count({ where: { companyId, isActive: true } });
+    res.json({ maxBranches, used, planName: company?.subscription?.plan?.name || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Error' });
   }
 });
 
@@ -63,29 +108,99 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Nombre de sucursal requerido' });
     }
 
+    const companyId = await resolveCompanyId(req);
+    if (!companyId) {
+      return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    }
+
+    // Verificar límite del plan
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { subscription: { include: { plan: true } } }
+    });
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+
+    const maxBranches = company.subscription?.plan?.maxBranches ?? 1;
+    const currentCount = await prisma.branch.count({ where: { companyId, isActive: true } });
+
+    if (currentCount >= maxBranches) {
+      return res.status(403).json({
+        error: `Tu plan ${company.subscription?.plan?.name || ''} permite hasta ${maxBranches} sucursal${maxBranches === 1 ? '' : 'es'}. Contacta a soporte para ampliar tu plan.`
+      });
+    }
+
+    // Slug único dentro de la empresa
+    let branchSlug = toSlug(name);
+    const clash = await prisma.branch.findFirst({ where: { companyId, slug: branchSlug } });
+    if (clash) branchSlug = `${branchSlug}-${Date.now().toString().slice(-4)}`;
+
     const branch = await prisma.branch.create({
       data: {
         name: name.trim(),
-        location: location?.trim() || null
+        slug: branchSlug,
+        location: location?.trim() || null,
+        companyId,
+        isActive: true
       }
     });
 
-    res.status(201).json(branch);
+    // Cajero por defecto
+    const cashierEmail = `cajero-${branchSlug}@${company.email.split('@')[1] || 'mealpay.mx'}`;
+    const cashierPass = Math.random().toString(36).slice(-8) + '1A';
+    const cashierHash = await bcrypt.hash(cashierPass, 10);
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
+    await prisma.user.create({
+      data: {
+        name: `Cajero ${name.trim()}`,
+        email: cashierEmail,
+        password: cashierHash,
+        role: 'CASHIER',
+        employeeNumber: String(nextNum),
+        phone: company.phone || '+52 0000-0000',
+        qrCode: randomUUID(),
+        branchId: branch.id,
+        isActive: true
+      }
+    });
+
+    res.status(201).json({
+      ...branch,
+      cashier: { email: cashierEmail, password: cashierPass },
+      plan: { max: maxBranches, used: currentCount + 1 }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al crear sucursal' });
   }
 });
 
-// UPDATE branch
+// UPDATE branch — al renombrar, regenera el slug para que la URL coincida con el nombre
 router.put('/:id', async (req, res) => {
   try {
     const { name, location, isActive } = req.body;
+
+    const current = await prisma.branch.findUnique({ where: { id: req.params.id } });
+    if (!current) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    let slugUpdate = {};
+    if (name && name.trim() !== current.name) {
+      let newSlug = toSlug(name);
+      const clash = await prisma.branch.findFirst({
+        where: { companyId: current.companyId, slug: newSlug, id: { not: current.id } }
+      });
+      if (clash) newSlug = `${newSlug}-${Date.now().toString().slice(-4)}`;
+      slugUpdate = { slug: newSlug };
+    }
 
     const branch = await prisma.branch.update({
       where: { id: req.params.id },
       data: {
         ...(name && { name: name.trim() }),
+        ...slugUpdate,
         ...(location !== undefined && { location: location?.trim() || null }),
         ...(isActive !== undefined && { isActive })
       }

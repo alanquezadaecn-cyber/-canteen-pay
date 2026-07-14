@@ -29,6 +29,8 @@ export const AdminDashboard: React.FC = () => {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [linkModal, setLinkModal] = useState<Branch | null>(null);
   const [copied, setCopied] = useState(false);
+  const [planInfo, setPlanInfo] = useState<{ maxBranches: number; used: number; planName: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const getRegisterUrl = (branchId: string) =>
     `${window.location.origin}/register/${branchId}`;
@@ -48,6 +50,7 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchBranches();
+    fetchPlanInfo();
   }, []);
 
   const fetchBranches = async () => {
@@ -61,12 +64,21 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchPlanInfo = async () => {
+    try {
+      const { data } = await api.get('/branches/plan-info');
+      setPlanInfo(data);
+    } catch {}
+  };
+
+  const atLimit = planInfo ? planInfo.used >= planInfo.maxBranches : false;
+
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBranch.name.trim()) return;
-
+    setCreating(true);
     try {
-      await api.post('/branches', {
+      const { data } = await api.post('/branches', {
         name: newBranch.name.trim(),
         location: newBranch.location.trim() || null
       });
@@ -74,8 +86,14 @@ export const AdminDashboard: React.FC = () => {
       setShowNewBranch(false);
       setNewBranch({ name: '', location: '' });
       fetchBranches();
+      fetchPlanInfo();
+      if (data.cashier) {
+        alert(`Sucursal "${data.name}" creada.\n\nCajero: ${data.cashier.email}\nContraseña: ${data.cashier.password}\n\nGuarda estos datos, no se vuelven a mostrar.`);
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al crear sucursal');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -123,13 +141,24 @@ export const AdminDashboard: React.FC = () => {
       <div className="p-4 md:p-8 space-y-8">
 
         {/* Clean Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
-            MealPay
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400">
-            Gestión de Comedores
-          </p>
+        <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+              Sucursales
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400">
+              Gestión de comedores
+            </p>
+          </div>
+          {planInfo && (
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan {planInfo.planName || ''}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-50 mt-0.5">
+                {planInfo.used} / {planInfo.maxBranches} sucursales
+              </p>
+              {atLimit && <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Límite alcanzado</p>}
+            </div>
+          )}
         </div>
 
         {/* Sucursales Grid - Clean */}
@@ -215,19 +244,33 @@ export const AdminDashboard: React.FC = () => {
           ))}
 
           {/* Nueva Sucursal Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 p-6 flex items-center justify-center min-h-[250px] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all group cursor-pointer" onClick={() => setShowNewBranch(!showNewBranch)}>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 mx-auto flex items-center justify-center mb-4">
-                <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+          {atLimit ? (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-6 flex items-center justify-center min-h-[250px]">
+              <div className="text-center px-2">
+                <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 mx-auto flex items-center justify-center mb-4">
+                  <Plus className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">Límite del plan alcanzado</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Tu plan {planInfo?.planName || ''} permite {planInfo?.maxBranches} sucursal{planInfo?.maxBranches === 1 ? '' : 'es'}. Contacta a soporte para ampliarlo.
+                </p>
               </div>
-              <p className="font-semibold text-slate-900 dark:text-slate-50">
-                Nueva Sucursal
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Crear comedor
-              </p>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 p-6 flex items-center justify-center min-h-[250px] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all group cursor-pointer" onClick={() => setShowNewBranch(!showNewBranch)}>
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 mx-auto flex items-center justify-center mb-4">
+                  <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                </div>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">
+                  Nueva Sucursal
+                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  {planInfo ? `${planInfo.maxBranches - planInfo.used} disponible${planInfo.maxBranches - planInfo.used === 1 ? '' : 's'}` : 'Crear comedor'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Crear/Editar Sucursal - Clean */}

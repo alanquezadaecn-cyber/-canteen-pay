@@ -12,8 +12,10 @@ export function usePanelBase(): string {
   const params = useParams<{ companySlug?: string; branchSlug?: string }>();
   const { user, activePanel } = useAuthStore();
 
-  const company = params.companySlug || user?.companySlug || '';
-  const branch = params.branchSlug || user?.branchSlug || '';
+  // Preferir los slugs REALES de la sesión (BD) sobre los de la URL,
+  // así una URL con slug viejo se corrige a la sucursal correcta.
+  const company = user?.companySlug || params.companySlug || '';
+  const branch = user?.branchSlug || params.branchSlug || '';
 
   const panel = activePanel;
 

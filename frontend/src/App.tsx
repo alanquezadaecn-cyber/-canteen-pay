@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore, Panel } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppNav } from './components/AppNav';
@@ -92,11 +92,35 @@ const PanelSpinner = () => (
   </div>
 );
 
+// Autocorrige la URL: si el slug de empresa/sucursal en la URL no coincide
+// con el de la sesión (ej. link viejo), reescribe la URL al slug correcto.
+function useSlugCorrection(kind: 'company' | 'branch') {
+  const params = useParams<{ companySlug?: string; branchSlug?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  React.useEffect(() => {
+    if (!user) return;
+    let target = location.pathname;
+    if (params.companySlug && user.companySlug && params.companySlug !== user.companySlug) {
+      target = target.replace(`/${params.companySlug}`, `/${user.companySlug}`);
+    }
+    if (kind === 'branch' && params.branchSlug && user.branchSlug && params.branchSlug !== user.branchSlug) {
+      target = target.replace(`/${params.branchSlug}`, `/${user.branchSlug}`);
+    }
+    if (target !== location.pathname) {
+      navigate(target + location.search, { replace: true });
+    }
+  }, [params.companySlug, params.branchSlug, user, location.pathname]);
+}
+
 // Layouts: renderizan nav + Outlet. Si no hay sesión, muestran el login inline
 // (conservando la URL con empresa/sucursal).
 
 const ComensalLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('user');
+  useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
   return <><AppNav /><Outlet /></>;
@@ -104,6 +128,7 @@ const ComensalLayout: React.FC = () => {
 
 const CajaLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('cashier');
+  useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
   return <><CashierNav /><Outlet /></>;
@@ -111,6 +136,7 @@ const CajaLayout: React.FC = () => {
 
 const AdminLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('admin');
+  useSlugCorrection('company');
   if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;
   return <><AdminNav /><Outlet /></>;
