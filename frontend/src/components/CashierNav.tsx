@@ -3,12 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   QrCode,
-  DollarSign,
   History,
   LogOut,
   ShoppingBag,
   ClipboardList,
-  Users
+  Users,
+  Package
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -25,6 +25,7 @@ export const CashierNav: React.FC = () => {
     { path: `${base}/scan`, label: 'Escanear', icon: QrCode },
     { path: `${base}/comensales`, label: 'Comensales', icon: Users },
     { path: `${base}/products`, label: 'Menú', icon: ShoppingBag },
+    { path: `${base}/inventario`, label: 'Inventario', icon: Package },
     { path: `${base}/history`, label: 'Historial', icon: History },
     { path: `${base}/corte`, label: 'Corte', icon: ClipboardList }
   ];

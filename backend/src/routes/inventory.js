@@ -50,6 +50,57 @@ router.get('/branches', async (req, res) => {
   }
 });
 
+// CREATE producto físico (inventario) en una sucursal
+router.post('/branch/:branchId/create', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { name, price, category, stock, minStock } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'El nombre es requerido' });
+
+    // El cajero solo en su sucursal
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
+    if (me?.role === 'CASHIER' && me.branchId !== branchId) {
+      return res.status(403).json({ error: 'No autorizado en esta sucursal' });
+    }
+
+    const initialStock = parseInt(stock);
+    const product = await prisma.product.create({
+      data: {
+        name: name.trim(),
+        price: parseFloat(price) || 0,
+        category: category?.trim() || 'General',
+        branchId,
+        productType: 'PRODUCTO',
+        stock: isNaN(initialStock) ? 0 : initialStock,
+        minStock: parseInt(minStock) || 0,
+        isTracked: true,
+        isActive: true
+      }
+    });
+
+    if (!isNaN(initialStock) && initialStock > 0) {
+      await prisma.stockMovement.create({
+        data: { productId: product.id, type: 'INITIAL', quantity: initialStock, prevStock: 0, newStock: initialStock, note: 'Stock inicial', createdBy: req.userId }
+      });
+    }
+
+    res.status(201).json({ ...product, price: product.price.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear producto: ' + err.message });
+  }
+});
+
+// DELETE producto físico (desactivar)
+router.delete('/:id', async (req, res) => {
+  try {
+    await prisma.product.update({ where: { id: req.params.id }, data: { isActive: false } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al eliminar' });
+  }
+});
+
 // GET inventory for a branch — solo productos físicos (productType = PRODUCTO)
 router.get('/branch/:branchId', async (req, res) => {
   try {

@@ -31,6 +31,7 @@ import { CashierActionPanel } from './pages/cashier/CashierActionPanel';
 import { CashierProducts } from './pages/cashier/CashierProducts';
 import { CashierRegister } from './pages/cashier/CashierRegister';
 import { CashierUsers } from './pages/cashier/CashierUsers';
+import { CashierInventory } from './pages/cashier/CashierInventory';
 
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -268,6 +269,7 @@ function App() {
             <Route path="recharge"  element={<CashRecharge />} />
             <Route path="registrar" element={<CashierRegister />} />
             <Route path="comensales" element={<CashierUsers />} />
+            <Route path="inventario" element={<CashierInventory />} />
             <Route path="products"  element={<CashierProducts />} />
             <Route path="history"   element={<CashierHistory />} />
             <Route path="corte"     element={<CorteDeCaja />} />
