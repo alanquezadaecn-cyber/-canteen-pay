@@ -20,7 +20,8 @@ router.get('/me', verifyToken, async (req, res) => {
         role: true,
         balance: true,
         qrCode: true,
-        createdAt: true
+        createdAt: true,
+        branch: { select: { slug: true, company: { select: { slug: true, name: true } } } }
       }
     });
 
@@ -28,7 +29,14 @@ router.get('/me', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    res.json({ ...user, balance: user.balance.toString() });
+    const { branch, ...rest } = user;
+    res.json({
+      ...rest,
+      balance: user.balance.toString(),
+      branchSlug: branch?.slug || null,
+      companySlug: branch?.company?.slug || null,
+      company: branch?.company?.name || null
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener perfil' });

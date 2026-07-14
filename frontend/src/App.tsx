@@ -87,6 +87,27 @@ function usePanelGuard(panel: Panel) {
   return { session, ready: activePanel === panel };
 }
 
+// Self-healing: si la sesión activa no tiene slugs (sesión vieja), los rellena desde /users/me
+function useSlugBackfill() {
+  const { user, activePanel } = useAuthStore();
+  React.useEffect(() => {
+    if (!user) return;
+    const needsBranch = activePanel === 'user' || activePanel === 'cashier';
+    if (user.companySlug && (!needsBranch || user.branchSlug)) return;
+    import('./lib/api').then(({ default: api }) => {
+      api.get('/users/me').then(({ data }) => {
+        if (data.companySlug || data.branchSlug) {
+          useAuthStore.getState().patchUser({
+            companySlug: data.companySlug,
+            branchSlug: data.branchSlug,
+            company: data.company || user.company
+          });
+        }
+      }).catch(() => {});
+    });
+  }, [user?.id, activePanel]);
+}
+
 const PanelSpinner = () => (
   <div className="min-h-screen bg-slate-950 flex items-center justify-center">
     <div className="w-8 h-8 border-2 border-slate-600 border-t-white rounded-full animate-spin" />
@@ -121,6 +142,7 @@ function useSlugCorrection(kind: 'company' | 'branch') {
 
 const ComensalLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('user');
+  useSlugBackfill();
   useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
@@ -129,6 +151,7 @@ const ComensalLayout: React.FC = () => {
 
 const CajaLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('cashier');
+  useSlugBackfill();
   useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
@@ -137,6 +160,7 @@ const CajaLayout: React.FC = () => {
 
 const AdminLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('admin');
+  useSlugBackfill();
   useSlugCorrection('company');
   if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;

@@ -126,14 +126,14 @@ export const QRScanner: React.FC = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Keyboard className="w-4 h-4 text-slate-500" />
-              Email o código QR
+              Buscar comensal
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleManualSubmit} className="flex gap-2">
               <Input
                 type="text"
-                placeholder="email@empresa.com"
+                placeholder="Nombre, # empleado, email o teléfono"
                 value={manualQR}
                 onChange={(e) => setManualQR(e.target.value)}
                 className="flex-1 text-base"

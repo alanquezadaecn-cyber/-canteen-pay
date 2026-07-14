@@ -53,6 +53,7 @@ interface AuthStore {
   setAuth: (user: User, accessToken: string | null, refreshToken: string | null) => void;
   activatePanel: (panel: Panel) => void;
   updateTokens: (accessToken: string, refreshToken: string) => void;
+  patchUser: (patch: Partial<User>) => void;
   logout: () => void;
   setBalance: (balance: string) => void;
   setHasHydrated: (state: boolean) => void;
@@ -104,6 +105,20 @@ export const useAuthStore = create<AuthStore>()(
             sessions: s
               ? { ...state.sessions, [panel]: { ...s, accessToken, refreshToken } }
               : state.sessions
+          };
+        });
+      },
+
+      // Actualiza campos del usuario de la sesión activa (ej. backfill de slugs)
+      patchUser: (patch) => {
+        set((state) => {
+          if (!state.user) return {};
+          const user = { ...state.user, ...patch };
+          const panel = state.activePanel;
+          const s = state.sessions[panel];
+          return {
+            user,
+            sessions: s ? { ...state.sessions, [panel]: { ...s, user } } : state.sessions
           };
         });
       },

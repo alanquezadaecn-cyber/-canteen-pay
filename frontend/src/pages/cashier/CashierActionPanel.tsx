@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -24,28 +24,13 @@ interface Product {
 }
 
 export const CashierActionPanel: React.FC = () => {
-  const { branchId: paramBranchId, companySlug, branchSlug } = useParams<{
-    branchId?: string;
-    companySlug?: string;
-    branchSlug?: string;
-  }>();
+  const { branchId: paramBranchId } = useParams<{ branchId?: string }>();
   const { user: cashierSession } = useAuthStore();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  // Resolver sucursal: /caja/:branchId (legacy), /cashier/:empresa/:sucursal (slugs), o /cashier (sesión)
-  const [branchId, setBranchId] = useState<string | undefined>(
-    paramBranchId || (companySlug ? undefined : cashierSession?.branchId)
-  );
-
-  useEffect(() => {
-    if (companySlug && branchSlug) {
-      fetch(`/api/public/slug/${companySlug.toLowerCase()}/${branchSlug.toLowerCase()}`)
-        .then(r => r.json())
-        .then(d => { if (d.branch?.id) setBranchId(d.branch.id); })
-        .catch(() => {});
-    }
-  }, [companySlug, branchSlug]);
+  // El cajero SIEMPRE opera sobre su propia sucursal (branchId de la sesión).
+  // La URL /caja/:branchId legacy también se soporta. El slug es solo cosmético.
+  const branchId = cashierSession?.branchId || paramBranchId;
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [mode, setMode] = useState<'select' | 'charge' | 'recharge'>('select');
