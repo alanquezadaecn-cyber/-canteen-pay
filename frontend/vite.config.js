@@ -34,8 +34,24 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // NO precachear html: el index.html siempre se trae fresco de la red
+        // para que apunte a los chunks JS/CSS actuales (evita pantalla en blanco tras deploy)
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            // Navegaciones (páginas): red primero, cache solo como respaldo offline
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 10, maxAgeSeconds: 86400 }
+            }
+          },
           {
             urlPattern: /\/api\//,
             handler: 'NetworkFirst',
