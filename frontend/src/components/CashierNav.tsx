@@ -7,7 +7,8 @@ import {
   History,
   LogOut,
   ShoppingBag,
-  ClipboardList
+  ClipboardList,
+  UserPlus
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -21,7 +22,7 @@ export const CashierNav: React.FC = () => {
   const navItems = [
     { path: base, label: 'Inicio', icon: Home },
     { path: `${base}/scan`, label: 'Escanear', icon: QrCode },
-    { path: `${base}/recharge`, label: 'Recargar', icon: DollarSign },
+    { path: `${base}/registrar`, label: 'Alta', icon: UserPlus },
     { path: `${base}/products`, label: 'Menú', icon: ShoppingBag },
     { path: `${base}/history`, label: 'Historial', icon: History },
     { path: `${base}/corte`, label: 'Corte', icon: ClipboardList }

@@ -99,6 +99,88 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
   }
 });
 
+// CREATE comensal desde caja — el cajero da de alta un usuario en SU sucursal
+router.post('/branch/:branchId/register', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { name, email, phone, password, employeeNumber } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: 'El nombre es requerido' });
+    }
+
+    // Validar que el cajero pertenece a esa sucursal (admin puede en cualquiera de su empresa)
+    const cashier = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { branchId: true, role: true }
+    });
+    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
+      return res.status(403).json({ error: 'No puedes registrar en otra sucursal' });
+    }
+
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    // Email: usar el dado, o generar uno interno si no hay (muchos comensales no tienen email)
+    let finalEmail = email?.trim().toLowerCase();
+    if (finalEmail) {
+      const existing = await prisma.user.findUnique({ where: { email: finalEmail } });
+      if (existing) return res.status(409).json({ error: 'Ese email ya está registrado' });
+    }
+
+    // employeeNumber: usar el dado o auto-generar consecutivo
+    const { QRService } = await import('../services/qr.service.js');
+    const bcrypt = await import('bcrypt');
+
+    let empNum = employeeNumber?.trim();
+    if (!empNum) {
+      const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+      let nextNum = 10001;
+      const maxStr = maxCode._max?.employeeNumber;
+      if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+      empNum = String(nextNum);
+    }
+
+    // Si no dieron email, generar uno interno único basado en el número de empleado
+    if (!finalEmail) {
+      finalEmail = `comensal-${empNum}-${Date.now().toString().slice(-4)}@${branch.slug || 'mealpay'}.local`;
+    }
+
+    const plainPassword = password?.trim() || empNum; // default: su número de empleado
+    const hashedPassword = await bcrypt.default.hash(plainPassword, 10);
+    const qrCode = QRService.generateUniqueCode();
+
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: finalEmail,
+        password: hashedPassword,
+        phone: phone?.trim() || '+52 0000-0000',
+        role: 'USER',
+        employeeNumber: empNum,
+        qrCode,
+        branchId,
+        isActive: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        employeeNumber: user.employeeNumber,
+        qrCode: user.qrCode,
+        password: plainPassword
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar comensal: ' + err.message });
+  }
+});
+
 // CHARGE en sucursal específica
 router.post('/branch/:branchId/charge', async (req, res) => {
   try {
