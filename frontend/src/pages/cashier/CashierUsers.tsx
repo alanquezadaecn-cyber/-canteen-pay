@@ -31,6 +31,12 @@ export const CashierUsers: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [qrUser, setQrUser] = useState<Comensal | null>(null);
+  const [limit, setLimit] = useState<{ max: number | null; used: number } | null>(null);
+
+  useEffect(() => {
+    if (!branchId) return;
+    api.get(`/cashier/branch/${branchId}/limit`).then(r => setLimit(r.data)).catch(() => {});
+  }, [branchId]);
 
   useEffect(() => {
     if (!branchId) return;
@@ -87,7 +93,11 @@ export const CashierUsers: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Comensales</h1>
-              <p className="text-sm text-slate-500">{users.length} en tu comedor</p>
+              <p className="text-sm text-slate-500">
+                {limit
+                  ? `${limit.used}${limit.max != null ? ` / ${limit.max}` : ''} en tu comedor${limit.max != null && limit.used >= limit.max ? ' · cupo lleno' : ''}`
+                  : `${users.length} en tu comedor`}
+              </p>
             </div>
           </div>
           <button

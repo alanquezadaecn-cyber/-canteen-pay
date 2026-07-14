@@ -81,10 +81,10 @@ async function ensurePlansExist() {
       price: 3000,
       billingCycle: 'MONTHLY',
       maxBranches: 2,
-      maxUsersPerBranch: null,
+      maxUsersPerBranch: 2000,
       features: [
         'Hasta 2 sucursales',
-        'Comensales ilimitados',
+        'Hasta 2,000 comensales por sucursal',
         'Panel admin + cajero + comensal',
         'Reportes básicos',
         'Soporte WhatsApp incluido'

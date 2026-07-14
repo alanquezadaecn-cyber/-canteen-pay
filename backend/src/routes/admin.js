@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken, checkRole } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
+import { assertBranchHasRoom, branchUserLimit } from '../lib/limits.js';
 
 const router = express.Router();
 
@@ -247,6 +248,11 @@ router.post('/users', async (req, res) => {
     const adminUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true } });
     const finalBranchId = bodyBranchId || adminUser?.branchId;
 
+    // Límite de comensales según el plan (solo aplica a comensales)
+    if ((role === 'USER' || !role) && finalBranchId) {
+      if (!(await assertBranchHasRoom(finalBranchId, res))) return;
+    }
+
     // Generar employeeNumber numérico único
     const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
     let nextNum = 10001;
@@ -454,6 +460,16 @@ router.post('/users/bulk-import', async (req, res) => {
     const { branchId, users } = req.body;
     if (!Array.isArray(users) || users.length === 0) {
       return res.status(400).json({ error: 'Se requiere un array de usuarios' });
+    }
+
+    // Validar que el lote no exceda el límite de comensales del plan
+    if (branchId) {
+      const { max, used } = await branchUserLimit(branchId);
+      if (max != null && used + users.length > max) {
+        return res.status(403).json({
+          error: `El plan permite hasta ${max} comensales por sucursal. Actualmente hay ${used} y quieres agregar ${users.length}. Reduce el archivo o actualiza tu plan.`
+        });
+      }
     }
 
     let success = 0;

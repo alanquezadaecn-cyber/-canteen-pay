@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken, checkRole } from '../middleware/auth.js';
 import { sendRechargeConfirmation, sendPurchaseNotification } from '../services/email.service.js';
+import { assertBranchHasRoom, branchUserLimit } from '../lib/limits.js';
 
 const router = express.Router();
 
@@ -114,6 +115,9 @@ router.post('/branch/:branchId/register', async (req, res) => {
     const branch = await prisma.branch.findUnique({ where: { id: branchId } });
     if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
+    // Límite de comensales según el plan
+    if (!(await assertBranchHasRoom(branchId, res))) return;
+
     // Email: usar el dado, o generar uno interno si no hay (muchos comensales no tienen email)
     let finalEmail = email?.trim().toLowerCase();
     if (finalEmail) {
@@ -210,6 +214,16 @@ router.get('/branch/:branchId/users', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener comensales' });
+  }
+});
+
+// LÍMITE de comensales de la sucursal (uso vs máximo del plan)
+router.get('/branch/:branchId/limit', async (req, res) => {
+  try {
+    const info = await branchUserLimit(req.params.branchId);
+    res.json(info);
+  } catch (err) {
+    res.json({ max: null, used: 0, allowed: true });
   }
 });
 

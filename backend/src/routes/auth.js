@@ -48,6 +48,13 @@ router.post('/register', async (req, res) => {
       return res.status(404).json({ error: 'Sucursal no encontrada' });
     }
 
+    // Límite de comensales según el plan de la empresa
+    const { branchUserLimit } = await import('../lib/limits.js');
+    const lim = await branchUserLimit(branchId);
+    if (!lim.allowed) {
+      return res.status(403).json({ error: 'Este comedor alcanzó su cupo máximo de comensales. Contacta al administrador.' });
+    }
+
     // Auto-generar employeeNumber numérico
     const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
     let nextNum = 10001;
