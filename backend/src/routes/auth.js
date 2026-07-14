@@ -109,17 +109,34 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password, branchId } = req.body;
+    const identifier = (email || '').trim();
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
     }
 
-    console.log(`📧 Intento login: ${email}${branchId ? ` (Sucursal: ${branchId})` : ''}`);
+    console.log(`📧 Intento login: ${identifier}${branchId ? ` (Sucursal: ${branchId})` : ''}`);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { branch: { include: { company: true } } }
-    });
+    let user;
+    if (identifier.includes('@')) {
+      // Login por email
+      user = await prisma.user.findUnique({
+        where: { email: identifier.toLowerCase() },
+        include: { branch: { include: { company: true } } }
+      });
+    } else if (branchId) {
+      // Login por NÚMERO de empleado dentro de la sucursal
+      user = await prisma.user.findFirst({
+        where: { employeeNumber: identifier, branchId },
+        include: { branch: { include: { company: true } } }
+      });
+    } else {
+      // Sin sucursal, intentar por número de forma global (primer match)
+      user = await prisma.user.findFirst({
+        where: { employeeNumber: identifier },
+        include: { branch: { include: { company: true } } }
+      });
+    }
     console.log(`👤 Usuario encontrado: ${user ? 'SÍ' : 'NO'}`);
 
     if (!user) {

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { usePanelBase } from '../../hooks/usePanelBase';
 import { QRModal } from '../../components/QRModal';
+import { BulkImportComensales } from '../../components/BulkImportComensales';
 import api from '../../lib/api';
-import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus, QrCode } from 'lucide-react';
+import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus, QrCode, Upload } from 'lucide-react';
 
 interface Comensal {
   id: string;
@@ -31,6 +32,7 @@ export const CashierUsers: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [qrUser, setQrUser] = useState<Comensal | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [limit, setLimit] = useState<{ max: number | null; used: number } | null>(null);
 
   useEffect(() => {
@@ -100,12 +102,20 @@ export const CashierUsers: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => navigate(`${base}/registrar`)}
-            className="flex items-center gap-2 h-10 px-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors cursor-pointer flex-shrink-0"
-          >
-            <UserPlus className="w-4 h-4" /> Alta
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 h-10 px-4 rounded-full border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:border-emerald-400 transition-colors cursor-pointer"
+            >
+              <Upload className="w-4 h-4" /> Importar
+            </button>
+            <button
+              onClick={() => navigate(`${base}/registrar`)}
+              className="flex items-center gap-2 h-10 px-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" /> Alta
+            </button>
+          </div>
         </div>
 
         {/* Buscador */}
@@ -235,6 +245,25 @@ export const CashierUsers: React.FC = () => {
           qrCode={qrUser.qrCode}
           onClose={() => setQrUser(null)}
         />
+      )}
+
+      {showImport && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Importar comensales</h2>
+              <button onClick={() => setShowImport(false)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <BulkImportComensales
+                endpoint={`/cashier/branch/${branchId}/bulk-import`}
+                onClose={() => { setShowImport(false); load(); }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

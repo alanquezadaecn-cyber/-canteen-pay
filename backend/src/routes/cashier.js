@@ -143,7 +143,8 @@ router.post('/branch/:branchId/register', async (req, res) => {
       finalEmail = `comensal-${empNum}-${Date.now().toString().slice(-4)}@${branch.slug || 'mealpay'}.local`;
     }
 
-    const plainPassword = password?.trim() || empNum; // default: su número de empleado
+    const { gen8DigitPassword } = await import('../lib/bulkImport.js');
+    const plainPassword = password?.trim() || gen8DigitPassword(); // 8 dígitos autogenerada
     const hashedPassword = await bcrypt.default.hash(plainPassword, 10);
     const qrCode = QRService.generateUniqueCode();
 
@@ -214,6 +215,29 @@ router.get('/branch/:branchId/users', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener comensales' });
+  }
+});
+
+// BULK IMPORT de comensales desde caja (scoped a la sucursal del cajero)
+router.post('/branch/:branchId/bulk-import', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { users } = req.body;
+
+    const cashier = await prisma.user.findUnique({
+      where: { id: req.userId }, select: { branchId: true, role: true }
+    });
+    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
+      return res.status(403).json({ error: 'No puedes importar en otra sucursal' });
+    }
+
+    const { bulkImportComensales } = await import('../lib/bulkImport.js');
+    const { httpError, result } = await bulkImportComensales(branchId, users);
+    if (httpError) return res.status(httpError.status).json({ error: httpError.error });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error en importación masiva' });
   }
 });
 

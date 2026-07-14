@@ -6,6 +6,29 @@ import { QRService } from '../services/qr.service.js';
 
 const router = express.Router();
 
+// Cambiar contraseña propia (comensal desde su panel)
+router.put('/me/password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // Verificar la actual
+    const match = await bcrypt.compare(currentPassword || '', user.password);
+    if (!match) return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id: req.userId }, data: { password: hashed } });
+    res.json({ success: true, message: 'Contraseña actualizada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al cambiar contraseña' });
+  }
+});
+
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({

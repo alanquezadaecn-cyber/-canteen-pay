@@ -129,12 +129,14 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Email</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+                {context.type === 'branch' ? 'Email o número de empleado' : 'Email'}
+              </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="tu@email.com"
+                placeholder={context.type === 'branch' ? 'Número o tu@email.com' : 'tu@email.com'}
                 required
                 className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
               />
