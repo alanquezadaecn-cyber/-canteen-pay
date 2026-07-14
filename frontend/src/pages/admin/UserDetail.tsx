@@ -6,7 +6,8 @@ import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
 import { usePanelBase } from '../../hooks/usePanelBase';
-import { AlertCircle, CheckCircle, ArrowLeft, DollarSign } from 'lucide-react';
+import { QRModal } from '../../components/QRModal';
+import { AlertCircle, CheckCircle, ArrowLeft, DollarSign, QrCode } from 'lucide-react';
 
 interface UserData {
   id: string;
@@ -18,6 +19,7 @@ interface UserData {
   role: string;
   balance: string;
   isActive: boolean;
+  qrCode: string;
   createdAt: string;
   transactions: any[];
 }
@@ -39,6 +41,7 @@ export const UserDetail: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', employeeNumber: '' });
   const [savingEdit, setSavingEdit] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const openEdit = () => {
     if (!user) return;
@@ -191,6 +194,14 @@ export const UserDetail: React.FC = () => {
                 }`}>
                   {user.isActive ? '✓ Activo' : '✗ Inactivo'}
                 </span>
+                {user.qrCode && (
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="px-4 py-2 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-4 h-4" /> QR
+                  </button>
+                )}
                 <button
                   onClick={openEdit}
                   className="px-4 py-2 rounded-full text-sm font-medium bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
@@ -445,6 +456,15 @@ export const UserDetail: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {showQR && user.qrCode && (
+        <QRModal
+          name={user.name}
+          employeeNumber={user.employeeNumber}
+          qrCode={user.qrCode}
+          onClose={() => setShowQR(false)}
+        />
+      )}
     </div>
   );
 };

@@ -134,6 +134,7 @@ router.get('/users/:id', async (req, res) => {
         role: true,
         balance: true,
         isActive: true,
+        qrCode: true,
         createdAt: true
       }
     });

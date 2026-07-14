@@ -177,7 +177,7 @@ export const CashierActionPanel: React.FC = () => {
             <form onSubmit={handleSearch} className="space-y-3">
               <input
                 type="text"
-                placeholder="Código (10001), email o QR..."
+                placeholder="Nombre, # empleado, email, teléfono o QR..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 autoFocus

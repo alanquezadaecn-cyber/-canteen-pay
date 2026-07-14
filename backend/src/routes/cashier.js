@@ -31,62 +31,54 @@ router.get('/branch/:branchId', async (req, res) => {
   }
 });
 
-// SCAN QR en sucursal específica (solo usuarios de esa sucursal)
+// SCAN / BUSCAR comensal en la sucursal por QR, # empleado, email, teléfono o nombre
 router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
   try {
     const { branchId, qrCode } = req.params;
+    const term = decodeURIComponent(qrCode).trim();
+    const select = {
+      id: true, name: true, email: true, branchId: true,
+      employeeNumber: true, phone: true, balance: true,
+      isActive: true, qrCode: true
+    };
 
-    // Buscar por QR o por email
-    let user = await prisma.user.findUnique({
-      where: { qrCode },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        branchId: true,
-        employeeNumber: true,
-        phone: true,
-        balance: true,
-        isActive: true,
-        qrCode: true
-      }
+    // 1) Coincidencia EXACTA (QR, email, # empleado, teléfono) dentro de la sucursal
+    let user = await prisma.user.findFirst({
+      where: {
+        branchId,
+        OR: [
+          { qrCode: term },
+          { email: term.toLowerCase() },
+          { employeeNumber: term },
+          { phone: term }
+        ]
+      },
+      select
     });
 
-    // Si no encontró por QR, intenta por email
-    if (!user) {
-      user = await prisma.user.findUnique({
-        where: { email: qrCode },
-        select: {
-          id: true, name: true, email: true, branchId: true,
-          employeeNumber: true, phone: true, balance: true,
-          isActive: true, qrCode: true
-        }
-      });
-    }
-
-    // Si no encontró por email, intenta por código numérico (employeeNumber)
+    // 2) Si no hubo exacta, buscar por nombre/email/teléfono parcial (comensales activos)
     if (!user) {
       user = await prisma.user.findFirst({
-        where: { employeeNumber: qrCode, branchId },
-        select: {
-          id: true, name: true, email: true, branchId: true,
-          employeeNumber: true, phone: true, balance: true,
-          isActive: true, qrCode: true
-        }
+        where: {
+          branchId,
+          role: 'USER',
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { email: { contains: term.toLowerCase() } },
+            { phone: { contains: term } }
+          ]
+        },
+        orderBy: { name: 'asc' },
+        select
       });
     }
 
     if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    // Verificar que usuario pertenece a esta sucursal
-    if (user.branchId !== branchId) {
-      return res.status(403).json({ error: 'Usuario no pertenece a esta sucursal' });
+      return res.status(404).json({ error: 'Comensal no encontrado' });
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ error: 'Usuario inactivo' });
+      return res.status(403).json({ error: 'Comensal inactivo' });
     }
 
     res.json({
@@ -95,7 +87,7 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al escanear QR' });
+    res.status(500).json({ error: 'Error al buscar comensal' });
   }
 });
 

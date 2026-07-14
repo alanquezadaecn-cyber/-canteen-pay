@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { usePanelBase } from '../../hooks/usePanelBase';
+import { QRModal } from '../../components/QRModal';
 import api from '../../lib/api';
-import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus } from 'lucide-react';
+import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus, QrCode } from 'lucide-react';
 
 interface Comensal {
   id: string;
@@ -29,6 +30,7 @@ export const CashierUsers: React.FC = () => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', employeeNumber: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [qrUser, setQrUser] = useState<Comensal | null>(null);
 
   useEffect(() => {
     if (!branchId) return;
@@ -183,6 +185,13 @@ export const CashierUsers: React.FC = () => {
                         <p className="font-bold text-emerald-600 dark:text-emerald-400">${parseFloat(u.balance).toFixed(2)}</p>
                       </div>
                       <button
+                        onClick={() => setQrUser(u)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors cursor-pointer"
+                        title="Ver QR"
+                      >
+                        <QrCode className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      </button>
+                      <button
                         onClick={() => startEdit(u)}
                         className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors cursor-pointer"
                         title="Editar"
@@ -208,6 +217,15 @@ export const CashierUsers: React.FC = () => {
           </div>
         )}
       </div>
+
+      {qrUser && (
+        <QRModal
+          name={qrUser.name}
+          employeeNumber={qrUser.employeeNumber}
+          qrCode={qrUser.qrCode}
+          onClose={() => setQrUser(null)}
+        />
+      )}
     </div>
   );
 };
