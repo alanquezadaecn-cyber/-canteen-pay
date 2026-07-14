@@ -10,6 +10,7 @@ import { AdminNav } from './components/AdminNav';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { Impersonate } from './pages/auth/Impersonate';
+import { Landing } from './pages/Landing';
 
 // Comensal
 import { Dashboard } from './pages/user/Dashboard';
@@ -183,6 +184,15 @@ const RootRedirect: React.FC = () => {
   return <Navigate to={getRoleHome(sessions[panel]!.user)} replace />;
 };
 
+// Raíz "/": landing informativa si no hay sesión; si hay, al panel correspondiente
+const HomeRoute: React.FC = () => {
+  const { sessions } = useAuthStore();
+  const order: Panel[] = ['master', 'admin', 'cashier', 'user'];
+  const panel = order.find(p => sessions[p]);
+  if (!panel) return <Landing />;
+  return <Navigate to={getRoleHome(sessions[panel]!.user)} replace />;
+};
+
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -285,7 +295,7 @@ function App() {
           <Route path="/admin/dashboard" element={<RootRedirect />} />
 
           {/* ── DEFAULT ─────────────────────────────────────────────────── */}
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/" element={<HomeRoute />} />
           <Route path="*" element={<RootRedirect />} />
 
         </Routes>

@@ -62,17 +62,29 @@ router.get('/stats', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', role = '' } = req.query;
+    const { page = 1, limit = 20, search = '', role = '', branchId = '' } = req.query;
     const skip = (page - 1) * limit;
 
     const masterEmails = (process.env.MASTER_ADMIN_EMAILS || 'alejandro.qt92@gmail.com,master@mealpay.com').split(',');
 
+    // Sucursales de la empresa del admin (para scoping multi-tenant)
+    const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+    const companyId = req.userCompanyId || admin?.branch?.companyId;
+    let branchIds = [];
+    if (companyId) {
+      const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true } });
+      branchIds = branches.map(b => b.id);
+    }
+
     const where = {
       email: { notIn: masterEmails },
+      // Filtro por sucursal específica, o por todas las de la empresa
+      ...(branchId ? { branchId: String(branchId) } : (branchIds.length ? { branchId: { in: branchIds } } : {})),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } }
+          { email: { contains: search, mode: 'insensitive' } },
+          { employeeNumber: { contains: search } }
         ]
       }),
       ...(role && { role })

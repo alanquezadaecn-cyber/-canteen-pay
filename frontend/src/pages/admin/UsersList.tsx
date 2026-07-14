@@ -31,6 +31,8 @@ export const UsersList: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
+  const [branchId, setBranchId] = useState('');
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -43,14 +45,18 @@ export const UsersList: React.FC = () => {
   const [createSuccess, setCreateSuccess] = useState('');
 
   useEffect(() => {
+    api.get('/branches').then(r => setBranches(r.data.map((b: any) => ({ id: b.id, name: b.name })))).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const t = setTimeout(() => fetchUsers(), 300);
     return () => clearTimeout(t);
-  }, [search, role, page]);
+  }, [search, role, branchId, page]);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/users?search=${search}&role=${role}&page=${page}&limit=20`);
+      const { data } = await api.get(`/admin/users?search=${search}&role=${role}&branchId=${branchId}&page=${page}&limit=20`);
       setUsers(data.data);
       setTotal(data.pagination.total);
       setPages(data.pagination.pages);
@@ -121,6 +127,16 @@ export const UsersList: React.FC = () => {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="flex-1 min-w-48 h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 text-sm focus:outline-none focus:border-slate-400 transition-colors"
           />
+          {branches.length > 1 && (
+            <select
+              value={branchId}
+              onChange={(e) => { setBranchId(e.target.value); setPage(1); }}
+              className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:outline-none focus:border-slate-400 transition-colors"
+            >
+              <option value="">Todas las sucursales</option>
+              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
           <select
             value={role}
             onChange={(e) => { setRole(e.target.value); setPage(1); }}

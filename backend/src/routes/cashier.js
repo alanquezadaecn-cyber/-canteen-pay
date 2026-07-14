@@ -260,11 +260,26 @@ router.put('/branch/:branchId/users/:userId', async (req, res) => {
 router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { qrCode, amount, description } = req.body;
+    const { qrCode, amount, description, clientRef } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
       return res.status(400).json({ error: 'QR y monto válido requeridos' });
+    }
+
+    // Idempotencia: si esta operación (clientRef) ya se aplicó, devolver el resultado
+    // sin volver a cobrar. Clave para la sincronización del modo offline.
+    if (clientRef) {
+      const existing = await prisma.transaction.findFirst({ where: { reference: clientRef } });
+      if (existing) {
+        const u = await prisma.user.findUnique({ where: { id: existing.userId }, select: { name: true, balance: true } });
+        return res.json({
+          success: true, duplicate: true,
+          transaction: { ...existing, amount: existing.amount.toString() },
+          newBalance: (u?.balance || 0).toString(),
+          userName: u?.name
+        });
+      }
     }
 
     // Buscar por QR o por email
@@ -341,7 +356,8 @@ router.post('/branch/:branchId/charge', async (req, res) => {
           balanceAfter: newBalance,
           description: description || `Compra en ${new Date().toLocaleString('es-MX')}`,
           cashierId: req.userId,
-          paymentMethod: 'CASH'
+          paymentMethod: 'CASH',
+          reference: clientRef || null
         }
       });
 
@@ -393,11 +409,20 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 router.post('/branch/:branchId/recharge', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { qrCode, amount } = req.body;
+    const { qrCode, amount, clientRef } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
       return res.status(400).json({ error: 'QR y monto válido requeridos' });
+    }
+
+    // Idempotencia para sincronización offline
+    if (clientRef) {
+      const existing = await prisma.transaction.findFirst({ where: { reference: clientRef } });
+      if (existing) {
+        const u = await prisma.user.findUnique({ where: { id: existing.userId }, select: { name: true, balance: true } });
+        return res.json({ success: true, duplicate: true, newBalance: (u?.balance || 0).toString(), userName: u?.name });
+      }
     }
 
     // Buscar por QR o por email
@@ -454,7 +479,8 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
           description: `Recarga en efectivo`,
           cashierId: req.userId,
           paymentMethod: 'CASH',
-          status: 'COMPLETED'
+          status: 'COMPLETED',
+          reference: clientRef || null
         }
       });
 

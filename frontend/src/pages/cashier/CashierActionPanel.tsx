@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { AlertCircle, ShoppingCart, Plus, Search } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { doCharge, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
 
 interface User {
   id: string;
@@ -60,13 +61,26 @@ export const CashierActionPanel: React.FC = () => {
 
   const loadUser = async (term: string) => {
     if (!branchId) { setError('No se pudo determinar la sucursal'); return; }
-    // Quitar '#' inicial y codificar para no romper la URL con #, @, espacios, etc.
     const clean = term.replace(/^#/, '').trim();
+
+    // Offline: buscar en el cache local de comensales
+    if (!isOnline()) {
+      const cached = findCachedComensal(branchId, clean);
+      if (cached) { setUser(cached); setError(''); }
+      else setError('Sin conexión: comensal no está en el cache local');
+      return;
+    }
+
     try {
       const { data } = await api.get(`/cashier/branch/${branchId}/scan/${encodeURIComponent(clean)}`);
       setUser(data);
       setError('');
     } catch (err: any) {
+      // Si falló por red, intentar el cache local
+      if (!err.response) {
+        const cached = findCachedComensal(branchId, clean);
+        if (cached) { setUser(cached); setError(''); return; }
+      }
       setError(err.response?.data?.error || 'Comensal no encontrado');
     }
   };
@@ -87,26 +101,23 @@ export const CashierActionPanel: React.FC = () => {
     } catch (err) {
       console.error('Error cargando productos:', err);
     }
+    // Cachear comensales para operar offline (en segundo plano, no bloquea)
+    if (branchId && isOnline()) {
+      api.get(`/cashier/branch/${branchId}/users`).then(r => cacheComensales(branchId, r.data)).catch(() => {});
+    }
   };
 
   const handleCharge = async (product: Product) => {
-    if (!user) return;
-
+    if (!user || !branchId) return;
     setLoading(true);
     try {
-      const { data } = await api.post(`/cashier/branch/${branchId}/charge`, {
-        qrCode: user.qrCode,
-        amount: product.price,
-        description: `Compra: ${product.name}`
-      });
-
-      setSuccess(`✅ ${product.name} cobrado a ${user.name}. Nuevo balance: $${data.newBalance}`);
-      setUser({ ...user, balance: data.newBalance });
+      const { offline, newBalance } = await doCharge(branchId, user, product.price, `Compra: ${product.name}`);
+      setSuccess(offline
+        ? `⚠️ Sin conexión: ${product.name} cobrado a ${user.name} (se sincronizará). Saldo: $${newBalance}`
+        : `✅ ${product.name} cobrado a ${user.name}. Nuevo saldo: $${newBalance}`);
+      setUser({ ...user, balance: newBalance });
       setMode('select');
-      setTimeout(() => {
-        setSuccess('');
-        setUser(null);
-      }, 2000);
+      setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar cobro');
     } finally {
@@ -115,26 +126,20 @@ export const CashierActionPanel: React.FC = () => {
   };
 
   const handleRecharge = async () => {
-    if (!user || !rechargeAmount) {
+    if (!user || !branchId || !rechargeAmount) {
       setError('Ingresa un monto válido');
       return;
     }
-
     setLoading(true);
     try {
-      const { data } = await api.post(`/cashier/branch/${branchId}/recharge`, {
-        qrCode: user.qrCode,
-        amount: parseFloat(rechargeAmount)
-      });
-
-      setSuccess(`✅ Recarga de $${rechargeAmount} completada. Nuevo balance: $${data.newBalance}`);
-      setUser({ ...user, balance: data.newBalance });
+      const { offline, newBalance } = await doRecharge(branchId, user, parseFloat(rechargeAmount));
+      setSuccess(offline
+        ? `⚠️ Sin conexión: recarga de $${rechargeAmount} guardada (se sincronizará). Saldo: $${newBalance}`
+        : `✅ Recarga de $${rechargeAmount} completada. Nuevo saldo: $${newBalance}`);
+      setUser({ ...user, balance: newBalance });
       setRechargeAmount('');
       setMode('select');
-      setTimeout(() => {
-        setSuccess('');
-        setUser(null);
-      }, 2000);
+      setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar recarga');
     } finally {

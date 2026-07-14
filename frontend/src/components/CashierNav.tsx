@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
 import { usePanelBase } from '../hooks/usePanelBase';
+import { OfflineBanner } from './OfflineBanner';
 
 export const CashierNav: React.FC = () => {
   const location = useLocation();
@@ -37,6 +38,7 @@ export const CashierNav: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       {/* Desktop Sidebar — claro */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:bg-white md:dark:bg-slate-900 md:border-r md:border-slate-100 md:dark:border-slate-800 z-40">
         <div className="flex items-center justify-center gap-2 h-16 border-b border-slate-100 dark:border-slate-800 px-4">
