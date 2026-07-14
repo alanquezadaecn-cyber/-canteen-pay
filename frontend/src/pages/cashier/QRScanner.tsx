@@ -55,8 +55,9 @@ export const QRScanner: React.FC = () => {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualQR.trim()) return;
-    navigate(`${base}?qr=${encodeURIComponent(manualQR.trim())}`);
+    const clean = manualQR.replace(/^#/, '').trim();
+    if (!clean) return;
+    navigate(`${base}?qr=${encodeURIComponent(clean)}`);
   };
 
   return (

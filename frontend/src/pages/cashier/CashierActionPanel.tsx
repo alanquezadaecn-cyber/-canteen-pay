@@ -58,19 +58,22 @@ export const CashierActionPanel: React.FC = () => {
     }
   }, [location.search, branchId]);
 
-  const loadUser = async (qrCode: string) => {
+  const loadUser = async (term: string) => {
+    if (!branchId) { setError('No se pudo determinar la sucursal'); return; }
+    // Quitar '#' inicial y codificar para no romper la URL con #, @, espacios, etc.
+    const clean = term.replace(/^#/, '').trim();
     try {
-      const { data } = await api.get(`/cashier/branch/${branchId}/scan/${qrCode}`);
+      const { data } = await api.get(`/cashier/branch/${branchId}/scan/${encodeURIComponent(clean)}`);
       setUser(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Usuario no encontrado');
+      setError(err.response?.data?.error || 'Comensal no encontrado');
     }
   };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchInput.trim() || !branchId) return;
+    if (!searchInput.trim()) return;
     setSearching(true);
     setError('');
     await loadUser(searchInput.trim());

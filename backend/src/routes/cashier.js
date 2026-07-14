@@ -42,10 +42,11 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       isActive: true, qrCode: true
     };
 
-    // 1) Coincidencia EXACTA (QR, email, # empleado, teléfono) dentro de la sucursal
+    // 1) Coincidencia EXACTA (QR, email, # empleado, teléfono) — comensales de la sucursal
     let user = await prisma.user.findFirst({
       where: {
         branchId,
+        role: 'USER',
         OR: [
           { qrCode: term },
           { email: term.toLowerCase() },
@@ -56,7 +57,7 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       select
     });
 
-    // 2) Si no hubo exacta, buscar por nombre/email/teléfono parcial (comensales activos)
+    // 2) Si no hubo exacta, buscar por nombre/email/teléfono parcial
     if (!user) {
       user = await prisma.user.findFirst({
         where: {
