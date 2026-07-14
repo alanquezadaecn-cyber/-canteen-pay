@@ -1,1 +1,25 @@
-if(!self.define){let e,n={};const i=(i,s)=>(i=new URL(i+".js",s).href,n[i]||new Promise(n=>{if("document"in self){const e=document.createElement("script");e.src=i,e.onload=n,document.head.appendChild(e)}else e=i,importScripts(i),n()}).then(()=>{let e=n[i];if(!e)throw new Error(`Module ${i} didn’t register its module`);return e}));self.define=(s,o)=>{const c=e||("document"in self?document.currentScript.src:"")||location.href;if(n[c])return;let r={};const t=e=>i(e,c),a={module:{uri:c},exports:r,require:t};n[c]=Promise.all(s.map(e=>a[e]||t(e))).then(e=>(o(...e),r))}}define(["./workbox-99865a2e"],function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"registerSW.js",revision:"1872c500de691dce40960bb85481de07"},{url:"icons/icon.svg",revision:"2f624c8adfa36ecdd21b1b567f6b2518"},{url:"icons/icon-512.png",revision:"8aeb3086b39afa395e28e285be8e926d"},{url:"icons/icon-192.png",revision:"8846988132086ed99305126ca87bc267"},{url:"assets/index-Sq_axryK.css",revision:null},{url:"assets/index-BTzCRRNo.js",revision:null},{url:"icons/icon-192.png",revision:"8846988132086ed99305126ca87bc267"},{url:"icons/icon-512.png",revision:"8aeb3086b39afa395e28e285be8e926d"},{url:"icons/icon.svg",revision:"2f624c8adfa36ecdd21b1b567f6b2518"},{url:"manifest.webmanifest",revision:"2274aef8c76f7f51e99043270ae8c4e9"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(({request:e})=>"navigate"===e.mode,new e.NetworkFirst({cacheName:"pages-cache",networkTimeoutSeconds:5,plugins:[new e.ExpirationPlugin({maxEntries:10,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/\/api\//,new e.NetworkFirst({cacheName:"api-cache",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:50,maxAgeSeconds:300})]}),"GET")});
+
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+  self.registration.unregister()
+    .then(() => self.clients.matchAll())
+    .then((clients) => {
+      clients.forEach((client) => {
+        if (client instanceof WindowClient)
+          client.navigate(client.url);
+      });
+      return Promise.resolve();
+    })
+    .then(() => {
+      self.caches.keys().then((cacheNames) => {
+        Promise.all(
+          cacheNames.map((cacheName) => {
+            return self.caches.delete(cacheName);
+          }),
+        );
+      })
+    });
+});
+    

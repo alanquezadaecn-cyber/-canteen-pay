@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // SW auto-destructivo: desinstala el service worker viejo y limpia TODO el caché.
+      // Elimina de raíz las pantallas en blanco tras cada deploy. La app es online,
+      // no necesita caché offline. Se puede re-activar el PWA en el futuro si se desea.
+      selfDestroying: true,
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
