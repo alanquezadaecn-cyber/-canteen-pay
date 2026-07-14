@@ -9,6 +9,57 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['ADMIN']));
 
+async function adminCompanyId(req) {
+  if (req.userCompanyId) return req.userCompanyId;
+  const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+  return admin?.branch?.companyId || null;
+}
+
+// GET config de pagos en línea de la empresa (token enmascarado)
+router.get('/payment-config', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ mpConfigured: false });
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { mpAccessToken: true, mpPublicKey: true }
+    });
+    const tok = company?.mpAccessToken || '';
+    res.json({
+      mpConfigured: !!tok,
+      mpPublicKey: company?.mpPublicKey || '',
+      mpTokenMasked: tok ? `${tok.slice(0, 8)}••••••••${tok.slice(-4)}` : ''
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
+// PUT guardar credenciales MercadoPago de la empresa
+router.put('/payment-config', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const { mpAccessToken, mpPublicKey } = req.body;
+
+    const data = {};
+    // Permitir limpiar (string vacío) o actualizar
+    if (mpAccessToken !== undefined) data.mpAccessToken = mpAccessToken.trim() || null;
+    if (mpPublicKey !== undefined) data.mpPublicKey = mpPublicKey.trim() || null;
+
+    // Validación básica del formato del token de MP
+    if (data.mpAccessToken && !/^(APP_USR|TEST)-/.test(data.mpAccessToken)) {
+      return res.status(400).json({ error: 'El Access Token de MercadoPago debe empezar con APP_USR- (producción) o TEST- (prueba)' });
+    }
+
+    await prisma.company.update({ where: { id: companyId }, data });
+    res.json({ success: true, mpConfigured: !!data.mpAccessToken });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar configuración' });
+  }
+});
+
 router.get('/stats', async (req, res) => {
   try {
     const today = new Date();

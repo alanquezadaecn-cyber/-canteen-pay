@@ -19,6 +19,11 @@ export const RechargeNew: React.FC = () => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mpEnabled, setMpEnabled] = useState(false);
+
+  React.useEffect(() => {
+    api.get('/payments/config').then(({ data }) => setMpEnabled(!!data.mpEnabled)).catch(() => {});
+  }, []);
 
   const handleNextStep = () => {
     const numAmount = parseFloat(amount);
@@ -159,7 +164,8 @@ export const RechargeNew: React.FC = () => {
 
         {/* Métodos */}
         <div className="space-y-3">
-          {/* MercadoPago */}
+          {/* MercadoPago — solo si la empresa lo tiene configurado */}
+          {mpEnabled && (
           <button
             onClick={() => setSelectedMethod('mercadopago')}
             className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
@@ -183,6 +189,7 @@ export const RechargeNew: React.FC = () => {
               )}
             </div>
           </button>
+          )}
 
           {/* Efectivo en caja */}
           <button

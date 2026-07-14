@@ -60,6 +60,10 @@ model Company {
   contactPerson   String?
   paymentEmail    String?
 
+  // Pagos en línea: credenciales MercadoPago de la EMPRESA (el dinero cae en su cuenta)
+  mpAccessToken   String?
+  mpPublicKey     String?
+
   // Facturación (comentado temporalmente - agregar después con migration)
   // licenseFee      Decimal   @default(0) @db.Decimal(10, 2)
   // hostingFee      Decimal   @default(0) @db.Decimal(10, 2)

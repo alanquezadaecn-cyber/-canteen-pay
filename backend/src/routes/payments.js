@@ -1,11 +1,25 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { stripe } from '../services/stripe.service.js';
-import { preference, payment } from '../services/mp.service.js';
+import { preference, payment, mpForCompany } from '../services/mp.service.js';
 import { verifyToken } from '../middleware/auth.js';
 import { sendRechargeConfirmation } from '../services/email.service.js';
 
 const router = express.Router();
+
+// GET /api/payments/config — ¿la empresa del comensal tiene recargas en línea?
+router.get('/config', verifyToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      include: { branch: { include: { company: { select: { mpAccessToken: true } } } } }
+    });
+    const mpEnabled = !!user?.branch?.company?.mpAccessToken;
+    res.json({ mpEnabled });
+  } catch (err) {
+    res.json({ mpEnabled: false });
+  }
+});
 
 // POST /api/payments/stripe/create-intent
 // Crea un PaymentIntent en Stripe y registra Recharge pendiente
@@ -147,10 +161,24 @@ router.post('/mp/create-preference', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Monto inválido' });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    // Obtener el comensal y su empresa (para usar SU cuenta de MercadoPago)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { branch: { include: { company: true } } }
+    });
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
+
+    const company = user.branch?.company;
+    if (!company?.mpAccessToken) {
+      return res.status(400).json({
+        error: 'Este comedor aún no tiene habilitadas las recargas en línea. Recarga en caja con el cajero.'
+      });
+    }
+
+    // Cliente de MercadoPago con el token de la EMPRESA → el dinero cae en su cuenta
+    const mp = mpForCompany(company.mpAccessToken);
 
     // Crear Recharge pendiente
     const recharge = await prisma.recharge.create({
@@ -163,22 +191,21 @@ router.post('/mp/create-preference', verifyToken, async (req, res) => {
       }
     });
 
-    // Crear preferencia en MercadoPago
-    const mpPreference = await preference.create({
+    const apiUrl = process.env.API_URL || process.env.FRONTEND_URL || 'https://cashfood.online';
+
+    // Crear preferencia con el token de la empresa. El webhook lleva companyId
+    // para poder verificar el pago con el token correcto.
+    const mpPreference = await mp.preference.create({
       body: {
         items: [
-          {
-            title: 'Recarga CashFood',
-            unit_price: parseFloat(amount),
-            quantity: 1
-          }
+          { title: `Recarga saldo — ${company.name}`, unit_price: parseFloat(amount), quantity: 1 }
         ],
         external_reference: recharge.id,
         back_urls: {
-          success: `${process.env.API_URL}/api/payments/mp/success`,
-          failure: `${process.env.API_URL}/api/payments/mp/failure`
+          success: `${apiUrl}/api/payments/mp/success`,
+          failure: `${apiUrl}/api/payments/mp/failure`
         },
-        notification_url: `${process.env.API_URL}/api/payments/mp/webhook`,
+        notification_url: `${apiUrl}/api/payments/mp/webhook?companyId=${company.id}`,
         auto_return: 'approved'
       }
     });
@@ -197,14 +224,26 @@ router.post('/mp/create-preference', verifyToken, async (req, res) => {
 // IPN de MercadoPago
 router.post('/mp/webhook', async (req, res) => {
   try {
-    const { id, type, data } = req.body;
+    const { type, data } = req.body;
 
     if (type !== 'payment') {
       return res.json({ status: 'skipped' });
     }
 
-    // Consultar detalles del pago en MP (no confiar en el body)
-    const mpPayment = await payment.get({ id: data.id });
+    // Usar el token de la empresa (companyId viene en el query del notification_url)
+    let mpPayment;
+    const companyId = req.query.companyId;
+    if (companyId) {
+      const company = await prisma.company.findUnique({ where: { id: String(companyId) } });
+      if (company?.mpAccessToken) {
+        const mp = mpForCompany(company.mpAccessToken);
+        mpPayment = await mp.payment.get({ id: data.id });
+      }
+    }
+    // Respaldo: token de plataforma (por si algún pago viejo no trae companyId)
+    if (!mpPayment) {
+      mpPayment = await payment.get({ id: data.id });
+    }
 
     // Obtener rechargeId del external_reference
     const rechargeId = mpPayment.external_reference;

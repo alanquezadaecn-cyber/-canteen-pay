@@ -47,6 +47,7 @@ import { MasterAdminDashboard } from './pages/master-admin/MasterAdminDashboard'
 
 // Nuevas páginas
 import { Inventory } from './pages/admin/Inventory';
+import { PaymentConfig } from './pages/admin/PaymentConfig';
 import { CorteDeCaja } from './pages/cashier/CorteDeCaja';
 import { Menu } from './pages/user/Menu';
 import { Branding } from './pages/admin/Branding';
@@ -253,6 +254,7 @@ function App() {
             <Route path="transactions"            element={<TransactionsList />} />
             <Route path="reports"                 element={<AdminReports />} />
             <Route path="inventory"               element={<Inventory />} />
+            <Route path="pagos"                   element={<PaymentConfig />} />
             <Route path="branding"                element={<Branding />} />
             <Route path="branches/:id"            element={<BranchDetail />} />
             <Route path="branches/:branchId/reports" element={<BranchReports />} />
