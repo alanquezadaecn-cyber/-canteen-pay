@@ -60,6 +60,10 @@ export const MasterAdminDashboard: React.FC = () => {
   const [urlsModal, setUrlsModal] = useState<Company | null>(null);
   const [copiedUrl, setCopiedUrl] = useState('');
 
+  // Nueva sucursal (dentro del modal de editar empresa)
+  const [newBranch, setNewBranch] = useState({ name: '', location: '' });
+  const [addingBranch, setAddingBranch] = useState(false);
+
   const APP_URL = window.location.origin;
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -105,6 +109,42 @@ export const MasterAdminDashboard: React.FC = () => {
       alert('Empresa actualizada correctamente');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al actualizar');
+    }
+  };
+
+  // Recarga las sucursales de la empresa que se está editando
+  const refreshEditingBranches = async (companyId: string) => {
+    try {
+      const { data } = await api.get(`/master-admin/companies/${companyId}`);
+      setEditingCompany(prev => prev ? { ...prev, branches: data.branches } : prev);
+    } catch {}
+  };
+
+  const handleAddBranch = async () => {
+    if (!selectedCompany || !newBranch.name.trim()) return;
+    setAddingBranch(true);
+    try {
+      const { data } = await api.post(`/master-admin/companies/${selectedCompany.id}/branches`, newBranch);
+      setNewBranch({ name: '', location: '' });
+      await refreshEditingBranches(selectedCompany.id);
+      fetchData();
+      alert(`Sucursal "${data.branch.name}" creada.\n\nCajero: ${data.cashier.email}\nContraseña: ${data.cashier.password}\n\nGuarda estos datos, no se vuelven a mostrar.`);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al agregar sucursal');
+    } finally {
+      setAddingBranch(false);
+    }
+  };
+
+  const handleDeleteBranch = async (branchId: string, branchName: string) => {
+    if (!selectedCompany) return;
+    if (!confirm(`¿Borrar la sucursal "${branchName}" y todos sus datos? Esto no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/master-admin/branches/${branchId}`);
+      await refreshEditingBranches(selectedCompany.id);
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al borrar sucursal');
     }
   };
 
@@ -731,15 +771,43 @@ export const MasterAdminDashboard: React.FC = () => {
                           <p className="font-semibold text-slate-900 dark:text-slate-50">{branch.name}</p>
                           <p className="text-sm text-slate-500">{branch.location}</p>
                         </div>
-                        <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50">
+                        <Button
+                          onClick={() => handleDeleteBranch(branch.id, branch.name)}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:bg-red-50"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     ))}
+                    {(!editingCompany.branches || editingCompany.branches.length === 0) && (
+                      <p className="text-sm text-slate-400 text-center py-3">Aún no hay sucursales</p>
+                    )}
                   </div>
-                  <Button className="w-full bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-50 hover:bg-slate-300 dark:hover:bg-slate-600">
+
+                  {/* Formulario nueva sucursal */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      value={newBranch.name}
+                      onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+                      placeholder="Nombre (ej: Comedor 2)"
+                      className="text-slate-900 dark:text-slate-50"
+                    />
+                    <Input
+                      value={newBranch.location}
+                      onChange={(e) => setNewBranch({ ...newBranch, location: e.target.value })}
+                      placeholder="Ubicación (ej: Planta 2)"
+                      className="text-slate-900 dark:text-slate-50"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAddBranch}
+                    disabled={addingBranch || !newBranch.name.trim()}
+                    className="w-full bg-slate-900 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-slate-300 dark:text-slate-900 text-white disabled:opacity-40"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
-                    Agregar Sucursal
+                    {addingBranch ? 'Creando...' : 'Agregar Sucursal'}
                   </Button>
                 </div>
 

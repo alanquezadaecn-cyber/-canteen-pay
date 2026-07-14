@@ -341,6 +341,101 @@ router.put('/companies/:companyId', async (req, res) => {
   }
 });
 
+// CREATE sucursal para una empresa — crea sucursal + cajero + productos por defecto
+router.post('/companies/:companyId/branches', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { name, location } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'El nombre de la sucursal es requerido' });
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+
+    // Slug único dentro de la empresa
+    let branchSlug = toSlug(name);
+    const clash = await prisma.branch.findFirst({ where: { companyId, slug: branchSlug } });
+    if (clash) branchSlug = `${branchSlug}-${Date.now().toString().slice(-4)}`;
+
+    const branch = await prisma.branch.create({
+      data: { name: name.trim(), slug: branchSlug, location: location?.trim() || null, companyId, isActive: true }
+    });
+
+    // Cajero por defecto de la sucursal
+    const cashierEmail = `cajero-${branchSlug}@${company.email.split('@')[1] || 'mealpay.mx'}`;
+    const cashierPass = Math.random().toString(36).slice(-8) + '1A';
+    const cashierHash = await bcrypt.hash(cashierPass, 10);
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
+
+    const cashierUser = await prisma.user.create({
+      data: {
+        name: `Cajero ${name.trim()}`,
+        email: cashierEmail,
+        password: cashierHash,
+        role: 'CASHIER',
+        employeeNumber: String(nextNum),
+        phone: company.phone || '+52 0000-0000',
+        qrCode: QRService.generateUniqueCode(),
+        branchId: branch.id,
+        isActive: true
+      }
+    });
+
+    // Productos por defecto
+    const defaultProducts = [
+      { name: 'Comida corrida', price: 65, category: 'Plato del día' },
+      { name: 'Agua fresca', price: 15, category: 'Bebidas' },
+      { name: 'Refresco', price: 20, category: 'Bebidas' }
+    ];
+    await Promise.all(defaultProducts.map(p =>
+      prisma.product.create({ data: { ...p, branchId: branch.id } })
+    ));
+
+    const APP_URL = process.env.FRONTEND_URL || 'https://cashfood.online';
+
+    res.status(201).json({
+      success: true,
+      branch: { id: branch.id, name: branch.name, slug: branchSlug, location: branch.location },
+      cashier: { email: cashierUser.email, password: cashierPass },
+      urls: {
+        cashierPanel: `${APP_URL}/${company.slug}/${branchSlug}/caja`,
+        comensalPanel: `${APP_URL}/${company.slug}/${branchSlug}/user`,
+        comensalRegister: `${APP_URL}/register/${branch.id}`
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear sucursal: ' + err.message });
+  }
+});
+
+// DELETE sucursal — borra sucursal y todos sus datos
+router.delete('/branches/:branchId', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    const users = await prisma.user.findMany({ where: { branchId }, select: { id: true } });
+    const userIds = users.map(u => u.id);
+
+    await prisma.transactionItem.deleteMany({ where: { transaction: { userId: { in: userIds } } } });
+    await prisma.transaction.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.recharge.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.product.deleteMany({ where: { branchId } });
+    await prisma.cashierSession.deleteMany({ where: { branchId } });
+    await prisma.user.deleteMany({ where: { branchId } });
+    await prisma.branch.delete({ where: { id: branchId } });
+
+    res.json({ success: true, message: `Sucursal "${branch.name}" eliminada` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar sucursal: ' + err.message });
+  }
+});
+
 // GET company details with branches
 router.get('/companies/:companyId', async (req, res) => {
   try {
