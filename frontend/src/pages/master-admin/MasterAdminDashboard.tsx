@@ -299,7 +299,7 @@ export const MasterAdminDashboard: React.FC = () => {
         {/* Stats Grid Pro */}
         {payment && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-blue-600 hover:shadow-lg transition-all">
+            <Card className="border-l-4 border-l-emerald-600 hover:shadow-lg transition-all">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
@@ -307,8 +307,8 @@ export const MasterAdminDashboard: React.FC = () => {
                     <p className="text-4xl font-bold text-slate-900 dark:text-slate-50 mt-4">${payment.totalCollected.toLocaleString()}</p>
                     <p className="text-xs text-slate-500 mt-2">Total recaudado</p>
                   </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-blue-600" />
+                  <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
@@ -329,7 +329,7 @@ export const MasterAdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-600 hover:shadow-lg transition-all">
+            <Card className="border-l-4 border-l-emerald-600 hover:shadow-lg transition-all">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
@@ -337,8 +337,8 @@ export const MasterAdminDashboard: React.FC = () => {
                     <p className="text-4xl font-bold text-slate-900 dark:text-slate-50 mt-4">{payment.activeCompanies}</p>
                     <p className="text-xs text-slate-500 mt-2">Con suscripción activa</p>
                   </div>
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <Building2 className="w-6 h-6 text-purple-600" />
+                  <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                    <Building2 className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
@@ -419,8 +419,8 @@ export const MasterAdminDashboard: React.FC = () => {
                     }`}>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
-                            <Building2 className="w-5 h-5 text-blue-600" />
+                          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded">
+                            <Building2 className="w-5 h-5 text-emerald-600" />
                           </div>
                           <div>
                             <p className="font-semibold text-slate-900 dark:text-slate-50">{company.name}</p>
@@ -453,7 +453,7 @@ export const MasterAdminDashboard: React.FC = () => {
                           <Button
                             onClick={() => handleAccessPanel(company)}
                             size="sm"
-                            className="px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+                            className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
                             title="Acceder al panel de admin"
                           >
                             <LogIn className="w-4 h-4" />
@@ -469,7 +469,7 @@ export const MasterAdminDashboard: React.FC = () => {
                           <Button
                             onClick={() => { setSelectedCompany(company); handleEditCompany(company); }}
                             size="sm"
-                            className="px-3 bg-blue-600 hover:bg-blue-700 text-white"
+                            className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
                             title="Editar empresa"
                           >
                             <Edit3 className="w-4 h-4" />
@@ -486,7 +486,7 @@ export const MasterAdminDashboard: React.FC = () => {
                             <Button
                               onClick={() => handleUnblockCompany(company)}
                               size="sm"
-                              className="px-3 bg-blue-600 hover:bg-blue-700 text-white"
+                              className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                               <Unlock className="w-4 h-4" />
                             </Button>
@@ -815,7 +815,7 @@ export const MasterAdminDashboard: React.FC = () => {
                 <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
                   <Button
                     onClick={handleSaveCompany}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     Guardar Cambios
                   </Button>

@@ -75,13 +75,13 @@ export const AdminReports: React.FC = () => {
     XLSX.writeFile(wb, `mealpay-reporte-${period}-${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
-  const selectCls = 'bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer';
+  const selectCls = 'bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer';
 
   if (loading && !report) {
     return (
       <div className="min-h-screen bg-slate-950 md:ml-64 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-slate-600 border-t-violet-500 rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
           <span className="text-sm text-slate-400">Cargando reportes...</span>
         </div>
       </div>
@@ -97,8 +97,8 @@ export const AdminReports: React.FC = () => {
       <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
-              <BarChart2 className="w-4 h-4 text-violet-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
+              <BarChart2 className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
               <h1 className="text-xl font-semibold text-white">Reportes</h1>
@@ -150,8 +150,8 @@ export const AdminReports: React.FC = () => {
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-violet-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-3 h-3 text-violet-400" />
+                <span className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-3 h-3 text-emerald-400" />
                 </span>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Neto</p>
               </div>
@@ -162,12 +162,12 @@ export const AdminReports: React.FC = () => {
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-blue-500/10 flex items-center justify-center">
-                  <Users className="w-3 h-3 text-blue-400" />
+                <span className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center">
+                  <Users className="w-3 h-3 text-emerald-400" />
                 </span>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Usuarios activos</p>
               </div>
-              <p className="text-2xl font-bold text-blue-400">{report.activeUsers}</p>
+              <p className="text-2xl font-bold text-emerald-400">{report.activeUsers}</p>
             </div>
           </div>
 
@@ -192,7 +192,7 @@ export const AdminReports: React.FC = () => {
                     </div>
                     <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-violet-500 rounded-full transition-all duration-500"
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${(parseFloat(user.amount) / maxAmount) * 100}%` }}
                       />
                     </div>

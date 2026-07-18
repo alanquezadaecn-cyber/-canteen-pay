@@ -111,13 +111,13 @@ export const Branding: React.FC = () => {
     <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
       <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
-            <ImagePlus className="w-4 h-4 text-violet-400" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
+            <ImagePlus className="w-4 h-4 text-emerald-400" />
           </div>
           <h1 className="text-xl font-semibold text-white">Marca / Logo</h1>
         </div>
         <p className="text-sm text-slate-400 ml-11">
-          Personaliza el logo de <span className="text-violet-400 font-medium">{companyName}</span> en pantallas de login, panel y navegación
+          Personaliza el logo de <span className="text-emerald-400 font-medium">{companyName}</span> en pantallas de login, panel y navegación
         </p>
       </div>
 
@@ -177,7 +177,7 @@ export const Branding: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 h-11 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors disabled:opacity-40 cursor-pointer"
           >
             {saving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             {saving ? 'Guardando...' : 'Guardar logo'}

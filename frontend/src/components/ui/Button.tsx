@@ -30,9 +30,9 @@ const buttonVariants = cva(
 
         // Admin - Violet (admin panel)
         admin: `
-          bg-violet-600 text-white hover:bg-violet-700 hover:shadow-lg
-          dark:bg-violet-500 dark:hover:bg-violet-600
-          focus-visible:ring-violet-500 dark:focus-visible:ring-violet-400
+          bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg
+          dark:bg-emerald-500 dark:hover:bg-emerald-600
+          focus-visible:ring-emerald-500 dark:focus-visible:ring-emerald-400
         `,
 
         // Secondary - Slate (default alternative)

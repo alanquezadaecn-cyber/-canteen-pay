@@ -120,7 +120,7 @@ export const UsersManagementV2: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold  dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
               Gestión de Usuarios 👥
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
@@ -157,7 +157,7 @@ export const UsersManagementV2: React.FC = () => {
                     {stats.total}
                   </p>
                 </div>
-                <Users className="w-6 h-6 text-blue-500 opacity-20" />
+                <Users className="w-6 h-6 text-emerald-500 opacity-20" />
               </div>
             </CardContent>
           </Card>
@@ -181,11 +181,11 @@ export const UsersManagementV2: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Saldo Total</p>
-                  <p className="text-3xl font-bold text-slate-700 dark:text-purple-400 mt-2">
+                  <p className="text-3xl font-bold text-slate-700 dark:text-emerald-400 mt-2">
                     ${stats.totalBalance.toFixed(2)}
                   </p>
                 </div>
-                <DollarSign className="w-6 h-6 text-purple-500 opacity-20" />
+                <DollarSign className="w-6 h-6 text-emerald-500 opacity-20" />
               </div>
             </CardContent>
           </Card>
@@ -321,7 +321,7 @@ export const UsersManagementV2: React.FC = () => {
           <CardContent className="pt-6">
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
               </div>
             ) : users.length > 0 ? (
               <>

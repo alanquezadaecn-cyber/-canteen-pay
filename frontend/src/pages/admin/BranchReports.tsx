@@ -114,7 +114,7 @@ export const BranchReports: React.FC = () => {
                     {stats.activeUsers}/{stats.totalUsers}
                   </p>
                 </div>
-                <Users className="w-5 h-5 text-slate-700 dark:text-blue-400" />
+                <Users className="w-5 h-5 text-slate-700 dark:text-emerald-400" />
               </div>
             </CardContent>
           </Card>
@@ -128,7 +128,7 @@ export const BranchReports: React.FC = () => {
                     {stats.totalTransactions}
                   </p>
                 </div>
-                <TrendingUp className="w-5 h-5 text-slate-700 dark:text-purple-400" />
+                <TrendingUp className="w-5 h-5 text-slate-700 dark:text-emerald-400" />
               </div>
             </CardContent>
           </Card>

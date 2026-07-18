@@ -45,9 +45,9 @@ export const Recharges: React.FC = () => {
       case 'CASH':
         return <Wallet className="w-6 h-6 text-amber-600 dark:text-amber-400" />;
       case 'STRIPE':
-        return <CreditCard className="w-6 h-6 text-slate-700 dark:text-blue-400" />;
+        return <CreditCard className="w-6 h-6 text-slate-700 dark:text-emerald-400" />;
       case 'MERCADOPAGO':
-        return <DollarSign className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />;
+        return <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />;
       default:
         return <DollarSign className="w-6 h-6" />;
     }
@@ -71,9 +71,9 @@ export const Recharges: React.FC = () => {
       case 'CASH':
         return 'bg-amber-100 dark:bg-amber-900/30';
       case 'STRIPE':
-        return 'bg-blue-100 dark:bg-blue-900/30';
+        return 'bg-emerald-100 dark:bg-emerald-900/30';
       case 'MERCADOPAGO':
-        return 'bg-cyan-100 dark:bg-cyan-900/30';
+        return 'bg-emerald-100 dark:bg-emerald-900/30';
       default:
         return 'bg-slate-100 dark:bg-slate-800';
     }
@@ -119,13 +119,13 @@ export const Recharges: React.FC = () => {
       label: 'Recargas Completadas',
       value: completedRecharges.length.toString(),
       icon: CreditCard,
-      color: 'from-blue-500 to-cyan-500'
+      color: 'from-emerald-500 to-emerald-500'
     },
     {
       label: 'Promedio por Recarga',
       value: `$${avgRecharge.toFixed(2)}`,
       icon: DollarSign,
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-emerald-500 to-pink-500'
     }
   ];
 

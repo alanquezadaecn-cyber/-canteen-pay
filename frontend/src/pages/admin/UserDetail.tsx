@@ -120,7 +120,7 @@ export const UserDetail: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p>Cargando usuario...</p>
         </div>
       </div>
@@ -179,7 +179,7 @@ export const UserDetail: React.FC = () => {
         )}
 
         {/* Perfil */}
-        <Card className="mb-8 bg-violet-600 text-white border-0">
+        <Card className="mb-8 bg-emerald-600 text-white border-0">
           <CardContent className="pt-8">
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -244,7 +244,7 @@ export const UserDetail: React.FC = () => {
               </p>
               <Button
                 onClick={() => setShowBalanceModal(true)}
-                className="w-full mt-4 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700"
+                className="w-full mt-4 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700"
               >
                 <DollarSign className="w-4 h-4" />
                 Ajustar Saldo
@@ -280,7 +280,7 @@ export const UserDetail: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <Button type="submit" disabled={savingEdit} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white">
+                      <Button type="submit" disabled={savingEdit} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
                         {savingEdit ? 'Guardando...' : 'Guardar cambios'}
                       </Button>
                       <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
@@ -312,7 +312,7 @@ export const UserDetail: React.FC = () => {
                         onChange={(e) =>
                           setBalanceForm({ ...balanceForm, type: e.target.value })
                         }
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                       >
                         <option value="ADD">Agregar</option>
                         <option value="SUBTRACT">Restar</option>
@@ -362,7 +362,7 @@ export const UserDetail: React.FC = () => {
                       </Button>
                       <Button
                         type="submit"
-                        className="flex-1 bg-violet-600 hover:bg-violet-700"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                       >
                         Confirmar
                       </Button>
@@ -434,7 +434,7 @@ export const UserDetail: React.FC = () => {
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             tx.type === 'PURCHASE' ? 'bg-red-100 text-red-800' :
                             tx.type === 'RECHARGE' ? 'bg-emerald-100 text-emerald-800' :
-                            'bg-blue-100 text-blue-800'
+                            'bg-emerald-100 text-emerald-800'
                           }`}>
                             {tx.type}
                           </span>

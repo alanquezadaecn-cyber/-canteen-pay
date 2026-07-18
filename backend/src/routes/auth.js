@@ -156,13 +156,27 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
+    const MASTER_EMAIL = process.env.MASTER_EMAIL || 'alejandro.qt92@gmail.com';
+
+    // Bloqueo: si la empresa o la sucursal están bloqueadas, nadie entra (excepto el master admin)
+    if (user.email !== MASTER_EMAIL) {
+      if (user.branch?.company?.isBlocked) {
+        return res.status(403).json({ error: 'Cuenta suspendida. Contacta a soporte de CashFood.' });
+      }
+      if (user.branch?.isBlocked) {
+        return res.status(403).json({ error: 'Esta sucursal está suspendida. Contacta a soporte.' });
+      }
+      if (user.isBlocked) {
+        return res.status(403).json({ error: user.blockReason || 'Tu cuenta está bloqueada.' });
+      }
+    }
+
     try {
       // Obtener companyId desde branch o desde subdomain
       const companyId = user.branch?.company?.id || req.companyId;
 
       // El email maestro siempre recibe rol MASTER_ADMIN en el token/respuesta,
       // independientemente del rol almacenado en BD (el enum no tiene MASTER_ADMIN)
-      const MASTER_EMAIL = process.env.MASTER_EMAIL || 'alejandro.qt92@gmail.com';
       const effectiveRole = user.email === MASTER_EMAIL ? 'MASTER_ADMIN' : user.role;
 
       const { accessToken, refreshToken } = generateTokens(user.id, effectiveRole, user.email, companyId);

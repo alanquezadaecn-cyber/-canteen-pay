@@ -176,7 +176,7 @@ export const CorteDeCaja: React.FC = () => {
                                 ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
                                 : tx.type === 'RECHARGE'
                                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                             }`}>
                               {tx.type === 'PURCHASE' ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                               {tx.type === 'PURCHASE' ? 'Cobro' : tx.type === 'RECHARGE' ? 'Recarga' : 'Reembolso'}

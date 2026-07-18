@@ -137,7 +137,7 @@ export const Dashboard: React.FC = () => {
               >
                 <div className={`rounded-full flex items-center justify-center transition-transform group-active:scale-95 ${
                   main
-                    ? 'w-16 h-16 bg-sky-500 shadow-lg shadow-sky-500/40'
+                    ? 'w-16 h-16 bg-emerald-500 shadow-lg shadow-emerald-500/40'
                     : 'w-14 h-14 bg-white/25 backdrop-blur'
                 }`}>
                   <Icon className={`text-white ${main ? 'w-7 h-7' : 'w-6 h-6'}`} />

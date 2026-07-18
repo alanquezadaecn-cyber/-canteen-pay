@@ -178,7 +178,7 @@ export const Statement: React.FC = () => {
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             tx.type === 'PURCHASE' ? 'bg-red-100 text-red-800' :
                             tx.type === 'RECHARGE' ? 'bg-emerald-100 text-emerald-800' :
-                            'bg-blue-100 text-blue-800'
+                            'bg-emerald-100 text-emerald-800'
                           }`}>
                             {tx.type}
                           </span>

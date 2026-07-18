@@ -140,15 +140,15 @@ export const Inventory: React.FC = () => {
   const lowStockCount = products.filter(p => p.isTracked && p.stock > 0 && p.stock <= p.minStock && p.minStock > 0).length;
   const outOfStockCount = products.filter(p => p.isTracked && p.stock === 0).length;
 
-  const inputCls = 'w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500';
+  const inputCls = 'w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500';
 
   return (
     <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
-            <Package className="w-4 h-4 text-violet-400" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
+            <Package className="w-4 h-4 text-emerald-400" />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-white">Inventario</h1>
@@ -163,7 +163,7 @@ export const Inventory: React.FC = () => {
             <select
               value={selectedBranch}
               onChange={e => { setSelectedBranch(e.target.value); setExpandedId(null); }}
-              className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+              className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
               <option value="">Selecciona una sucursal</option>
               {branches.map(b => (
@@ -191,7 +191,7 @@ export const Inventory: React.FC = () => {
               </div>
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Controlados</p>
-                <p className="text-2xl font-bold text-violet-400">{products.filter(p => p.isTracked).length}</p>
+                <p className="text-2xl font-bold text-emerald-400">{products.filter(p => p.isTracked).length}</p>
               </div>
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Stock bajo</p>
@@ -206,7 +206,7 @@ export const Inventory: React.FC = () => {
             {/* Products */}
             {loading ? (
               <div className="flex items-center justify-center py-20 gap-3">
-                <div className="w-5 h-5 border-2 border-slate-600 border-t-violet-500 rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
                 <span className="text-sm text-slate-400">Cargando inventario...</span>
               </div>
             ) : products.length === 0 ? (
@@ -254,7 +254,7 @@ export const Inventory: React.FC = () => {
                               onClick={() => toggleTracking(product)}
                               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
                                 product.isTracked
-                                  ? 'bg-violet-600/20 text-violet-400 border-violet-600/30 hover:bg-violet-600/30'
+                                  ? 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30'
                                   : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
                               }`}
                             >
@@ -270,7 +270,7 @@ export const Inventory: React.FC = () => {
                                   min="0"
                                   defaultValue={product.minStock}
                                   onBlur={e => updateMinStock(product, parseInt(e.target.value) || 0)}
-                                  className="w-16 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                  className="w-16 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 />
                               </div>
                             )}
@@ -309,7 +309,7 @@ export const Inventory: React.FC = () => {
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                                       m.type === 'RESTOCK' ? 'bg-emerald-500/10 text-emerald-400' :
                                       m.type === 'SALE' ? 'bg-red-500/10 text-red-400' :
-                                      'bg-blue-500/10 text-blue-400'
+                                      'bg-emerald-500/10 text-emerald-400'
                                     }`}>{m.type}</span>
                                     <span className="text-slate-400">
                                       {m.type === 'RESTOCK' ? '+' : '-'}{m.quantity} ud.

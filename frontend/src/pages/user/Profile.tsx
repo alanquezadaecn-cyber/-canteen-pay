@@ -229,7 +229,7 @@ export const Profile: React.FC = () => {
           <CardHeader borderBottom>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-slate-700 dark:text-blue-400" />
+                <Lock className="w-6 h-6 text-slate-700 dark:text-emerald-400" />
               </div>
               <div>
                 <CardTitle>Seguridad</CardTitle>

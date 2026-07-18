@@ -270,7 +270,7 @@ export const CashierActionPanel: React.FC = () => {
             <button
               onClick={() => { setMode('recharge'); setError(''); }}
               disabled={loading}
-              className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-sky-500 hover:bg-sky-400 text-white font-semibold transition-colors disabled:opacity-40 shadow-lg shadow-sky-500/25 cursor-pointer"
+              className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-white dark:bg-slate-900 border-2 border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 font-semibold transition-colors disabled:opacity-40 cursor-pointer"
             >
               <Plus className="w-7 h-7" />
               <span className="text-base md:text-lg">Recargar</span>
@@ -364,7 +364,7 @@ export const CashierActionPanel: React.FC = () => {
               <button
                 onClick={handleRecharge}
                 disabled={loading || !rechargeAmount || parseFloat(rechargeAmount) <= 0}
-                className="w-full py-3.5 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-bold text-base transition-colors disabled:opacity-40 shadow-lg shadow-sky-500/25 cursor-pointer"
+                className="w-full py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-base transition-colors disabled:opacity-40 shadow-lg shadow-emerald-500/25 cursor-pointer"
               >
                 {loading ? 'Procesando...' : `Recargar $${rechargeAmount || '0'}`}
               </button>

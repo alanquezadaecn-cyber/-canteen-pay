@@ -250,7 +250,7 @@ export const CashierDashboardMobile: React.FC = () => {
           )}
 
           {/* Pairing Card */}
-          <Card variant="flat" className="border-l-4 border-l-violet-500">
+          <Card variant="flat" className="border-l-4 border-l-emerald-500">
             <CardContent className="pt-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 mb-2">
                 📱 Conectar Scanner
@@ -259,7 +259,7 @@ export const CashierDashboardMobile: React.FC = () => {
                 Mi código de sesión:
               </p>
               <div className="flex gap-2 mb-3">
-                <code className="flex-1 bg-slate-100 dark:bg-slate-900 p-2 rounded font-mono font-bold text-center text-violet-600 dark:text-violet-400">
+                <code className="flex-1 bg-slate-100 dark:bg-slate-900 p-2 rounded font-mono font-bold text-center text-emerald-600 dark:text-emerald-400">
                   {session.sessionId}
                 </code>
                 <Button
@@ -395,10 +395,10 @@ export const CashierDashboardMobile: React.FC = () => {
 
         {/* Conexión con Scanner */}
         {!session.scannerConnected && (
-          <Card variant="elevated" className="border-l-4 border-l-violet-500">
+          <Card variant="elevated" className="border-l-4 border-l-emerald-500">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
-                <Smartphone className="w-6 h-6 text-violet-600 dark:text-violet-400 flex-shrink-0 mt-1" />
+                <Smartphone className="w-6 h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-1" />
                 <div className="flex-1">
                   <h3 className="font-bold text-slate-900 dark:text-slate-50 mb-2">
                     Conectar Scanner Móvil
@@ -407,7 +407,7 @@ export const CashierDashboardMobile: React.FC = () => {
                     Abre la app en tu móvil e ingresa este código:
                   </p>
                   <div className="flex gap-2">
-                    <code className="flex-1 bg-slate-100 dark:bg-slate-900 p-3 rounded font-mono font-bold text-center text-violet-600 dark:text-violet-400 text-lg">
+                    <code className="flex-1 bg-slate-100 dark:bg-slate-900 p-3 rounded font-mono font-bold text-center text-emerald-600 dark:text-emerald-400 text-lg">
                       {session.sessionId}
                     </code>
                     <Button

@@ -106,7 +106,7 @@ export const BranchesManagement: React.FC = () => {
     return (
       <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Cargando sucursales...</p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export const BranchesManagement: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold  dark:from-violet-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold  dark:from-emerald-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
               Gestión de Sucursales 🏢
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
@@ -133,7 +133,7 @@ export const BranchesManagement: React.FC = () => {
               setShowForm(!showForm);
             }}
             variant="primary"
-            className="flex items-center gap-2  hover:from-violet-600 hover:to-purple-600"
+            className="flex items-center gap-2  hover:from-emerald-600 hover:to-emerald-600"
             size="lg"
           >
             <Plus className="w-5 h-5" />
@@ -232,7 +232,7 @@ export const BranchesManagement: React.FC = () => {
                   <Button
                     type="submit"
                     variant="primary"
-                    className="flex-1  hover:from-violet-600 hover:to-purple-600"
+                    className="flex-1  hover:from-emerald-600 hover:to-emerald-600"
                   >
                     {editingId ? 'Actualizar' : 'Crear'} Sucursal
                   </Button>
@@ -255,8 +255,8 @@ export const BranchesManagement: React.FC = () => {
                 <CardHeader borderBottom>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="w-10 h-10 rounded-lg  dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Building2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                      <div className="w-10 h-10 rounded-lg  dark:from-emerald-900/30 dark:to-emerald-900/30 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Building2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="flex-1">
                         <CardTitle className="text-lg">{branch.name}</CardTitle>

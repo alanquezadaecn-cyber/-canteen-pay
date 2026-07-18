@@ -144,8 +144,8 @@ export const CashRecharge: React.FC = () => {
           <Card variant="elevated" className="animate-fade-in">
             <CardHeader borderBottom>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg  dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                  <Search className="w-5 h-5 text-slate-700 dark:text-blue-400" />
+                <div className="w-10 h-10 rounded-lg  dark:from-emerald-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                  <Search className="w-5 h-5 text-slate-700 dark:text-emerald-400" />
                 </div>
                 <div>
                   <CardTitle>Buscar Usuario</CardTitle>
@@ -174,7 +174,7 @@ export const CashRecharge: React.FC = () => {
                   type="submit"
                   disabled={loading || !qrOrCode.trim()}
                   variant="primary"
-                  className="w-full  hover:from-blue-600 hover:to-cyan-600"
+                  className="w-full  hover:from-emerald-600 hover:to-emerald-600"
                   size="lg"
                 >
                   {loading ? 'Buscando...' : 'Buscar Usuario'}

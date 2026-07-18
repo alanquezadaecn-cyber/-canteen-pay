@@ -48,7 +48,7 @@ export const Purchases: React.FC = () => {
       label: 'Compras',
       value: transactions.length.toString(),
       icon: ShoppingBag,
-      color: 'from-blue-500 to-cyan-500'
+      color: 'from-emerald-500 to-emerald-500'
     },
     {
       label: 'Promedio',
@@ -56,7 +56,7 @@ export const Purchases: React.FC = () => {
         ? `$${(transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) / transactions.length).toFixed(2)}`
         : '$0.00',
       icon: TrendingDown,
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-emerald-500 to-pink-500'
     }
   ];
 
