@@ -211,6 +211,8 @@ model User {
   minBalance     Decimal       @default(0) @db.Decimal(10, 2)
   dailyLimit     Decimal       @default(0) @db.Decimal(10, 2)
   photoUrl       String?
+  position       String?       // Puesto del equipo de operación: Chef, Cocinero, Mesero, etc.
+  isStaff        Boolean       @default(false) // true = equipo de operación (no comensal)
   branchId       String?
   branch         Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
@@ -370,4 +372,16 @@ model UserAlert {
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Registro de asistencia (entrada/salida de operación por QR)
+model Attendance {
+  id        String   @id @default(cuid())
+  userId    String
+  branchId  String
+  type      String   // IN | OUT
+  createdAt DateTime @default(now())
+
+  @@index([branchId, createdAt])
+  @@index([userId])
 }

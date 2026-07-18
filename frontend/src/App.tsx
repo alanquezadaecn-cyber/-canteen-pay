@@ -32,6 +32,8 @@ import { CashierProducts } from './pages/cashier/CashierProducts';
 import { CashierRegister } from './pages/cashier/CashierRegister';
 import { CashierUsers } from './pages/cashier/CashierUsers';
 import { CashierInventory } from './pages/cashier/CashierInventory';
+import { CashierAttendance } from './pages/cashier/CashierAttendance';
+import { Attendance } from './pages/admin/Attendance';
 
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -256,6 +258,7 @@ function App() {
             <Route path="reports"                 element={<AdminReports />} />
             <Route path="inventory"               element={<Inventory />} />
             <Route path="pagos"                   element={<PaymentConfig />} />
+            <Route path="asistencia"              element={<Attendance />} />
             <Route path="branding"                element={<Branding />} />
             <Route path="branches/:id"            element={<BranchDetail />} />
             <Route path="branches/:branchId/reports" element={<BranchReports />} />
@@ -270,6 +273,7 @@ function App() {
             <Route path="registrar" element={<CashierRegister />} />
             <Route path="comensales" element={<CashierUsers />} />
             <Route path="inventario" element={<CashierInventory />} />
+            <Route path="asistencia" element={<CashierAttendance />} />
             <Route path="products"  element={<CashierProducts />} />
             <Route path="history"   element={<CashierHistory />} />
             <Route path="corte"     element={<CorteDeCaja />} />

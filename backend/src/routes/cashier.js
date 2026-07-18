@@ -97,7 +97,8 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
 router.post('/branch/:branchId/register', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { name, email, phone, password, employeeNumber } = req.body;
+    const { name, email, phone, password, employeeNumber, position, isStaff, photoUrl } = req.body;
+    const staff = !!isStaff || !!position;
 
     if (!name?.trim()) {
       return res.status(400).json({ error: 'El nombre es requerido' });
@@ -115,8 +116,8 @@ router.post('/branch/:branchId/register', async (req, res) => {
     const branch = await prisma.branch.findUnique({ where: { id: branchId } });
     if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
-    // Límite de comensales según el plan
-    if (!(await assertBranchHasRoom(branchId, res))) return;
+    // Límite de comensales según el plan (el equipo de operación NO cuenta como comensal)
+    if (!staff && !(await assertBranchHasRoom(branchId, res))) return;
 
     // Email: usar el dado, o generar uno interno si no hay (muchos comensales no tienen email)
     let finalEmail = email?.trim().toLowerCase();
@@ -158,7 +159,10 @@ router.post('/branch/:branchId/register', async (req, res) => {
         employeeNumber: empNum,
         qrCode,
         branchId,
-        isActive: true
+        isActive: true,
+        isStaff: staff,
+        position: position?.trim() || null,
+        photoUrl: photoUrl || null
       }
     });
 
@@ -170,7 +174,10 @@ router.post('/branch/:branchId/register', async (req, res) => {
         email: user.email,
         employeeNumber: user.employeeNumber,
         qrCode: user.qrCode,
-        password: plainPassword
+        password: plainPassword,
+        position: user.position,
+        isStaff: user.isStaff,
+        photoUrl: user.photoUrl
       }
     });
   } catch (err) {
@@ -206,7 +213,7 @@ router.get('/branch/:branchId/users', async (req, res) => {
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true },
+      select: { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true, position: true, isStaff: true, photoUrl: true },
       orderBy: { name: 'asc' },
       take: 100
     });
@@ -238,6 +245,86 @@ router.post('/branch/:branchId/bulk-import', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error en importación masiva' });
+  }
+});
+
+// ── ASISTENCIA (entradas/salidas por QR, sin login del empleado) ──
+// El cajero tiene su panel abierto; los empleados solo escanean su QR.
+router.post('/branch/:branchId/attendance/scan', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const term = (req.body.qrCode || '').toString().replace(/^#/, '').trim();
+    if (!term) return res.status(400).json({ error: 'QR o número requerido' });
+
+    // Resolver persona por QR, # empleado, email o nombre — dentro de la sucursal
+    let person = await prisma.user.findFirst({
+      where: {
+        branchId,
+        OR: [{ qrCode: term }, { employeeNumber: term }, { email: term.toLowerCase() }]
+      },
+      select: { id: true, name: true, position: true, isStaff: true, isActive: true }
+    });
+    if (!person) {
+      person = await prisma.user.findFirst({
+        where: { branchId, name: { contains: term, mode: 'insensitive' } },
+        select: { id: true, name: true, position: true, isStaff: true, isActive: true }
+      });
+    }
+    if (!person) return res.status(404).json({ error: 'Persona no encontrada en esta sucursal' });
+    if (!person.isActive) return res.status(403).json({ error: 'Cuenta inactiva' });
+
+    // Determinar IN/OUT según el último registro de HOY
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const last = await prisma.attendance.findFirst({
+      where: { userId: person.id, createdAt: { gte: today } },
+      orderBy: { createdAt: 'desc' }
+    });
+    const type = last?.type === 'IN' ? 'OUT' : 'IN';
+
+    const record = await prisma.attendance.create({
+      data: { userId: person.id, branchId, type }
+    });
+
+    res.json({
+      success: true,
+      type,
+      name: person.name,
+      position: person.position || (person.isStaff ? 'Equipo de operación' : 'Comensal'),
+      time: record.createdAt
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar asistencia' });
+  }
+});
+
+// GET registros de asistencia del día (para el panel de caja)
+router.get('/branch/:branchId/attendance', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const day = req.query.date ? new Date(String(req.query.date)) : new Date();
+    day.setHours(0, 0, 0, 0);
+    const next = new Date(day); next.setDate(next.getDate() + 1);
+
+    const records = await prisma.attendance.findMany({
+      where: { branchId, createdAt: { gte: day, lt: next } },
+      orderBy: { createdAt: 'desc' },
+      take: 200
+    });
+    const userIds = [...new Set(records.map(r => r.userId))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, position: true, employeeNumber: true, isStaff: true }
+    });
+    const umap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    res.json(records.map(r => ({
+      id: r.id, type: r.type, createdAt: r.createdAt,
+      user: umap[r.userId] || null
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener asistencia' });
   }
 });
 

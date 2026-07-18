@@ -8,7 +8,8 @@ import {
   ShoppingBag,
   ClipboardList,
   Users,
-  Package
+  Package,
+  Clock
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -23,6 +24,7 @@ export const CashierNav: React.FC = () => {
   const navItems = [
     { path: base, label: 'Inicio', icon: Home },
     { path: `${base}/scan`, label: 'Escanear', icon: QrCode },
+    { path: `${base}/asistencia`, label: 'Asistencia', icon: Clock },
     { path: `${base}/comensales`, label: 'Comensales', icon: Users },
     { path: `${base}/products`, label: 'Menú', icon: ShoppingBag },
     { path: `${base}/inventario`, label: 'Inventario', icon: Package },
@@ -99,14 +101,14 @@ export const CashierNav: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Bottom Nav — barra flotante redondeada */}
-      <div className="fixed bottom-3 left-3 right-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-[1.75rem] shadow-xl shadow-slate-900/10 border border-slate-100 dark:border-slate-800 md:hidden z-40">
-        <div className="flex justify-around px-1">
+      {/* Mobile Bottom Nav — barra flotante con scroll horizontal (muchos items) */}
+      <div className="fixed bottom-3 left-3 right-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg rounded-[1.75rem] shadow-xl shadow-slate-900/10 border border-slate-100 dark:border-slate-800 md:hidden z-40 overflow-x-auto">
+        <div className="flex px-1" style={{ minWidth: 'max-content' }}>
           {navItems.map(({ path, label, icon: Icon }) => (
             <Link
               key={path}
               to={path}
-              className={`flex-1 flex flex-col items-center justify-center pt-2.5 pb-2 gap-0.5 transition-colors ${
+              className={`flex flex-col items-center justify-center pt-2.5 pb-2 gap-0.5 transition-colors min-w-[4.2rem] ${
                 isActive(path)
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-slate-400 dark:text-slate-500'

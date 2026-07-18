@@ -243,6 +243,8 @@ export const CashierUsers: React.FC = () => {
           name={qrUser.name}
           employeeNumber={qrUser.employeeNumber}
           qrCode={qrUser.qrCode}
+          photoUrl={(qrUser as any).photoUrl}
+          position={(qrUser as any).position}
           onClose={() => setQrUser(null)}
         />
       )}

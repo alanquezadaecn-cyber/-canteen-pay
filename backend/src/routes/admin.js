@@ -16,6 +16,48 @@ async function adminCompanyId(req) {
   return admin?.branch?.companyId || null;
 }
 
+// GET asistencia (entradas/salidas) por sucursal y día — para el admin
+router.get('/attendance', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ records: [], branches: [] });
+
+    const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true } });
+    const branchIds = branches.map(b => b.id);
+
+    const day = req.query.date ? new Date(String(req.query.date)) : new Date();
+    day.setHours(0, 0, 0, 0);
+    const next = new Date(day); next.setDate(next.getDate() + 1);
+
+    const targetBranch = req.query.branchId ? String(req.query.branchId) : null;
+    const where = {
+      branchId: targetBranch && branchIds.includes(targetBranch) ? targetBranch : { in: branchIds },
+      createdAt: { gte: day, lt: next }
+    };
+
+    const records = await prisma.attendance.findMany({ where, orderBy: { createdAt: 'desc' }, take: 500 });
+    const userIds = [...new Set(records.map(r => r.userId))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, position: true, employeeNumber: true, isStaff: true }
+    });
+    const umap = Object.fromEntries(users.map(u => [u.id, u]));
+    const bmap = Object.fromEntries(branches.map(b => [b.id, b.name]));
+
+    res.json({
+      branches,
+      records: records.map(r => ({
+        id: r.id, type: r.type, createdAt: r.createdAt,
+        branchName: bmap[r.branchId] || '',
+        user: umap[r.userId] || null
+      }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener asistencia' });
+  }
+});
+
 // GET config de pagos en línea de la empresa (token enmascarado)
 router.get('/payment-config', async (req, res) => {
   try {

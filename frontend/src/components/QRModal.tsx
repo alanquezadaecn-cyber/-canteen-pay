@@ -6,10 +6,12 @@ interface QRModalProps {
   name: string;
   employeeNumber: string;
   qrCode: string;
+  photoUrl?: string | null;
+  position?: string | null;
   onClose: () => void;
 }
 
-export const QRModal: React.FC<QRModalProps> = ({ name, employeeNumber, qrCode, onClose }) => {
+export const QRModal: React.FC<QRModalProps> = ({ name, employeeNumber, qrCode, photoUrl, position, onClose }) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
   const download = () => {
@@ -26,17 +28,24 @@ export const QRModal: React.FC<QRModalProps> = ({ name, employeeNumber, qrCode, 
     if (!canvas) return;
     const w = window.open('', '', 'height=600,width=600');
     if (!w) return;
+    const photoHtml = photoUrl
+      ? `<img src="${photoUrl}" style="width:90px;height:90px;border-radius:12px;object-fit:cover;border:2px solid #059669;margin:0 auto 10px;display:block" />`
+      : '';
+    const posHtml = position ? `<div class="pos">${position}</div>` : '';
     w.document.write(`
       <html><head><title>QR - ${name}</title>
       <style>
         body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Arial;margin:0}
         .card{border:2px solid #059669;border-radius:16px;padding:28px;text-align:center}
-        h1{color:#0f172a;margin:0 0 4px;font-size:22px}
+        h1{color:#0f172a;margin:0 0 2px;font-size:22px}
+        .pos{color:#059669;font-weight:700;font-size:13px;margin-bottom:6px}
         .num{font-size:34px;font-weight:800;color:#059669;letter-spacing:3px;margin:8px 0}
         .id{font-size:10px;color:#94a3b8;margin-top:8px;font-family:monospace}
       </style></head>
       <body><div class="card">
+        ${photoHtml}
         <h1>${name}</h1>
+        ${posHtml}
         <div class="num">${employeeNumber}</div>
         ${canvas.outerHTML}
         <div class="id">${qrCode}</div>
@@ -51,10 +60,11 @@ export const QRModal: React.FC<QRModalProps> = ({ name, employeeNumber, qrCode, 
         className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-b from-emerald-600 to-emerald-500 px-6 py-5 flex items-center justify-between">
-          <div className="min-w-0">
+        <div className="bg-gradient-to-b from-emerald-600 to-emerald-500 px-6 py-5 flex items-center gap-3">
+          {photoUrl && <img src={photoUrl} alt="" className="w-12 h-12 rounded-xl object-cover border-2 border-white/50 flex-shrink-0" />}
+          <div className="min-w-0 flex-1">
             <p className="text-white font-bold text-lg truncate">{name}</p>
-            <p className="text-emerald-100 text-xs">Código QR del comensal</p>
+            <p className="text-emerald-100 text-xs">{position || 'Código QR'}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white cursor-pointer flex-shrink-0">
             <X className="w-4 h-4" />

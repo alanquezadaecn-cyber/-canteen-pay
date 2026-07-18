@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
-import { UserPlus, CheckCircle, Copy, Download, Printer, X } from 'lucide-react';
+import { UserPlus, CheckCircle, Copy, Download, Printer, X, Camera } from 'lucide-react';
 import QRCodeComponent from 'qrcode.react';
 
 interface Created {
@@ -11,18 +11,45 @@ interface Created {
   employeeNumber: string;
   qrCode: string;
   password: string;
+  position?: string | null;
+  isStaff?: boolean;
+  photoUrl?: string | null;
 }
+
+const PUESTOS = ['Chef', 'Cocinero', 'Ayudante de cocina', 'Mesero', 'Cajero', 'Limpieza', 'Almacén', 'Supervisor'];
 
 export const CashierRegister: React.FC = () => {
   const { user } = useAuthStore();
   const branchId = user?.branchId || '';
 
-  const [form, setForm] = useState({ name: '', phone: '', email: '', employeeNumber: '', password: '' });
+  const [tipo, setTipo] = useState<'COMENSAL' | 'STAFF'>('COMENSAL');
+  const [form, setForm] = useState({ name: '', phone: '', email: '', employeeNumber: '', password: '', position: '' });
+  const [photo, setPhoto] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState('');
   const qrRef = React.useRef<HTMLDivElement>(null);
+
+  // Captura de foto: reduce a máx 400px y comprime a JPEG (para que quepa en la BD)
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = img.width * scale; c.height = img.height * scale;
+        c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+        setPhoto(c.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +58,15 @@ export const CashierRegister: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post(`/cashier/branch/${branchId}/register`, form);
+      const { data } = await api.post(`/cashier/branch/${branchId}/register`, {
+        ...form,
+        isStaff: tipo === 'STAFF',
+        position: tipo === 'STAFF' ? form.position : '',
+        photoUrl: photo || null
+      });
       setCreated(data.user);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al registrar comensal');
+      setError(err.response?.data?.error || 'Error al registrar');
     } finally {
       setLoading(false);
     }
@@ -51,11 +83,13 @@ export const CashierRegister: React.FC = () => {
     if (!canvas || !created) return;
     const w = window.open('', '', 'height=600,width=600');
     if (!w) return;
+    const photoHtml = created.photoUrl ? `<img src="${created.photoUrl}" style="width:90px;height:90px;border-radius:12px;object-fit:cover;border:2px solid #059669;margin-bottom:8px" />` : '';
+    const posHtml = created.position ? `<p style="color:#059669;font-weight:700;margin:2px">${created.position}</p>` : '';
     w.document.write(`
       <html><head><title>QR - ${created.name}</title>
       <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Arial}
-      h1{color:#059669}p{color:#64748b;margin:6px}</style></head>
-      <body><h1>${created.name}</h1><p>Empleado #${created.employeeNumber}</p>${canvas.outerHTML}
+      h1{color:#0f172a;margin:2px}p{color:#64748b;margin:4px}</style></head>
+      <body>${photoHtml}<h1>${created.name}</h1>${posHtml}<p>Empleado #${created.employeeNumber}</p>${canvas.outerHTML}
       <p style="font-size:11px">${created.qrCode}</p></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 150);
@@ -72,7 +106,8 @@ export const CashierRegister: React.FC = () => {
 
   const reset = () => {
     setCreated(null);
-    setForm({ name: '', phone: '', email: '', employeeNumber: '', password: '' });
+    setForm({ name: '', phone: '', email: '', employeeNumber: '', password: '', position: '' });
+    setPhoto('');
     setError('');
   };
 
@@ -83,11 +118,15 @@ export const CashierRegister: React.FC = () => {
         <div className="max-w-lg mx-auto px-5 space-y-5">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="bg-gradient-to-b from-emerald-600 to-emerald-500 px-6 py-6 text-center">
-              <div className="w-14 h-14 bg-white/25 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-white">¡Comensal registrado!</h1>
-              <p className="text-emerald-100 text-sm mt-1">{created.name}</p>
+              {created.photoUrl ? (
+                <img src={created.photoUrl} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-white/60 mx-auto mb-3" />
+              ) : (
+                <div className="w-14 h-14 bg-white/25 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle className="w-8 h-8 text-white" />
+                </div>
+              )}
+              <h1 className="text-xl font-bold text-white">{created.isStaff ? '¡Registrado!' : '¡Comensal registrado!'}</h1>
+              <p className="text-emerald-100 text-sm mt-1">{created.name}{created.position ? ` · ${created.position}` : ''}</p>
             </div>
 
             <div className="p-6 space-y-5">
@@ -149,8 +188,8 @@ export const CashierRegister: React.FC = () => {
           <div className="w-12 h-12 bg-white/25 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <UserPlus className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Registrar Comensal</h1>
-          <p className="text-emerald-100 text-sm mt-2">Da de alta a un nuevo comensal en tu comedor</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Registrar</h1>
+          <p className="text-emerald-100 text-sm mt-2">Comensal o equipo de operación</p>
         </div>
       </div>
 
@@ -159,6 +198,34 @@ export const CashierRegister: React.FC = () => {
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 rounded-2xl text-sm">
               {error}
+            </div>
+          )}
+
+          {/* Tipo */}
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+            <button type="button" onClick={() => setTipo('COMENSAL')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'COMENSAL' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Comensal</button>
+            <button type="button" onClick={() => setTipo('STAFF')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'STAFF' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Equipo de operación</button>
+          </div>
+
+          {/* Puesto + foto (solo staff) */}
+          {tipo === 'STAFF' && (
+            <div className="flex gap-3 items-start">
+              <label className="flex-shrink-0 cursor-pointer">
+                <input type="file" accept="image/*" capture="user" onChange={handlePhoto} className="hidden" />
+                {photo ? (
+                  <img src={photo} alt="" className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-400" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400">
+                    <Camera className="w-5 h-5 mb-0.5" /><span className="text-[10px]">Foto</span>
+                  </div>
+                )}
+              </label>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Puesto</label>
+                <input list="puestos" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Chef, Cocinero, Mesero..."
+                  className="w-full h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+                <datalist id="puestos">{PUESTOS.map(p => <option key={p} value={p} />)}</datalist>
+              </div>
             </div>
           )}
 
