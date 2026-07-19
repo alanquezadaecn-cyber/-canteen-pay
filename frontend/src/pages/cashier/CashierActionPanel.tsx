@@ -8,12 +8,14 @@ import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { doCharge, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
 
+interface Subsidy { enabled: boolean; limit: number; usedToday: number; left: number }
 interface User {
   id: string;
   name: string;
   email: string;
   balance: string;
   qrCode: string;
+  subsidy?: Subsidy;
 }
 
 interface Product {
@@ -42,6 +44,7 @@ export const CashierActionPanel: React.FC = () => {
 
   const [searchInput, setSearchInput] = useState('');
   const [searching, setSearching] = useState(false);
+  const [chargeSubsidized, setChargeSubsidized] = useState(false);
 
   // Cargar productos al montar
   useEffect(() => {
@@ -107,15 +110,20 @@ export const CashierActionPanel: React.FC = () => {
     }
   };
 
-  const handleCharge = async (product: Product) => {
+  const handleCharge = async (product: Product, subsidized = false) => {
     if (!user || !branchId) return;
     setLoading(true);
     try {
-      const { offline, newBalance } = await doCharge(branchId, user, product.price, `Compra: ${product.name}`);
-      setSuccess(offline
-        ? `⚠️ Sin conexión: ${product.name} cobrado a ${user.name} (se sincronizará). Saldo: $${newBalance}`
-        : `✅ ${product.name} cobrado a ${user.name}. Nuevo saldo: $${newBalance}`);
-      setUser({ ...user, balance: newBalance });
+      const res: any = await doCharge(branchId, user, product.price, `Compra: ${product.name}`, subsidized);
+      if (subsidized) {
+        setSuccess(`✅ ${product.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
+        setUser({ ...user, subsidy: user.subsidy ? { ...user.subsidy, usedToday: user.subsidy.usedToday + 1, left: res.subsidyLeft } : undefined });
+      } else {
+        setSuccess(res.offline
+          ? `⚠️ Sin conexión: ${product.name} cobrado a ${user.name} (se sincronizará). Saldo: $${res.newBalance}`
+          : `✅ ${product.name} cobrado a ${user.name}. Nuevo saldo: $${res.newBalance}`);
+        setUser({ ...user, balance: res.newBalance });
+      }
       setMode('select');
       setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
     } catch (err: any) {
@@ -260,7 +268,7 @@ export const CashierActionPanel: React.FC = () => {
         {mode === 'select' && (
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setMode('charge'); setError(''); }}
+              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); }}
               disabled={loading}
               className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-40 shadow-lg shadow-emerald-600/25 cursor-pointer"
             >
@@ -287,26 +295,53 @@ export const CashierActionPanel: React.FC = () => {
             >
               ← Volver
             </button>
+
+            {/* Toggle de subsidio (si la empresa lo tiene habilitado) */}
+            {user.subsidy?.enabled && (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Comida subsidiada</p>
+                  <p className="text-xs text-slate-500">
+                    {user.subsidy.left > 0
+                      ? `Le quedan ${user.subsidy.left} de ${user.subsidy.limit} hoy · no descuenta saldo`
+                      : `Sin comidas subsidiadas hoy (${user.subsidy.usedToday}/${user.subsidy.limit})`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setChargeSubsidized(v => !v)}
+                  disabled={user.subsidy.left <= 0}
+                  className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 ${chargeSubsidized ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                >
+                  {chargeSubsidized ? 'SUBSIDIANDO ✓' : 'Activar subsidio'}
+                </button>
+              </div>
+            )}
+
             {products.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
                 No hay productos configurados para esta sucursal
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                {products.map(product => (
+                {products.map(product => {
+                  const sub = chargeSubsidized && (user.subsidy?.left ?? 0) > 0;
+                  return (
                   <button
                     key={product.id}
-                    onClick={() => handleCharge(product)}
-                    disabled={loading || balanceNum < product.price}
-                    className="flex flex-col items-start p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md transition-all text-left disabled:opacity-40"
+                    onClick={() => handleCharge(product, sub)}
+                    disabled={loading || (!sub && balanceNum < product.price)}
+                    className={`flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 ${sub ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
                   >
                     <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{product.name}</span>
-                    <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">${product.price}</span>
+                    <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">
+                      {sub ? <span className="text-emerald-600 text-base">Subsidiado</span> : `$${product.price}`}
+                    </span>
                     {product.category && (
                       <span className="text-xs text-slate-400 mt-1">{product.category}</span>
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -64,6 +64,10 @@ model Company {
   mpAccessToken   String?
   mpPublicKey     String?
 
+  // Subsidio de comida: la empresa cubre N comidas/día por comensal (se marcan, no se cobran)
+  subsidyEnabled     Boolean @default(false)
+  subsidyMealsPerDay Int     @default(1)
+
   // Facturación (comentado temporalmente - agregar después con migration)
   // licenseFee      Decimal   @default(0) @db.Decimal(10, 2)
   // hostingFee      Decimal   @default(0) @db.Decimal(10, 2)
@@ -213,6 +217,7 @@ model User {
   photoUrl       String?
   position       String?       // Puesto del equipo de operación: Chef, Cocinero, Mesero, etc.
   isStaff        Boolean       @default(false) // true = equipo de operación (no comensal)
+  subsidyMealsPerDay Int?      // Override de comidas subsidiadas/día (null = usar el de la empresa)
   branchId       String?
   branch         Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
@@ -237,6 +242,7 @@ model Transaction {
   cashierId      String?
   paymentMethod  PaymentMethod?
   reference      String?
+  isSubsidized   Boolean         @default(false) // comida cubierta por la empresa (no descuenta saldo)
   createdAt      DateTime        @default(now())
 
   items          TransactionItem[]

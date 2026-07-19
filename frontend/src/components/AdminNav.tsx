@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, BarChart3, LogOut, Menu, X,
-  BarChart2, Bell, Check, Package, CreditCard, Clock
+  BarChart2, Bell, Check, Package, CreditCard, Clock, Coins
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -34,6 +34,7 @@ export const AdminNav: React.FC = () => {
     { path: `${base}/reports`,      label: 'Reportes',       icon: BarChart2 },
     { path: `${base}/inventory`,    label: 'Inventario',     icon: Package },
     { path: `${base}/asistencia`,   label: 'Asistencia',     icon: Clock },
+    { path: `${base}/subsidio`,     label: 'Subsidio',       icon: Coins },
     { path: `${base}/pagos`,        label: 'Pagos',          icon: CreditCard },
   ];
 

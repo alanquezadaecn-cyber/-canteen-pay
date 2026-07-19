@@ -58,6 +58,103 @@ router.get('/attendance', async (req, res) => {
   }
 });
 
+// ── SUBSIDIO ──
+// GET config de subsidio de la empresa
+router.get('/subsidy-config', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1 });
+    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true } });
+    res.json({ enabled: !!c?.subsidyEnabled, mealsPerDay: c?.subsidyMealsPerDay ?? 1 });
+  } catch (err) {
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
+// PUT config de subsidio
+router.put('/subsidy-config', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const { enabled, mealsPerDay } = req.body;
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        ...(enabled !== undefined && { subsidyEnabled: !!enabled }),
+        ...(mealsPerDay !== undefined && { subsidyMealsPerDay: Math.max(0, parseInt(mealsPerDay) || 0) })
+      }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar' });
+  }
+});
+
+// GET reporte de subsidio para RH: cuánto se consumió por subsidio (lo que la empresa paga al proveedor)
+router.get('/subsidy-report', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ total: 0, count: 0, byUser: [], branches: [] });
+
+    const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true } });
+    const branchIds = branches.map(b => b.id);
+    const bmap = Object.fromEntries(branches.map(b => [b.id, b.name]));
+
+    // Rango de fechas (default: mes actual)
+    const from = req.query.from ? new Date(String(req.query.from)) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    from.setHours(0, 0, 0, 0);
+    const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+    to.setHours(23, 59, 59, 999);
+
+    const targetBranch = req.query.branchId ? String(req.query.branchId) : null;
+
+    // Comensales de la empresa (o sucursal)
+    const users = await prisma.user.findMany({
+      where: { branchId: targetBranch && branchIds.includes(targetBranch) ? targetBranch : { in: branchIds } },
+      select: { id: true, name: true, employeeNumber: true, branchId: true }
+    });
+    const umap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    const txns = await prisma.transaction.findMany({
+      where: {
+        isSubsidized: true,
+        userId: { in: users.map(u => u.id) },
+        createdAt: { gte: from, lte: to }
+      },
+      select: { userId: true, amount: true }
+    });
+
+    let total = 0;
+    const perUser = {};
+    for (const t of txns) {
+      const amt = parseFloat(t.amount);
+      total += amt;
+      if (!perUser[t.userId]) perUser[t.userId] = { count: 0, amount: 0 };
+      perUser[t.userId].count++;
+      perUser[t.userId].amount += amt;
+    }
+
+    const byUser = Object.entries(perUser).map(([uid, v]) => ({
+      name: umap[uid]?.name || '—',
+      employeeNumber: umap[uid]?.employeeNumber || '',
+      branchName: bmap[umap[uid]?.branchId] || '',
+      count: v.count,
+      amount: v.amount.toFixed(2)
+    })).sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+
+    res.json({
+      total: total.toFixed(2),
+      count: txns.length,
+      from: from.toISOString(), to: to.toISOString(),
+      branches, byUser
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al generar reporte' });
+  }
+});
+
 // GET config de pagos en línea de la empresa (token enmascarado)
 router.get('/payment-config', async (req, res) => {
   try {

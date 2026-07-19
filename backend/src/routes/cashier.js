@@ -83,9 +83,27 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       return res.status(403).json({ error: 'Comensal inactivo' });
     }
 
+    // Info de subsidio: cuántas comidas subsidiadas le quedan hoy
+    let subsidy = { enabled: false, limit: 0, usedToday: 0, left: 0 };
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+      include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true } } }
+    });
+    if (branch?.company?.subsidyEnabled) {
+      const cfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
+      const limit = (cfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
+      const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+      const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
+      const usedToday = await prisma.transaction.count({
+        where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
+      });
+      subsidy = { enabled: true, limit, usedToday, left: Math.max(0, limit - usedToday) };
+    }
+
     res.json({
       ...user,
-      balance: user.balance.toString()
+      balance: user.balance.toString(),
+      subsidy
     });
   } catch (err) {
     console.error(err);
@@ -385,7 +403,7 @@ router.put('/branch/:branchId/users/:userId', async (req, res) => {
 router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { qrCode, amount, description, clientRef } = req.body;
+    const { qrCode, amount, description, clientRef, subsidized } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
@@ -431,6 +449,44 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+
+    // ── COBRO SUBSIDIADO: la empresa cubre la comida, no descuenta saldo, solo se marca ──
+    if (subsidized) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: branchId },
+        include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true } } }
+      });
+      if (!branch?.company?.subsidyEnabled) {
+        return res.status(400).json({ error: 'El subsidio no está habilitado para esta empresa' });
+      }
+      const userCfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
+      const limit = (userCfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
+
+      const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+      const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
+      const usedToday = await prisma.transaction.count({
+        where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
+      });
+      if (usedToday >= limit) {
+        return res.status(400).json({ error: `Ya usó sus ${limit} comida(s) subsidiada(s) de hoy` });
+      }
+
+      const balanceNow = parseFloat(user.balance);
+      const tx = await prisma.transaction.create({
+        data: {
+          userId: user.id, type: 'PURCHASE', amount: amountDecimal,
+          balanceBefore: balanceNow, balanceAfter: balanceNow,
+          description: `Subsidiado: ${description || 'Comida'}`,
+          cashierId: req.userId, isSubsidized: true, reference: clientRef || null
+        }
+      });
+      return res.json({
+        success: true, subsidized: true,
+        transaction: { ...tx, amount: tx.amount.toString() },
+        newBalance: balanceNow.toFixed(2), userName: user.name,
+        subsidyLeft: limit - usedToday - 1
+      });
     }
 
     const balanceDecimal = parseFloat(user.balance);
