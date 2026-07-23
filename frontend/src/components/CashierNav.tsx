@@ -21,16 +21,17 @@ export const CashierNav: React.FC = () => {
   const { logout } = useAuthStore();
   const branding = useBranding();
   const base = usePanelBase();
+  const features = branding?.features;
   const navItems = [
     { path: base, label: 'Inicio', icon: Home },
     { path: `${base}/scan`, label: 'Escanear', icon: QrCode },
-    { path: `${base}/asistencia`, label: 'Asistencia', icon: Clock },
+    features?.hr !== false && { path: `${base}/asistencia`, label: 'Asistencia', icon: Clock },
     { path: `${base}/comensales`, label: 'Comensales', icon: Users },
     { path: `${base}/products`, label: 'Menú', icon: ShoppingBag },
-    { path: `${base}/inventario`, label: 'Inventario', icon: Package },
+    features?.inventory !== false && { path: `${base}/inventario`, label: 'Inventario', icon: Package },
     { path: `${base}/history`, label: 'Historial', icon: History },
     { path: `${base}/corte`, label: 'Corte', icon: ClipboardList }
-  ];
+  ].filter(Boolean) as { path: string; label: string; icon: any }[];
 
   const isActive = (path: string) => location.pathname === path || location.pathname === path + '/';
 

@@ -309,7 +309,8 @@ router.get('/companies', async (req, res) => {
       isBlocked: c.isBlocked,
       blockReason: c.blockReason,
       lastPayment: c.payments[0],
-      branches: c.branches
+      branches: c.branches,
+      enabledFeatures: c.enabledFeatures || {}
     })));
   } catch (err) {
     console.error(err);
@@ -320,7 +321,7 @@ router.get('/companies', async (req, res) => {
 // UPDATE company details
 router.put('/companies/:companyId', async (req, res) => {
   try {
-    const { name, email, phone, industry, contactPerson, paymentEmail } = req.body;
+    const { name, email, phone, industry, contactPerson, paymentEmail, enabledFeatures } = req.body;
 
     const company = await prisma.company.update({
       where: { id: req.params.companyId },
@@ -330,7 +331,8 @@ router.put('/companies/:companyId', async (req, res) => {
         ...(phone && { phone }),
         ...(industry && { industry }),
         ...(contactPerson && { contactPerson }),
-        ...(paymentEmail && { paymentEmail })
+        ...(paymentEmail && { paymentEmail }),
+        ...(enabledFeatures !== undefined && { enabledFeatures })
       }
     });
 

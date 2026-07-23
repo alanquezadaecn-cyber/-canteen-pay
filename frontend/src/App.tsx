@@ -35,6 +35,7 @@ import { CashierInventory } from './pages/cashier/CashierInventory';
 import { CashierAttendance } from './pages/cashier/CashierAttendance';
 import { Attendance } from './pages/admin/Attendance';
 import { Subsidy } from './pages/admin/Subsidy';
+import { FeatureGuard } from './components/FeatureGuard';
 
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -257,10 +258,10 @@ function App() {
             <Route path="users/:id"               element={<UserDetail />} />
             <Route path="transactions"            element={<TransactionsList />} />
             <Route path="reports"                 element={<AdminReports />} />
-            <Route path="inventory"               element={<Inventory />} />
-            <Route path="pagos"                   element={<PaymentConfig />} />
-            <Route path="asistencia"              element={<Attendance />} />
-            <Route path="subsidio"                element={<Subsidy />} />
+            <Route path="inventory"               element={<FeatureGuard feature="inventory"><Inventory /></FeatureGuard>} />
+            <Route path="pagos"                   element={<FeatureGuard feature="payments"><PaymentConfig /></FeatureGuard>} />
+            <Route path="asistencia"              element={<FeatureGuard feature="hr"><Attendance /></FeatureGuard>} />
+            <Route path="subsidio"                element={<FeatureGuard feature="hr"><Subsidy /></FeatureGuard>} />
             <Route path="branding"                element={<Branding />} />
             <Route path="branches/:id"            element={<BranchDetail />} />
             <Route path="branches/:branchId/reports" element={<BranchReports />} />
@@ -274,8 +275,8 @@ function App() {
             <Route path="recharge"  element={<CashRecharge />} />
             <Route path="registrar" element={<CashierRegister />} />
             <Route path="comensales" element={<CashierUsers />} />
-            <Route path="inventario" element={<CashierInventory />} />
-            <Route path="asistencia" element={<CashierAttendance />} />
+            <Route path="inventario" element={<FeatureGuard feature="inventory"><CashierInventory /></FeatureGuard>} />
+            <Route path="asistencia" element={<FeatureGuard feature="hr"><CashierAttendance /></FeatureGuard>} />
             <Route path="products"  element={<CashierProducts />} />
             <Route path="history"   element={<CashierHistory />} />
             <Route path="corte"     element={<CorteDeCaja />} />

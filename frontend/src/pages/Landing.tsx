@@ -6,33 +6,6 @@ import { useNavigate } from 'react-router-dom';
 
 const WA = '5218112683542'; // WhatsApp de contacto
 
-const PLANS = [
-  {
-    name: 'Básico', price: '$3,000', strikePrice: null as string | null, period: 'MXN /mes', popular: false,
-    bg: 'white', border: '1px solid #ECE9E2', shadow: '0 2px 8px rgba(15,40,30,0.04)',
-    accent: '#0F9D64', textColor: '#0C2A20', subTextColor: '#4B5F58', btnBg: '#0F9D64', btnText: 'white',
-    items: ['1 comedor', 'Empresa con un solo comedor', 'Panel admin + cajero + comensal', 'Reportes básicos', 'Soporte WhatsApp']
-  },
-  {
-    name: 'Pro', price: '$6,000', strikePrice: null, period: 'MXN /mes', popular: true,
-    bg: '#0C2A20', border: '1px solid #0C2A20', shadow: '0 24px 48px rgba(12,42,32,0.30)',
-    accent: '#5EE6A8', textColor: 'white', subTextColor: 'rgba(255,255,255,0.82)', btnBg: 'white', btnText: '#0C2A20',
-    items: ['Hasta 3 sucursales', 'Multi-planta / crecimiento', 'Comensales ilimitados', 'Todos los paneles', 'Reportes avanzados']
-  },
-  {
-    name: 'Licencia anual', price: '$30,000', strikePrice: '$50,000 MXN', period: 'MXN /año', popular: false,
-    bg: 'white', border: '1px solid #ECE9E2', shadow: '0 2px 8px rgba(15,40,30,0.04)',
-    accent: '#0F9D64', textColor: '#0C2A20', subTextColor: '#4B5F58', btnBg: '#0F9D64', btnText: 'white',
-    items: ['Hasta 10 sucursales', 'Ahorro pagando anual', 'Comensales ilimitados', 'Todos los paneles', 'Soporte 3 meses gratis']
-  },
-  {
-    name: 'Enterprise', price: 'Cotización', strikePrice: null, period: '', popular: false,
-    bg: 'white', border: '1px solid #ECE9E2', shadow: '0 2px 8px rgba(15,40,30,0.04)',
-    accent: '#0F9D64', textColor: '#0C2A20', subTextColor: '#4B5F58', btnBg: '#0F9D64', btnText: 'white',
-    items: ['Sucursales ilimitadas', 'Corporativo grande', 'Comensales ilimitados', 'Todos los paneles', 'Soporte prioritario 24/7']
-  }
-];
-
 const FEATURES = [
   { title: 'App para el comensal', desc: 'Consulta saldo, QR, menú del día y su historial de consumo desde el celular.',
     icon: <><rect x="2" y="6" width="20" height="14" rx="3" stroke="#0F9D64" strokeWidth="2" /><circle cx="16" cy="13" r="2" fill="#0F9D64" /></> },
@@ -112,7 +85,7 @@ export const Landing: React.FC = () => {
           <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
             <a href="#como-funciona" className="cf-nav-link" style={{ fontSize: 14.5, fontWeight: 600, color: '#3A4F47', whiteSpace: 'nowrap' }}>Cómo funciona</a>
             <a href="#incluye" className="cf-nav-link" style={{ fontSize: 14.5, fontWeight: 600, color: '#3A4F47', whiteSpace: 'nowrap' }}>Incluye</a>
-            <a href="#planes" className="cf-nav-link" style={{ fontSize: 14.5, fontWeight: 600, color: '#3A4F47', whiteSpace: 'nowrap' }}>Planes</a>
+            <a href="#contacto" className="cf-nav-link" style={{ fontSize: 14.5, fontWeight: 600, color: '#3A4F47', whiteSpace: 'nowrap' }}>Contacto</a>
             <button onClick={() => navigate('/login')} className="cf-btn" style={{ background: '#0F9D64', color: 'white', fontWeight: 700, fontSize: 14.5, padding: '11px 22px', borderRadius: 999, border: 'none', boxShadow: '0 6px 16px rgba(15,157,100,0.28)', whiteSpace: 'nowrap' }}>Iniciar sesión</button>
           </nav>
         </div>
@@ -216,42 +189,6 @@ export const Landing: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* PLANES */}
-      <section id="planes" style={{ maxWidth: 1220, margin: '0 auto', padding: '140px 28px 40px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto 56px', textAlign: 'center' }}>
-          <p style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: '0.08em', color: '#0F9D64', textTransform: 'uppercase', margin: '0 0 10px' }}>Precios</p>
-          <h2 style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 800, fontSize: 'clamp(28px,3.6vw,38px)', color: '#0C2A20', margin: '0 0 12px', letterSpacing: '-0.01em' }}>Planes</h2>
-          <p style={{ fontSize: 17, color: '#4B5F58', margin: 0 }}>Elige el plan según el tamaño de tu operación.</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 22, alignItems: 'stretch' }}>
-          {PLANS.map(p => (
-            <div key={p.name} className="cf-card" style={{ position: 'relative', background: p.bg, border: p.border, borderRadius: 22, padding: '36px 30px', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: p.shadow }}>
-              {p.popular && (
-                <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: '#0C2A20', color: 'white', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>Más popular</span>
-              )}
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', color: p.accent, margin: '0 0 8px', textTransform: 'uppercase' }}>{p.name}</p>
-                {p.strikePrice && (
-                  <span style={{ fontSize: 15, color: p.subTextColor, textDecoration: 'line-through', display: 'block', marginBottom: 2 }}>{p.strikePrice}</span>
-                )}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 800, fontSize: 36, color: p.textColor, whiteSpace: 'nowrap' }}>{p.price}</span>
-                  <span style={{ fontSize: 14, color: p.subTextColor, whiteSpace: 'nowrap' }}>{p.period}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 11, flex: 1 }}>
-                {p.items.map(item => (
-                  <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 14.5, color: p.subTextColor, lineHeight: 1.5 }}>
-                    <span style={{ color: p.accent, fontWeight: 700, flex: 'none' }}>✓</span><span style={{ flex: 1 }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hola, me interesa el plan ${p.name} de CashFood`)}`} target="_blank" rel="noopener noreferrer" className="cf-btn" style={{ textAlign: 'center', background: p.btnBg, color: p.btnText, fontWeight: 700, fontSize: 15.5, padding: '15px 20px', borderRadius: 12, marginTop: 6 }}>Contratar</a>
-            </div>
-          ))}
         </div>
       </section>
 

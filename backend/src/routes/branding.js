@@ -4,15 +4,24 @@ import { verifyToken, checkRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Secciones que el master admin puede habilitar/deshabilitar por empresa.
+// Una clave ausente en enabledFeatures se considera HABILITADA (compatibilidad con empresas existentes).
+const DEFAULT_FEATURES = { inventory: true, hr: true, payments: true };
+
 // GET branding de la empresa de la sesión actual (cualquier rol autenticado con companyId)
 router.get('/', verifyToken, async (req, res) => {
   try {
-    if (!req.userCompanyId) return res.json({ name: null, logoUrl: null });
+    if (!req.userCompanyId) return res.json({ name: null, logoUrl: null, features: DEFAULT_FEATURES });
     const company = await prisma.company.findUnique({
       where: { id: req.userCompanyId },
-      select: { name: true, logoUrl: true }
+      select: { name: true, logoUrl: true, enabledFeatures: true }
     });
-    res.json(company || { name: null, logoUrl: null });
+    if (!company) return res.json({ name: null, logoUrl: null, features: DEFAULT_FEATURES });
+    res.json({
+      name: company.name,
+      logoUrl: company.logoUrl,
+      features: { ...DEFAULT_FEATURES, ...(company.enabledFeatures || {}) }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener branding' });

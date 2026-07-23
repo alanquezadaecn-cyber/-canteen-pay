@@ -68,6 +68,9 @@ model Company {
   subsidyEnabled     Boolean @default(false)
   subsidyMealsPerDay Int     @default(1)
 
+  // Secciones habilitadas por el master admin (inventario, RH, pagos...). Claves ausentes = habilitado.
+  enabledFeatures Json?
+
   // Facturación (comentado temporalmente - agregar después con migration)
   // licenseFee      Decimal   @default(0) @db.Decimal(10, 2)
   // hostingFee      Decimal   @default(0) @db.Decimal(10, 2)

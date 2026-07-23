@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useBranding } from '../../hooks/useBranding';
 import api from '../../lib/api';
 import { UserPlus, CheckCircle, Copy, Download, Printer, X, Camera } from 'lucide-react';
 import QRCodeComponent from 'qrcode.react';
@@ -20,9 +22,12 @@ const PUESTOS = ['Chef', 'Cocinero', 'Ayudante de cocina', 'Mesero', 'Cajero', '
 
 export const CashierRegister: React.FC = () => {
   const { user } = useAuthStore();
+  const branding = useBranding();
   const branchId = user?.branchId || '';
+  const hrEnabled = branding?.features?.hr !== false;
+  const [searchParams] = useSearchParams();
 
-  const [tipo, setTipo] = useState<'COMENSAL' | 'STAFF'>('COMENSAL');
+  const [tipo, setTipo] = useState<'COMENSAL' | 'STAFF'>(hrEnabled && searchParams.get('tipo') === 'staff' ? 'STAFF' : 'COMENSAL');
   const [form, setForm] = useState({ name: '', phone: '', email: '', employeeNumber: '', password: '', position: '' });
   const [photo, setPhoto] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -202,10 +207,12 @@ export const CashierRegister: React.FC = () => {
           )}
 
           {/* Tipo */}
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
-            <button type="button" onClick={() => setTipo('COMENSAL')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'COMENSAL' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Comensal</button>
-            <button type="button" onClick={() => setTipo('STAFF')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'STAFF' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Equipo de operación</button>
-          </div>
+          {hrEnabled && (
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+              <button type="button" onClick={() => setTipo('COMENSAL')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'COMENSAL' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Comensal</button>
+              <button type="button" onClick={() => setTipo('STAFF')} className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${tipo === 'STAFF' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Equipo de operación</button>
+            </div>
+          )}
 
           {/* Puesto + foto (solo staff) */}
           {tipo === 'STAFF' && (

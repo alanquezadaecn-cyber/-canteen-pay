@@ -27,16 +27,17 @@ export const AdminNav: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
 
+  const features = branding?.features;
   const navItems = [
     { path: base,                  label: 'Dashboard',      icon: Home },
     { path: `${base}/users`,        label: 'Usuarios',       icon: Users },
     { path: `${base}/transactions`, label: 'Transacciones',  icon: BarChart3 },
     { path: `${base}/reports`,      label: 'Reportes',       icon: BarChart2 },
-    { path: `${base}/inventory`,    label: 'Inventario',     icon: Package },
-    { path: `${base}/asistencia`,   label: 'Asistencia',     icon: Clock },
-    { path: `${base}/subsidio`,     label: 'Subsidio',       icon: Coins },
-    { path: `${base}/pagos`,        label: 'Pagos',          icon: CreditCard },
-  ];
+    features?.inventory !== false && { path: `${base}/inventory`, label: 'Inventario', icon: Package },
+    features?.hr !== false && { path: `${base}/asistencia`,   label: 'Asistencia',     icon: Clock },
+    features?.hr !== false && { path: `${base}/subsidio`,     label: 'Subsidio',       icon: Coins },
+    features?.payments !== false && { path: `${base}/pagos`,  label: 'Pagos',          icon: CreditCard },
+  ].filter(Boolean) as { path: string; label: string; icon: any }[];
 
   const isActive = (path: string) => location.pathname === path || location.pathname === path + '/';
 

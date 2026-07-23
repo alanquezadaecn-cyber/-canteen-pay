@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2, LogIn } from 'lucide-react';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2, LogIn, Package, Users2, Settings2 } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -22,7 +22,14 @@ interface Company {
   isBlocked: boolean;
   blockReason?: string;
   branches: Array<{ id: string; name: string; location: string }>;
+  enabledFeatures?: { inventory?: boolean; hr?: boolean; payments?: boolean };
 }
+
+const FEATURE_TOGGLES: { key: 'inventory' | 'hr' | 'payments'; label: string; description: string; icon: any }[] = [
+  { key: 'inventory', label: 'Inventario', description: 'Control de insumos y productos en caja/admin', icon: Package },
+  { key: 'hr', label: 'Recursos Humanos', description: 'Personal operativo, asistencia y subsidio de comida', icon: Users2 },
+  { key: 'payments', label: 'Pagos en línea', description: 'Configuración de MercadoPago de la empresa', icon: CreditCard },
+];
 
 interface PaymentInfo {
   totalCollected: number;
@@ -755,6 +762,40 @@ export const MasterAdminDashboard: React.FC = () => {
                         className="mt-2 text-slate-900 dark:text-slate-50"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Secciones habilitadas */}
+                <div className="space-y-3">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                    <Settings2 className="w-5 h-5" />
+                    Secciones habilitadas
+                  </h3>
+                  <div className="space-y-2">
+                    {FEATURE_TOGGLES.map(({ key, label, description, icon: Icon }) => {
+                      const enabled = editingCompany.enabledFeatures?.[key] !== false;
+                      return (
+                        <div key={key} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Icon className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-slate-900 dark:text-slate-50">{label}</p>
+                              <p className="text-xs text-slate-500 truncate">{description}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCompany({
+                              ...editingCompany,
+                              enabledFeatures: { ...editingCompany.enabledFeatures, [key]: !enabled }
+                            })}
+                            className={`w-14 h-8 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${enabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                          >
+                            <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${enabled ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
