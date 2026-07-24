@@ -4,10 +4,9 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { QRService } from '../services/qr.service.js';
 import { sendWelcomeEmail } from '../services/email.service.js';
+import { JWT_SECRET } from '../lib/jwtSecret.js';
 
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
 
 const generateTokens = (userId, role, email, companyId) => {
   const accessToken = jwt.sign(

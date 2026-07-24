@@ -5,8 +5,7 @@ import { Decimal } from '@prisma/client/runtime/library.js';
 import { prisma } from '../lib/prisma.js';
 import { verifyToken } from '../middleware/auth.js';
 import { QRService } from '../services/qr.service.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'canteen-pay-secret-key-2024';
+import { JWT_SECRET } from '../lib/jwtSecret.js';
 
 const router = express.Router();
 

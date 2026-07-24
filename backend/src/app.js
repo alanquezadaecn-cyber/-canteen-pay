@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -12,6 +14,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+
+// Cabeceras de seguridad básicas (X-Frame-Options, X-Content-Type-Options, HSTS...).
+// CSP queda desactivado a propósito: el frontend usa estilos/scripts inline y SDKs
+// externos (MercadoPago) que romperían sin una migración cuidadosa, staging-first.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+// Rate limit general por IP para toda la API
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes, intenta de nuevo en unos minutos' }
+}));
+
+// Rate limit estricto para login/registro (frena fuerza bruta de contraseñas)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }
+});
 
 // Middleware
 const allowedOrigins = [
@@ -149,7 +174,7 @@ import initRoutes from './routes/init.js';
 import inventoryRoutes from './routes/inventory.js';
 import brandingRoutes from './routes/branding.js';
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/cashier', cashierRoutes);
