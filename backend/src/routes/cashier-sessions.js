@@ -54,7 +54,7 @@ async function countDishes(cashierId, from, to) {
 // más lo que entró en efectivo (ventas + recargas). El cambio dado ya está descontado
 // porque lo que se queda en el cajón por cada venta en efectivo es su precio (amount),
 // no lo que el comensal entregó.
-async function computeCashDrawer(cashierId, initialFloat, from, to) {
+export async function computeCashDrawer(cashierId, initialFloat, from, to) {
   const transactions = await prisma.transaction.findMany({
     where: { cashierId, createdAt: { gte: from, lte: to } },
     select: { type: true, amount: true, isCashSale: true, cashChange: true, paymentMethod: true }
