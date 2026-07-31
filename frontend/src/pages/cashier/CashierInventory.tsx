@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
-import { Package, Plus, PackagePlus, Trash2, X, AlertTriangle, Check } from 'lucide-react';
+import { Package, Plus, PackagePlus, Trash2, X, AlertTriangle, Check, Bell, BellRing } from 'lucide-react';
 
 interface Producto {
   id: string;
@@ -29,6 +29,8 @@ export const CashierInventory: React.FC = () => {
   const [form, setForm] = useState({ name: '', price: '', category: 'General', stock: '', minStock: '', type: 'PRODUCTO' as 'PRODUCTO' | 'INSUMO' });
   const [restockId, setRestockId] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState('');
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
+  const [requesting, setRequesting] = useState<string | null>(null);
 
   useEffect(() => { if (branchId) load(); }, [branchId]);
 
@@ -41,6 +43,21 @@ export const CashierInventory: React.FC = () => {
       setError('Error al cargar inventario');
     } finally {
       setLoading(false);
+    }
+    api.get('/inventory/restock-requests?status=PENDING')
+      .then(({ data }) => setRequestedIds(new Set(data.map((r: any) => r.product?.id).filter(Boolean))))
+      .catch(() => {});
+  };
+
+  const requestRestock = async (id: string) => {
+    setRequesting(id);
+    try {
+      await api.post(`/inventory/${id}/request-restock`, {});
+      setRequestedIds(prev => new Set(prev).add(id));
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al solicitar reabasto');
+    } finally {
+      setRequesting(null);
     }
   };
 
@@ -157,6 +174,18 @@ export const CashierInventory: React.FC = () => {
                       </div>
                       <button onClick={() => { setRestockId(p.id); setRestockQty(''); }} className="w-9 h-9 flex items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-900 text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer" title="Reabastecer">
                         <PackagePlus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => requestRestock(p.id)}
+                        disabled={requestedIds.has(p.id) || requesting === p.id}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors cursor-pointer disabled:cursor-default ${
+                          requestedIds.has(p.id)
+                            ? 'border-amber-200 dark:border-amber-900 text-amber-500 bg-amber-50 dark:bg-amber-950'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-amber-400 hover:text-amber-500'
+                        }`}
+                        title={requestedIds.has(p.id) ? 'Ya se avisó al admin' : 'Avisarle al admin que falta'}
+                      >
+                        {requestedIds.has(p.id) ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                       </button>
                       <button onClick={() => del(p.id)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 transition-colors cursor-pointer" title="Eliminar">
                         <Trash2 className="w-4 h-4" />

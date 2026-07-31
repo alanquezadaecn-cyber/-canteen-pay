@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
   Package, Plus, AlertTriangle, CheckCircle, XCircle,
-  RefreshCw, Loader, ChevronDown, ChevronUp, History, Building2
+  RefreshCw, Loader, ChevronDown, ChevronUp, History, Building2, Bell, X as XIcon
 } from 'lucide-react';
 import api from '../../lib/api';
 
 interface Branch { id: string; name: string; }
+interface BranchSummary { id: string; name: string; total: number; lowStock: number; outOfStock: number; pendingRequests: number; }
+interface RestockReq {
+  id: string; status: string; quantity: number | null; note: string | null; createdAt: string;
+  branchName: string; product: { id: string; name: string; category: string; stock: number; minStock: number } | null;
+}
 
 interface Product {
   id: string;
@@ -61,6 +66,7 @@ function StockBadge({ product }: { product: Product }) {
 
 export const Inventory: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [summary, setSummary] = useState<BranchSummary[]>([]);
   const [selectedBranch, setSelectedBranch] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,13 +77,22 @@ export const Inventory: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [movements, setMovements] = useState<Record<string, Movement[]>>({});
   const [loadingMovements, setLoadingMovements] = useState<string | null>(null);
+  const [requests, setRequests] = useState<RestockReq[]>([]);
+  const [resolvingReq, setResolvingReq] = useState<string | null>(null);
+  const [showRequests, setShowRequests] = useState(true);
 
-  useEffect(() => {
-    api.get('/inventory/branches').then(({ data }) => {
-      setBranches(data);
-      if (data.length === 1) setSelectedBranch(data[0].id);
+  const loadSummary = () => {
+    api.get('/inventory/summary').then(({ data }) => {
+      setSummary(data);
+      setBranches(data.map((b: BranchSummary) => ({ id: b.id, name: b.name })));
+      if (data.length === 1 && !selectedBranch) setSelectedBranch(data[0].id);
     }).catch(console.error);
-  }, []);
+  };
+  const loadRequests = () => {
+    api.get('/inventory/restock-requests?status=PENDING').then(({ data }) => setRequests(data)).catch(console.error);
+  };
+
+  useEffect(() => { loadSummary(); loadRequests(); }, []);
 
   useEffect(() => {
     if (!selectedBranch) return;
@@ -87,6 +102,24 @@ export const Inventory: React.FC = () => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [selectedBranch]);
+
+  const resolveRequest = async (req: RestockReq, action: 'fulfill' | 'dismiss') => {
+    if (action === 'fulfill' && !req.quantity) {
+      const qty = prompt(`¿Cuántas unidades de "${req.product?.name}" vas a reabastecer?`, '10');
+      if (!qty || parseInt(qty) <= 0) return;
+      req = { ...req, quantity: parseInt(qty) };
+    }
+    setResolvingReq(req.id);
+    try {
+      await api.put(`/inventory/restock-requests/${req.id}`, { action, quantity: req.quantity });
+      setRequests(prev => prev.filter(r => r.id !== req.id));
+      loadSummary();
+      if (selectedBranch) {
+        api.get(`/inventory/branch/${selectedBranch}`).then(({ data }) => setProducts(data)).catch(console.error);
+      }
+    } catch (err) { console.error(err); }
+    finally { setResolvingReq(null); }
+  };
 
   const toggleTracking = async (product: Product) => {
     try {
@@ -156,25 +189,85 @@ export const Inventory: React.FC = () => {
           </div>
         </div>
 
-        {/* Branch selector */}
-        {branches.length > 1 && (
-          <div className="flex items-center gap-3">
-            <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
-            <select
-              value={selectedBranch}
-              onChange={e => { setSelectedBranch(e.target.value); setExpandedId(null); }}
-              className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-            >
-              <option value="">Selecciona una sucursal</option>
-              {branches.map(b => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
+        {/* Cards de sucursal: vista general + filtro. Útil para varias sucursales de un vistazo. */}
+        {summary.length > 1 && (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {summary.map(b => {
+              const active = selectedBranch === b.id;
+              const hasIssues = b.lowStock > 0 || b.outOfStock > 0 || b.pendingRequests > 0;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => { setSelectedBranch(b.id); setExpandedId(null); }}
+                  className={`flex-shrink-0 min-w-[180px] text-left rounded-xl border p-3 transition-colors cursor-pointer ${
+                    active ? 'bg-emerald-600/15 border-emerald-500' : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className={`w-3.5 h-3.5 flex-shrink-0 ${active ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <p className={`text-sm font-semibold truncate ${active ? 'text-white' : 'text-slate-300'}`}>{b.name}</p>
+                  </div>
+                  {hasIssues ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {b.outOfStock > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/15 text-red-400">{b.outOfStock} agotado{b.outOfStock !== 1 ? 's' : ''}</span>}
+                      {b.lowStock > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">{b.lowStock} bajo</span>}
+                      {b.pendingRequests > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 flex items-center gap-1"><Bell className="w-2.5 h-2.5" /> {b.pendingRequests}</span>}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Todo OK · {b.total} prod.</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
       <div className="p-6 space-y-6">
+
+        {/* Solicitudes de reabasto pendientes (todas las sucursales visibles) */}
+        {requests.length > 0 && (
+          <div className="bg-blue-950/30 border border-blue-900/50 rounded-xl overflow-hidden">
+            <button onClick={() => setShowRequests(v => !v)} className="w-full flex items-center justify-between px-5 py-3 cursor-pointer">
+              <span className="flex items-center gap-2 text-sm font-semibold text-blue-300">
+                <Bell className="w-4 h-4" /> Solicitudes de reabasto ({requests.length})
+              </span>
+              {showRequests ? <ChevronUp className="w-4 h-4 text-blue-400" /> : <ChevronDown className="w-4 h-4 text-blue-400" />}
+            </button>
+            {showRequests && (
+              <div className="divide-y divide-blue-900/40">
+                {requests.map(r => (
+                  <div key={r.id} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-200">{r.product?.name || 'Producto eliminado'}</p>
+                      <p className="text-xs text-slate-500">
+                        {r.branchName} · stock actual: {r.product?.stock ?? '—'}{r.quantity ? ` · pidió ${r.quantity} ud.` : ''}
+                        {r.note ? ` · "${r.note}"` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => resolveRequest(r, 'fulfill')}
+                        disabled={resolvingReq === r.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 rounded-lg text-xs font-medium hover:bg-emerald-600/30 transition-colors cursor-pointer disabled:opacity-40"
+                      >
+                        <Plus className="w-3 h-3" /> Reabastecer
+                      </button>
+                      <button
+                        onClick={() => resolveRequest(r, 'dismiss')}
+                        disabled={resolvingReq === r.id}
+                        className="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-40"
+                        title="Descartar"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {!selectedBranch ? (
           <div className="text-center py-20">

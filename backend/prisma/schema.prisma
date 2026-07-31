@@ -314,8 +314,27 @@ model Product {
 
   transactionItems TransactionItem[]
   stockMovements   StockMovement[]
+  restockRequests  RestockRequest[]
 
   @@index([branchId])
+}
+
+// El cajero solicita reabasto de un producto; el admin lo ve y lo resuelve (reabastece o descarta).
+model RestockRequest {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branchId    String
+  quantity    Int?
+  note        String?
+  status      String    @default("PENDING") // PENDING | FULFILLED | DISMISSED
+  requestedBy String
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@index([branchId])
+  @@index([productId])
+  @@index([status])
 }
 
 model StockMovement {
@@ -373,6 +392,8 @@ model CashierSession {
   totalCharges Decimal   @default(0) @db.Decimal(10, 2)
   status       String    @default("OPEN") // OPEN, CLOSED, RECONCILED
   notes        String?
+  shiftNumber  Int       @default(1) // turno del día para esa sucursal: 1, 2 o 3
+  dishesCount  Int?      // platillos (PLATILLO) servidos durante el turno, calculado al cerrar
 
   @@index([branchId])
 }

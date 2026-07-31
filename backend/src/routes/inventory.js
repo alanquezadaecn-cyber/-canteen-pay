@@ -50,6 +50,150 @@ router.get('/branches', async (req, res) => {
   }
 });
 
+// Resuelve las sucursales visibles para el usuario autenticado (mismo criterio que /branches)
+async function visibleBranches(req) {
+  const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
+  if (me?.role === 'CASHIER') {
+    const branch = await prisma.branch.findUnique({ where: { id: me.branchId || '' }, select: { id: true, name: true, companyId: true } });
+    return branch ? [branch] : [];
+  }
+  if (me?.branchId) {
+    const own = await prisma.branch.findUnique({ where: { id: me.branchId }, select: { companyId: true } });
+    if (own) {
+      return prisma.branch.findMany({
+        where: { companyId: own.companyId, isActive: true },
+        select: { id: true, name: true, companyId: true },
+        orderBy: { name: 'asc' }
+      });
+    }
+  }
+  return prisma.branch.findMany({ where: { isActive: true }, select: { id: true, name: true, companyId: true } });
+}
+
+// GET resumen de inventario por sucursal — para que el admin vea de un vistazo
+// qué sucursal tiene stock bajo/agotado/solicitudes pendientes, sin cambiar el filtro una por una.
+router.get('/summary', async (req, res) => {
+  try {
+    const branches = await visibleBranches(req);
+    const results = await Promise.all(branches.map(async (b) => {
+      const products = await prisma.product.findMany({
+        where: { branchId: b.id, isActive: true, productType: { in: ['PRODUCTO', 'INSUMO'] } },
+        select: { stock: true, minStock: true, isTracked: true }
+      });
+      const pendingRequests = await prisma.restockRequest.count({ where: { branchId: b.id, status: 'PENDING' } });
+      return {
+        id: b.id,
+        name: b.name,
+        total: products.length,
+        lowStock: products.filter(p => p.isTracked && p.stock > 0 && p.stock <= p.minStock && p.minStock > 0).length,
+        outOfStock: products.filter(p => p.isTracked && p.stock === 0).length,
+        pendingRequests
+      };
+    }));
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener el resumen de inventario' });
+  }
+});
+
+// POST solicitar reabasto de un producto (lo dispara el cajero, lo ve el admin)
+router.post('/:productId/request-restock', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { quantity, note } = req.body;
+
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true, name: true, branchId: true } });
+    if (!product || !product.branchId) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
+    if (me?.role === 'CASHIER' && me.branchId !== product.branchId) {
+      return res.status(403).json({ error: 'No autorizado para este producto' });
+    }
+
+    // Evitar duplicar: si ya hay una solicitud pendiente para este producto, no crear otra
+    const existing = await prisma.restockRequest.findFirst({ where: { productId, status: 'PENDING' } });
+    if (existing) return res.json({ success: true, alreadyRequested: true, request: existing });
+
+    const request = await prisma.restockRequest.create({
+      data: {
+        productId, branchId: product.branchId,
+        quantity: quantity ? parseInt(quantity) : null,
+        note: note?.trim() || null,
+        requestedBy: req.userId
+      }
+    });
+    res.status(201).json({ success: true, request });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al solicitar reabasto' });
+  }
+});
+
+// GET solicitudes de reabasto — ADMIN ve las de toda su empresa, CASHIER solo las de su sucursal
+router.get('/restock-requests', async (req, res) => {
+  try {
+    const branches = await visibleBranches(req);
+    const branchIds = branches.map(b => b.id);
+    const bmap = Object.fromEntries(branches.map(b => [b.id, b.name]));
+    const status = req.query.status ? String(req.query.status) : 'PENDING';
+
+    const requests = await prisma.restockRequest.findMany({
+      where: { branchId: { in: branchIds }, ...(status !== 'ALL' && { status }) },
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+    const productIds = [...new Set(requests.map(r => r.productId))];
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, category: true, stock: true, minStock: true } });
+    const pmap = Object.fromEntries(products.map(p => [p.id, p]));
+
+    res.json(requests.map(r => ({
+      id: r.id, status: r.status, quantity: r.quantity, note: r.note, createdAt: r.createdAt,
+      branchName: bmap[r.branchId] || '', product: pmap[r.productId] || null
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener solicitudes de reabasto' });
+  }
+});
+
+// PUT resolver una solicitud de reabasto (ADMIN): reabastecer de verdad o descartar
+router.put('/restock-requests/:id', checkRole(['ADMIN']), async (req, res) => {
+  try {
+    const { action, quantity } = req.body; // action: 'fulfill' | 'dismiss'
+    const request = await prisma.restockRequest.findUnique({ where: { id: req.params.id } });
+    if (!request || request.status !== 'PENDING') return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+    const branches = await visibleBranches(req);
+    if (!branches.some(b => b.id === request.branchId)) return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+    if (action === 'fulfill') {
+      const qty = parseInt(quantity) || request.quantity || 0;
+      if (qty <= 0) return res.status(400).json({ error: 'Cantidad inválida' });
+
+      const product = await prisma.product.findUnique({ where: { id: request.productId } });
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+      const prevStock = product.stock;
+      const newStock = prevStock === -1 ? qty : prevStock + qty;
+
+      await prisma.$transaction([
+        prisma.product.update({ where: { id: request.productId }, data: { stock: newStock, isTracked: true } }),
+        prisma.stockMovement.create({
+          data: { productId: request.productId, type: 'RESTOCK', quantity: qty, prevStock, newStock, note: 'Reabasto (solicitud de caja)', createdBy: req.userId }
+        }),
+        prisma.restockRequest.update({ where: { id: request.id }, data: { status: 'FULFILLED', resolvedAt: new Date() } })
+      ]);
+      return res.json({ success: true, newStock });
+    }
+
+    await prisma.restockRequest.update({ where: { id: request.id }, data: { status: 'DISMISSED', resolvedAt: new Date() } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al resolver la solicitud' });
+  }
+});
+
 // CREATE producto físico (inventario) en una sucursal
 // type: 'PRODUCTO' (se vende) | 'INSUMO' (operación, no se vende)
 router.post('/branch/:branchId/create', async (req, res) => {

@@ -46,15 +46,33 @@ export const Attendance: React.FC = () => {
           </div>
         </div>
 
-        {/* Filtros */}
+        {/* Cards de sucursal: al crecer a varias sucursales, permite filtrar de un vistazo */}
+        {branches.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button
+              onClick={() => setBranchId('')}
+              className={`flex-shrink-0 h-9 px-4 rounded-full text-sm font-semibold cursor-pointer transition-colors border ${
+                branchId === '' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+              }`}
+            >
+              Todas las sucursales
+            </button>
+            {branches.map(b => (
+              <button
+                key={b.id}
+                onClick={() => setBranchId(b.id)}
+                className={`flex-shrink-0 h-9 px-4 rounded-full text-sm font-semibold cursor-pointer transition-colors border ${
+                  branchId === b.id ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                }`}
+              >
+                {b.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Filtro de fecha */}
         <div className="flex gap-3 flex-wrap">
-          {branches.length > 1 && (
-            <select value={branchId} onChange={e => setBranchId(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:outline-none focus:border-emerald-400">
-              <option value="">Todas las sucursales</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          )}
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:outline-none focus:border-emerald-400" />
         </div>
