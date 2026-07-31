@@ -85,6 +85,15 @@ export async function doCharge(branchId: string, comensal: any, amount: number, 
   return { offline: true, newBalance };
 }
 
+// Pago en efectivo directo: el comensal paga en mano, no se toca su saldo de la app.
+// Siempre requiere conexión (se registra en el servidor con el cambio dado, para el corte).
+export async function doCashSale(branchId: string, comensal: any, amount: number, cashReceived: number, description?: string, productId?: string) {
+  const clientRef = uid();
+  const payload = { qrCode: comensal.qrCode, amount, description, clientRef, isCashSale: true, cashReceived, productId };
+  const { data } = await api.post(`/cashier/branch/${branchId}/charge`, payload);
+  return { newBalance: data.newBalance, change: data.change };
+}
+
 export async function doRecharge(branchId: string, comensal: any, amount: number) {
   const clientRef = uid();
   const payload = { qrCode: comensal.qrCode, amount, clientRef };

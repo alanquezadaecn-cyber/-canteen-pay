@@ -464,7 +464,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
     if (!(await requireBranchAccess(req, res, branchId))) return;
-    const { qrCode, amount, description, clientRef, subsidized, productId, subsidyTierId } = req.body;
+    const { qrCode, amount, description, clientRef, subsidized, productId, subsidyTierId, isCashSale, cashReceived } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
@@ -510,6 +510,54 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+
+    // ── PAGO EN EFECTIVO DIRECTO: el comensal paga en mano en caja, no toca su saldo de
+    // la app. Se registra con cuánto pagó y cuánto se le dio de cambio, para el corte. ──
+    if (isCashSale) {
+      const cashReceivedDecimal = parseFloat(cashReceived);
+      if (!cashReceivedDecimal || cashReceivedDecimal < amountDecimal) {
+        return res.status(400).json({ error: 'El efectivo recibido debe cubrir el monto del cobro' });
+      }
+      const balanceNow = parseFloat(user.balance);
+      const change = cashReceivedDecimal - amountDecimal;
+
+      let cashResult;
+      try {
+        cashResult = await prisma.$transaction(async (tx) => {
+          const created = await tx.transaction.create({
+            data: {
+              userId: user.id, type: 'PURCHASE', amount: amountDecimal,
+              balanceBefore: balanceNow, balanceAfter: balanceNow,
+              description: description || `Compra en efectivo`,
+              cashierId: req.userId, isCashSale: true,
+              cashReceived: cashReceivedDecimal, cashChange: change,
+              reference: clientRef || null
+            }
+          });
+          if (productId) await applyProductSale(tx, productId, created.id, req.userId);
+          return created;
+        });
+      } catch (txErr) {
+        if (txErr.message === 'OUT_OF_STOCK') {
+          return res.status(400).json({ error: 'Sin existencias de este producto' });
+        }
+        throw txErr;
+      }
+
+      notifyUser(user.id, {
+        type: 'PURCHASE',
+        title: 'Compra en efectivo',
+        message: `${description || 'Compra'} pagada en efectivo: $${amountDecimal.toFixed(2)}`,
+        url: '/purchases'
+      });
+
+      return res.json({
+        success: true, cashSale: true,
+        transaction: { ...cashResult, amount: cashResult.amount.toString() },
+        newBalance: balanceNow.toFixed(2), userName: user.name,
+        cashReceived: cashReceivedDecimal.toFixed(2), change: change.toFixed(2)
+      });
     }
 
     // ── COBRO SUBSIDIADO: la empresa cubre la comida, no descuenta saldo, solo se marca ──
@@ -956,7 +1004,9 @@ router.get('/history', async (req, res) => {
       ...t,
       amount: t.amount.toString(),
       balanceBefore: t.balanceBefore.toString(),
-      balanceAfter: t.balanceAfter.toString()
+      balanceAfter: t.balanceAfter.toString(),
+      cashReceived: t.cashReceived != null ? t.cashReceived.toString() : null,
+      cashChange: t.cashChange != null ? t.cashChange.toString() : null
     }));
 
     res.json({

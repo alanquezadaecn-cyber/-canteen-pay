@@ -10,6 +10,9 @@ interface Transaction {
   amount: string;
   description: string;
   createdAt: string;
+  isCashSale?: boolean;
+  cashReceived?: string | null;
+  cashChange?: string | null;
   user: {
     name: string;
     employeeNumber: string;
@@ -188,6 +191,11 @@ export const CashierHistory: React.FC = () => {
                               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                                 Empleado #{tx.user.employeeNumber} • {tx.description}
                               </p>
+                              {tx.isCashSale && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                                  💵 Pagó ${parseFloat(tx.cashReceived || '0').toFixed(2)} · Cambio ${parseFloat(tx.cashChange || '0').toFixed(2)}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">

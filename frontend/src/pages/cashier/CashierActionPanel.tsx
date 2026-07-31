@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { AlertCircle, ShoppingCart, Plus, Search, Play, Square, Clock, UtensilsCrossed } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
-import { doCharge, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
+import { doCharge, doCashSale, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
 
 interface Shift {
   id: string;
@@ -59,6 +59,9 @@ export const CashierActionPanel: React.FC = () => {
   const [searching, setSearching] = useState(false);
   const [chargeSubsidized, setChargeSubsidized] = useState(false);
   const [chargeTab, setChargeTab] = useState<'MENU' | 'SNACKS'>('MENU');
+  const [payWithCash, setPayWithCash] = useState(false);
+  const [cashProduct, setCashProduct] = useState<Product | null>(null);
+  const [cashReceivedInput, setCashReceivedInput] = useState('');
 
   // Turno de operación: apertura/cierre de barra
   const [openShift, setOpenShift] = useState<Shift | null>(null);
@@ -189,6 +192,28 @@ export const CashierActionPanel: React.FC = () => {
       setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar cobro subsidiado');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmCashSale = async () => {
+    if (!user || !branchId || !cashProduct) return;
+    const cashReceived = parseFloat(cashReceivedInput);
+    if (!cashReceived || cashReceived < cashProduct.price) {
+      setError('El efectivo recibido debe cubrir el precio');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await doCashSale(branchId, user, cashProduct.price, cashReceived, `Compra: ${cashProduct.name}`, cashProduct.id);
+      setSuccess(`✅ ${cashProduct.name} pagado en efectivo. Cambio a dar: $${res.change}`);
+      setCashProduct(null);
+      setCashReceivedInput('');
+      setMode('select');
+      setTimeout(() => { setSuccess(''); setUser(null); }, 3500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al procesar el cobro en efectivo');
     } finally {
       setLoading(false);
     }
@@ -364,7 +389,7 @@ export const CashierActionPanel: React.FC = () => {
         {mode === 'select' && (
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); setChargeTab('MENU'); }}
+              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); setPayWithCash(false); setCashProduct(null); setCashReceivedInput(''); setChargeTab('MENU'); }}
               disabled={loading}
               className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-40 shadow-lg shadow-emerald-600/25 cursor-pointer"
             >
@@ -404,7 +429,7 @@ export const CashierActionPanel: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => setChargeSubsidized(v => !v)}
+                  onClick={() => { setChargeSubsidized(v => !v); setPayWithCash(false); setCashProduct(null); }}
                   disabled={user.subsidy.left <= 0}
                   className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 ${chargeSubsidized ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
                 >
@@ -413,7 +438,75 @@ export const CashierActionPanel: React.FC = () => {
               </div>
             )}
 
-            {chargeSubsidized && (user.subsidy?.left ?? 0) > 0 ? (
+            {/* Toggle de pago en efectivo: el comensal paga en mano, no se toca su saldo */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Pago en efectivo</p>
+                <p className="text-xs text-slate-500">El comensal paga en mano, no descuenta su saldo de la app</p>
+              </div>
+              <button
+                onClick={() => { setPayWithCash(v => !v); setChargeSubsidized(false); setCashProduct(null); setCashReceivedInput(''); }}
+                className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${payWithCash ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+              >
+                {payWithCash ? 'EFECTIVO ✓' : 'Activar efectivo'}
+              </button>
+            </div>
+
+            {payWithCash && cashProduct ? (
+              // Paso 2 del pago en efectivo: cuánto pagó y cuánto cambio dar
+              (() => {
+                const received = parseFloat(cashReceivedInput) || 0;
+                const change = received - cashProduct.price;
+                const quickAmounts = Array.from(new Set([cashProduct.price, 50, 100, 200, 500].filter(a => a >= cashProduct.price))).sort((a, b) => a - b);
+                return (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{cashProduct.name}</p>
+                        <p className="text-xs text-slate-500">Precio: ${cashProduct.price}</p>
+                      </div>
+                      <button onClick={() => { setCashProduct(null); setCashReceivedInput(''); }} className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer">Cambiar</button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">¿Con cuánto pagó?</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-lg">$</span>
+                        <input
+                          type="number" min={cashProduct.price} step="0.01" autoFocus
+                          value={cashReceivedInput}
+                          onChange={e => setCashReceivedInput(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full h-14 pl-8 pr-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-2xl font-bold focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {quickAmounts.map(a => (
+                          <button key={a} onClick={() => setCashReceivedInput(a.toString())} className="h-9 px-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700">
+                            ${a}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={`rounded-2xl p-4 flex items-center justify-between ${received >= cashProduct.price ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cambio a dar</span>
+                      <span className={`text-2xl font-extrabold ${received >= cashProduct.price ? 'text-amber-600' : 'text-slate-400'}`}>
+                        ${received >= cashProduct.price ? change.toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={handleConfirmCashSale}
+                      disabled={loading || received < cashProduct.price}
+                      className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold disabled:opacity-40 cursor-pointer"
+                    >
+                      {loading ? 'Procesando...' : 'Confirmar cobro en efectivo'}
+                    </button>
+                  </div>
+                );
+              })()
+            ) : chargeSubsidized && (user.subsidy?.left ?? 0) > 0 ? (
               // Cobro subsidiado: solo se puede elegir uno de los niveles que definió la
               // empresa (ej. Estándar $75, Especial $120), nunca un platillo cualquiera.
               (user.subsidy?.tiers?.length ?? 0) === 0 ? (
@@ -472,9 +565,9 @@ export const CashierActionPanel: React.FC = () => {
                         return (
                         <button
                           key={product.id}
-                          onClick={() => handleCharge(product)}
-                          disabled={loading || outOfStock || balanceNum < product.price}
-                          className="flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
+                          onClick={() => payWithCash ? setCashProduct(product) : handleCharge(product)}
+                          disabled={loading || outOfStock || (!payWithCash && balanceNum < product.price)}
+                          className={`flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 ${payWithCash ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
                         >
                           <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{product.name}</span>
                           <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">${product.price}</span>

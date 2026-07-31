@@ -255,6 +255,9 @@ model Transaction {
   paymentMethod  PaymentMethod?
   reference      String?
   isSubsidized   Boolean         @default(false) // comida cubierta por la empresa (no descuenta saldo)
+  isCashSale     Boolean         @default(false) // pagó en efectivo en el momento, no descuenta saldo de la app
+  cashReceived   Decimal?        @db.Decimal(10, 2) // solo si isCashSale: con cuánto pagó
+  cashChange     Decimal?        @db.Decimal(10, 2) // solo si isCashSale: cuánto le dio de cambio el cajero
   createdAt      DateTime        @default(now())
 
   items          TransactionItem[]
