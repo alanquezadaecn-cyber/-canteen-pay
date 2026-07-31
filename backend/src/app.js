@@ -103,6 +103,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '2.0' });
 });
 
+// Identificador único de este arranque del servidor: el frontend lo compara
+// periódicamente y se recarga solo si cambió (nuevo deploy), para que una pestaña
+// dejada abierta antes de un deploy no siga corriendo JS viejo indefinidamente.
+const BOOT_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+app.get('/api/version', (req, res) => {
+  res.json({ bootId: BOOT_ID });
+});
+
 // Endpoint público para obtener nombre de sucursal (sin auth, para la pantalla de login)
 app.get('/api/public/branch/:branchId', async (req, res) => {
   try {

@@ -158,6 +158,28 @@ const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return <>{children}</>;
 };
 
+// Si dejas una pestaña abierta desde antes de un deploy, el JS viejo se queda
+// corriendo en memoria indefinidamente (la SPA no vuelve a pedir index.html sola).
+// Esto compara el "boot id" del servidor cada vez que la pestaña recupera foco y,
+// si cambió (hubo un deploy), recarga la página para traer el código nuevo.
+function useAutoReloadOnDeploy() {
+  const bootIdRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const check = () => {
+      fetch('/api/version').then(r => r.json()).then(({ bootId }) => {
+        if (bootIdRef.current === null) { bootIdRef.current = bootId; return; }
+        if (bootId && bootId !== bootIdRef.current) window.location.reload();
+      }).catch(() => {});
+    };
+    check();
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(check, 5 * 60 * 1000);
+    return () => { document.removeEventListener('visibilitychange', onVisible); clearInterval(interval); };
+  }, []);
+}
+
 // Con claves compuestas (panel:empresa:sucursal), busca la primera sesión que exista
 // para cada panel en orden de prioridad — sin importar de qué empresa/sucursal sea.
 function findAnySession(sessions: Record<string, { user: any }>, order: Panel[] = ['master', 'admin', 'cashier', 'user']) {
@@ -188,6 +210,7 @@ const HomeRoute: React.FC = () => {
 
 function App() {
   const { sessions, _hasHydrated } = useAuthStore();
+  useAutoReloadOnDeploy();
   // Para /login y /register genéricos: redirigir solo si hay sesión de comensal
   const comensalHome = findAnySession(sessions, ['user']) ? '/dashboard' : null;
 
