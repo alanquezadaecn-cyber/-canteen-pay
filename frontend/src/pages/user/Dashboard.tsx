@@ -27,19 +27,29 @@ export const Dashboard: React.FC = () => {
   const [showQRModal, setShowQRModal] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const { data } = await api.get('/transactions?limit=5');
-        setTransactions(data.data);
-      } catch (err) {
-        console.error('Error fetching transactions:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const refresh = async () => {
+    try {
+      const { data } = await api.get('/transactions?limit=5');
+      setTransactions(data.data);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+    // El saldo se guarda en la sesión al iniciar sesión y no se actualiza solo:
+    // si el cajero te cobra o recarga mientras tienes esta pantalla abierta en
+    // otra pestaña, aquí se ve viejo hasta que se refresca. Lo refrescamos al
+    // volver a esta pestaña para que siempre se vea el saldo real.
+    api.get('/users/me').then(({ data }) => {
+      if (data.balance !== undefined) useAuthStore.getState().setBalance(data.balance.toString());
+    }).catch(() => {});
+  };
 
-    fetchTransactions();
+  useEffect(() => {
+    refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   const downloadQR = () => {
