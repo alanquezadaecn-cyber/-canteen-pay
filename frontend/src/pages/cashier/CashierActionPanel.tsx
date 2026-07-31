@@ -328,26 +328,27 @@ export const CashierActionPanel: React.FC = () => {
 
               return (
                 <>
-                  {snackItems.length > 0 && (
-                    <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
-                      <button
-                        onClick={() => setChargeTab('MENU')}
-                        className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'MENU' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        Menú ({menuItems.length})
-                      </button>
-                      <button
-                        onClick={() => setChargeTab('SNACKS')}
-                        className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'SNACKS' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        Snacks / Tiendita ({snackItems.length})
-                      </button>
-                    </div>
-                  )}
+                  {/* Siempre visibles: Menú y Snacks, en todas las sucursales (aunque aún no tengan productos cargados) */}
+                  <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+                    <button
+                      onClick={() => setChargeTab('MENU')}
+                      className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'MENU' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Menú ({menuItems.length})
+                    </button>
+                    <button
+                      onClick={() => setChargeTab('SNACKS')}
+                      className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'SNACKS' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Snacks / Tiendita ({snackItems.length})
+                    </button>
+                  </div>
 
                   {activeList.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
-                      {chargeTab === 'SNACKS' ? 'No hay snacks configurados en el inventario' : 'No hay productos configurados para esta sucursal'}
+                      {chargeTab === 'SNACKS'
+                        ? 'Aún no hay snacks cargados. Ve a Inventario → "Para vender" y agrega el primero.'
+                        : 'Aún no hay platillos cargados. Ve a Menú y agrega el primero.'}
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">

@@ -500,13 +500,16 @@ router.post('/branch/:branchId/charge', async (req, res) => {
     if (subsidized) {
       const branch = await prisma.branch.findUnique({
         where: { id: branchId },
-        include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true } } }
+        include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyMealCost: true } } }
       });
       if (!branch?.company?.subsidyEnabled) {
         return res.status(400).json({ error: 'El subsidio no está habilitado para esta empresa' });
       }
       const userCfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
       const limit = (userCfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
+      // El monto que se registra como subsidio es el costo fijo configurado por la empresa
+      // (lo que realmente paga al proveedor), no el precio de venta del platillo elegido.
+      const subsidyAmount = parseFloat(branch.company.subsidyMealCost);
 
       const t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
@@ -526,7 +529,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 
           const created = await tx.transaction.create({
             data: {
-              userId: user.id, type: 'PURCHASE', amount: amountDecimal,
+              userId: user.id, type: 'PURCHASE', amount: subsidyAmount,
               balanceBefore: balanceNow, balanceAfter: balanceNow,
               description: `Subsidiado: ${description || 'Comida'}`,
               cashierId: req.userId, isSubsidized: true, reference: clientRef || null

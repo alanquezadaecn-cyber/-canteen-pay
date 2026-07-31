@@ -67,6 +67,9 @@ model Company {
   // Subsidio de comida: la empresa cubre N comidas/día por comensal (se marcan, no se cobran)
   subsidyEnabled     Boolean @default(false)
   subsidyMealsPerDay Int     @default(1)
+  // Costo fijo que la empresa paga por cada comida subsidiada (independiente del precio
+  // del platillo elegido) — es lo que se usa para el reporte de RH, no el precio de venta.
+  subsidyMealCost    Decimal @default(75) @db.Decimal(10, 2)
 
   // Secciones habilitadas por el master admin (inventario, RH, pagos...). Claves ausentes = habilitado.
   enabledFeatures Json?

@@ -9,6 +9,7 @@ export const Subsidy: React.FC = () => {
   // Config
   const [enabled, setEnabled] = useState(false);
   const [mealsPerDay, setMealsPerDay] = useState(1);
+  const [mealCost, setMealCost] = useState('75.00');
   const [savingCfg, setSavingCfg] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
 
@@ -23,14 +24,14 @@ export const Subsidy: React.FC = () => {
   const [loadingRep, setLoadingRep] = useState(false);
 
   useEffect(() => {
-    api.get('/admin/subsidy-config').then(({ data }) => { setEnabled(data.enabled); setMealsPerDay(data.mealsPerDay); }).catch(() => {});
+    api.get('/admin/subsidy-config').then(({ data }) => { setEnabled(data.enabled); setMealsPerDay(data.mealsPerDay); setMealCost(data.mealCost); }).catch(() => {});
     loadReport();
   }, []);
 
   const saveCfg = async () => {
     setSavingCfg(true); setCfgMsg('');
     try {
-      await api.put('/admin/subsidy-config', { enabled, mealsPerDay });
+      await api.put('/admin/subsidy-config', { enabled, mealsPerDay, mealCost });
       setCfgMsg('Configuración guardada');
       setTimeout(() => setCfgMsg(''), 3000);
     } catch { setCfgMsg('Error al guardar'); }
@@ -94,6 +95,17 @@ export const Subsidy: React.FC = () => {
             </div>
             <input type="number" min="0" value={mealsPerDay} onChange={e => setMealsPerDay(parseInt(e.target.value) || 0)}
               className="w-20 h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-400" />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Costo por comida subsidiada</p>
+              <p className="text-xs text-slate-500">Lo que la empresa paga al proveedor por cada comida, sin importar el platillo que elija el comensal (ej. platillo estándar $75).</p>
+            </div>
+            <div className="relative flex-shrink-0">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+              <input type="number" min="0" step="0.01" value={mealCost} onChange={e => setMealCost(e.target.value)}
+                className="w-28 h-11 pl-6 pr-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-400" />
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveCfg} disabled={savingCfg} className="flex items-center gap-2 py-3 px-6 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer">

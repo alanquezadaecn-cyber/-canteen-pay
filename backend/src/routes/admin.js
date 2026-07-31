@@ -72,9 +72,9 @@ router.get('/attendance', async (req, res) => {
 router.get('/subsidy-config', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1 });
-    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true } });
-    res.json({ enabled: !!c?.subsidyEnabled, mealsPerDay: c?.subsidyMealsPerDay ?? 1 });
+    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1, mealCost: '75.00' });
+    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyMealCost: true } });
+    res.json({ enabled: !!c?.subsidyEnabled, mealsPerDay: c?.subsidyMealsPerDay ?? 1, mealCost: (c?.subsidyMealCost ?? 75).toString() });
   } catch (err) {
     res.status(500).json({ error: 'Error' });
   }
@@ -85,12 +85,13 @@ router.put('/subsidy-config', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
     if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
-    const { enabled, mealsPerDay } = req.body;
+    const { enabled, mealsPerDay, mealCost } = req.body;
     await prisma.company.update({
       where: { id: companyId },
       data: {
         ...(enabled !== undefined && { subsidyEnabled: !!enabled }),
-        ...(mealsPerDay !== undefined && { subsidyMealsPerDay: Math.max(0, parseInt(mealsPerDay) || 0) })
+        ...(mealsPerDay !== undefined && { subsidyMealsPerDay: Math.max(0, parseInt(mealsPerDay) || 0) }),
+        ...(mealCost !== undefined && { subsidyMealCost: Math.max(0, parseFloat(mealCost) || 0) })
       }
     });
     res.json({ success: true });
