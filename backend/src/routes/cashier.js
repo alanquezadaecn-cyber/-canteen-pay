@@ -936,6 +936,23 @@ router.get('/corte', async (req, res) => {
     const charges = transactions.filter(t => t.type === 'PURCHASE');
     const recharges = transactions.filter(t => t.type === 'RECHARGE');
 
+    // Efectivo físico que debería haber en caja: el cambio que se da en cada venta en
+    // efectivo ya sale de lo que el comensal pagó, así que lo que se queda en el cajón
+    // por cada venta es exactamente su precio (amount) — no hay que restar el cambio aparte.
+    const cashSales = charges.filter(t => t.isCashSale);
+    const cashSalesAmount = cashSales.reduce((s, t) => s + parseFloat(t.amount), 0);
+    const cashRecharges = recharges.filter(t => t.paymentMethod === 'CASH');
+    const cashRechargesAmount = cashRecharges.reduce((s, t) => s + parseFloat(t.amount), 0);
+    const totalChangeGiven = cashSales.reduce((s, t) => s + parseFloat(t.cashChange || 0), 0);
+
+    // Fondo con el que se abrió la caja hoy (el turno más reciente, abierto o cerrado)
+    const lastShift = await prisma.cashierSession.findFirst({
+      where: { cashierId: req.userId, branchId: cashier?.branchId, openedAt: { gte: today, lt: tomorrow } },
+      orderBy: { openedAt: 'desc' }
+    });
+    const initialFloat = parseFloat(lastShift?.initialFloat || 0);
+    const expectedCashInDrawer = initialFloat + cashSalesAmount + cashRechargesAmount;
+
     res.json({
       cashierName: cashier?.name || 'Cajero',
       date: today.toISOString(),
@@ -943,6 +960,15 @@ router.get('/corte', async (req, res) => {
       totalChargesAmount: charges.reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2),
       totalRecharges: recharges.length,
       totalRechargesAmount: recharges.reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2),
+      cashDrawer: {
+        initialFloat: initialFloat.toFixed(2),
+        cashSalesCount: cashSales.length,
+        cashSalesAmount: cashSalesAmount.toFixed(2),
+        cashRechargesCount: cashRecharges.length,
+        cashRechargesAmount: cashRechargesAmount.toFixed(2),
+        totalChangeGiven: totalChangeGiven.toFixed(2),
+        expected: expectedCashInDrawer.toFixed(2)
+      },
       transactions: transactions.map(t => ({
         id: t.id,
         type: t.type,
@@ -951,6 +977,9 @@ router.get('/corte', async (req, res) => {
         balanceAfter: t.balanceAfter?.toString() || '0',
         description: t.description,
         createdAt: t.createdAt,
+        isCashSale: t.isCashSale,
+        cashReceived: t.cashReceived != null ? t.cashReceived.toString() : null,
+        cashChange: t.cashChange != null ? t.cashChange.toString() : null,
         user: t.user
       }))
     });

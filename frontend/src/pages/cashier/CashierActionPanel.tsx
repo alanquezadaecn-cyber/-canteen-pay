@@ -8,11 +8,23 @@ import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { doCharge, doCashSale, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
 
+interface CashDrawer {
+  initialFloat: string;
+  cashSalesCount: number;
+  cashSalesAmount: string;
+  cashRechargesCount: number;
+  cashRechargesAmount: string;
+  totalChangeGiven: string;
+  expected: string;
+}
 interface Shift {
   id: string;
   shiftNumber: number;
   openedAt: string;
+  closedAt?: string | null;
+  finalBalance?: string | null;
   dishesSoFar?: number;
+  cashDrawer?: CashDrawer;
 }
 
 const MAX_SHIFTS = 3;
@@ -65,13 +77,24 @@ export const CashierActionPanel: React.FC = () => {
 
   // Turno de operación: apertura/cierre de barra
   const [openShift, setOpenShift] = useState<Shift | null>(null);
-  const [todayShiftsCount, setTodayShiftsCount] = useState(0);
+  const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
+  const todayShiftsCount = todayShifts.length;
   const [shiftBusy, setShiftBusy] = useState(false);
   const [shiftError, setShiftError] = useState('');
+  const [initialFloatInput, setInitialFloatInput] = useState('');
+  const [closingShift, setClosingShift] = useState(false);
+  const [countedCashInput, setCountedCashInput] = useState('');
 
   const loadShift = () => {
     if (!branchId) return;
-    api.get(`/cashier-sessions/today/${branchId}`).then(({ data }) => setTodayShiftsCount(data.length)).catch(() => {});
+    api.get(`/cashier-sessions/today/${branchId}`).then(({ data }) => {
+      setTodayShifts(data);
+      // Al abrir el siguiente turno del día, se sugiere como fondo inicial lo que se
+      // contó físicamente al cerrar el turno anterior — así el efectivo no se pierde
+      // en la entrega y el siguiente cajero arranca con el fondo real.
+      const lastClosed = [...data].reverse().find((s: Shift) => s.finalBalance != null);
+      if (lastClosed && !initialFloatInput) setInitialFloatInput(String(lastClosed.finalBalance));
+    }).catch(() => {});
     api.get(`/cashier-sessions/current/${branchId}`).then(({ data }) => setOpenShift(data)).catch(() => setOpenShift(null));
   };
   useEffect(() => { loadShift(); }, [branchId]);
@@ -80,19 +103,21 @@ export const CashierActionPanel: React.FC = () => {
     if (!branchId) return;
     setShiftBusy(true); setShiftError('');
     try {
-      await api.post('/cashier-sessions/open', { branchId });
+      await api.post('/cashier-sessions/open', { branchId, initialFloat: parseFloat(initialFloatInput) || 0 });
+      setInitialFloatInput('');
       loadShift();
     } catch (err: any) {
       setShiftError(err.response?.data?.error || 'Error al abrir turno');
     } finally { setShiftBusy(false); }
   };
 
-  const closeShiftAction = async () => {
+  const confirmCloseShift = async () => {
     if (!openShift) return;
-    if (!confirm(`¿Cerrar el turno ${openShift.shiftNumber}? Esto marca el fin de operaciones.`)) return;
     setShiftBusy(true); setShiftError('');
     try {
-      await api.post(`/cashier-sessions/${openShift.id}/close`, {});
+      await api.post(`/cashier-sessions/${openShift.id}/close`, { finalBalance: countedCashInput || undefined });
+      setClosingShift(false);
+      setCountedCashInput('');
       loadShift();
     } catch (err: any) {
       setShiftError(err.response?.data?.error || 'Error al cerrar turno');
@@ -261,7 +286,60 @@ export const CashierActionPanel: React.FC = () => {
           {/* Apertura / cierre de barra */}
           <div className={`rounded-3xl shadow-xl shadow-slate-900/10 border p-5 ${openShift ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800' : 'bg-slate-900 dark:bg-slate-900 border-slate-800'}`}>
             {shiftError && <p className="text-xs text-red-500 mb-2">{shiftError}</p>}
-            {openShift ? (
+            {openShift && closingShift ? (
+              // Cambio de turno: cuenta el efectivo físico contra lo que el sistema espera
+              // (fondo inicial + ventas/recargas en efectivo) antes de cerrar la barra.
+              <div className="space-y-3">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-50">Cerrar turno {openShift.shiftNumber}</p>
+                {openShift.cashDrawer && (
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex justify-between"><span>Fondo inicial</span><span className="font-semibold text-slate-700 dark:text-slate-300">${openShift.cashDrawer.initialFloat}</span></div>
+                    <div className="flex justify-between"><span>Ventas en efectivo ({openShift.cashDrawer.cashSalesCount})</span><span className="font-semibold text-slate-700 dark:text-slate-300">${openShift.cashDrawer.cashSalesAmount}</span></div>
+                    <div className="flex justify-between"><span>Recargas en efectivo ({openShift.cashDrawer.cashRechargesCount})</span><span className="font-semibold text-slate-700 dark:text-slate-300">${openShift.cashDrawer.cashRechargesAmount}</span></div>
+                    <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-200 dark:border-slate-700">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">Debe haber en caja</span>
+                      <span className="font-extrabold text-emerald-600">${openShift.cashDrawer.expected}</span>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Efectivo contado físicamente (opcional)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                    <input
+                      type="number" min="0" step="0.01" value={countedCashInput} autoFocus
+                      onChange={e => setCountedCashInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full h-11 pl-8 pr-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                  {countedCashInput && openShift.cashDrawer && (() => {
+                    const diff = parseFloat(countedCashInput) - parseFloat(openShift.cashDrawer.expected);
+                    return (
+                      <p className={`text-xs font-semibold mt-1.5 ${diff === 0 ? 'text-emerald-600' : diff > 0 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {diff === 0 ? 'Cuadra exacto ✓' : diff > 0 ? `Sobran $${diff.toFixed(2)}` : `Faltan $${Math.abs(diff).toFixed(2)}`}
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setClosingShift(false); setCountedCashInput(''); }}
+                    disabled={shiftBusy}
+                    className="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-bold cursor-pointer disabled:opacity-40"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmCloseShift}
+                    disabled={shiftBusy}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold disabled:opacity-40 cursor-pointer"
+                  >
+                    <Square className="w-3.5 h-3.5" /> {shiftBusy ? 'Cerrando...' : 'Confirmar cierre'}
+                  </button>
+                </div>
+              </div>
+            ) : openShift ? (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -271,24 +349,45 @@ export const CashierActionPanel: React.FC = () => {
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> desde las {new Date(openShift.openedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })}</span>
                     <span className="flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> {openShift.dishesSoFar ?? 0} platillos</span>
                   </p>
+                  {openShift.cashDrawer && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-1">💵 Debe haber en caja: ${openShift.cashDrawer.expected}</p>
+                  )}
                 </div>
                 <button
-                  onClick={closeShiftAction}
+                  onClick={() => setClosingShift(true)}
                   disabled={shiftBusy}
                   className="flex-shrink-0 flex items-center gap-1.5 h-10 px-4 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold disabled:opacity-40 cursor-pointer"
                 >
                   <Square className="w-3.5 h-3.5" /> Cerrar barra
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={openShiftAction}
-                disabled={shiftBusy || todayShiftsCount >= MAX_SHIFTS}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer"
-              >
-                <Play className="w-4 h-4" />
-                {shiftBusy ? 'Abriendo...' : todayShiftsCount >= MAX_SHIFTS ? `Ya se abrieron los ${MAX_SHIFTS} turnos de hoy` : `Apertura de barra${todayShiftsCount > 0 ? ` · turno ${todayShiftsCount + 1}` : ''}`}
+            ) : todayShiftsCount >= MAX_SHIFTS ? (
+              <button disabled className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-700 text-white font-bold text-sm opacity-40 cursor-not-allowed">
+                <Play className="w-4 h-4" /> Ya se abrieron los {MAX_SHIFTS} turnos de hoy
               </button>
+            ) : (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Fondo inicial para dar cambio (opcional)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                    <input
+                      type="number" min="0" step="0.01" value={initialFloatInput}
+                      onChange={e => setInitialFloatInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full h-11 pl-8 pr-4 rounded-2xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={openShiftAction}
+                  disabled={shiftBusy}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer"
+                >
+                  <Play className="w-4 h-4" />
+                  {shiftBusy ? 'Abriendo...' : `Apertura de barra${todayShiftsCount > 0 ? ` · turno ${todayShiftsCount + 1}` : ''}`}
+                </button>
+              </div>
             )}
           </div>
 

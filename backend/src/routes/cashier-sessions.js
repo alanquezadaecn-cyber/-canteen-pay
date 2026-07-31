@@ -50,6 +50,32 @@ async function countDishes(cashierId, from, to) {
   return items.filter(i => i.product?.productType === 'PLATILLO').reduce((sum, i) => sum + i.quantity, 0);
 }
 
+// Efectivo físico que debería haber en caja para ESTE turno: el fondo con el que se abrió
+// más lo que entró en efectivo (ventas + recargas). El cambio dado ya está descontado
+// porque lo que se queda en el cajón por cada venta en efectivo es su precio (amount),
+// no lo que el comensal entregó.
+async function computeCashDrawer(cashierId, initialFloat, from, to) {
+  const transactions = await prisma.transaction.findMany({
+    where: { cashierId, createdAt: { gte: from, lte: to } },
+    select: { type: true, amount: true, isCashSale: true, cashChange: true, paymentMethod: true }
+  });
+  const cashSales = transactions.filter(t => t.type === 'PURCHASE' && t.isCashSale);
+  const cashSalesAmount = cashSales.reduce((s, t) => s + parseFloat(t.amount), 0);
+  const cashRecharges = transactions.filter(t => t.type === 'RECHARGE' && t.paymentMethod === 'CASH');
+  const cashRechargesAmount = cashRecharges.reduce((s, t) => s + parseFloat(t.amount), 0);
+  const totalChangeGiven = cashSales.reduce((s, t) => s + parseFloat(t.cashChange || 0), 0);
+  const float = parseFloat(initialFloat || 0);
+  return {
+    initialFloat: float.toFixed(2),
+    cashSalesCount: cashSales.length,
+    cashSalesAmount: cashSalesAmount.toFixed(2),
+    cashRechargesCount: cashRecharges.length,
+    cashRechargesAmount: cashRechargesAmount.toFixed(2),
+    totalChangeGiven: totalChangeGiven.toFixed(2),
+    expected: (float + cashSalesAmount + cashRechargesAmount).toFixed(2)
+  };
+}
+
 // OPEN new cashier session (abrir turno / apertura de barra)
 router.post('/open', async (req, res) => {
   try {
@@ -87,8 +113,10 @@ router.get('/current/:branchId', async (req, res) => {
     const session = await prisma.cashierSession.findFirst({ where: { branchId: req.params.branchId, status: 'OPEN' } });
     if (!session) return res.status(404).json({ error: 'No hay turno abierto' });
 
-    const dishesSoFar = await countDishes(session.cashierId, session.openedAt, new Date());
-    res.json({ ...session, dishesSoFar });
+    const now = new Date();
+    const dishesSoFar = await countDishes(session.cashierId, session.openedAt, now);
+    const cashDrawer = await computeCashDrawer(session.cashierId, session.initialFloat, session.openedAt, now);
+    res.json({ ...session, dishesSoFar, cashDrawer });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener turno' });
@@ -126,6 +154,16 @@ router.post('/:sessionId/close', async (req, res) => {
     });
     const totalCharges = transactions.filter(t => t.type === 'PURCHASE').reduce((sum, t) => sum + parseFloat(t.amount), 0);
     const dishesCount = await countDishes(session.cashierId, session.openedAt, closedAt);
+    const cashDrawer = await computeCashDrawer(session.cashierId, session.initialFloat, session.openedAt, closedAt);
+
+    // Si el cajero contó y capturó el efectivo físico, guardamos también la diferencia
+    // contra lo esperado, para que quede constancia en la entrega de turno.
+    let finalNotes = notes || null;
+    if (finalBalance !== undefined && finalBalance !== null && finalBalance !== '') {
+      const diff = parseFloat(finalBalance) - parseFloat(cashDrawer.expected);
+      const diffNote = `Efectivo esperado: $${cashDrawer.expected}, contado: $${parseFloat(finalBalance).toFixed(2)}, diferencia: ${diff >= 0 ? '+' : ''}$${diff.toFixed(2)}`;
+      finalNotes = finalNotes ? `${diffNote}. ${finalNotes}` : diffNote;
+    }
 
     const updatedSession = await prisma.cashierSession.update({
       where: { id: req.params.sessionId },
@@ -134,10 +172,10 @@ router.post('/:sessionId/close', async (req, res) => {
         finalBalance: finalBalance ? parseFloat(finalBalance) : null,
         totalCharges, dishesCount,
         status: 'CLOSED',
-        notes: notes || null
+        notes: finalNotes
       }
     });
-    res.json(updatedSession);
+    res.json({ ...updatedSession, cashDrawer });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al cerrar turno' });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed } from 'lucide-react';
+import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed, Wallet } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -25,6 +25,16 @@ interface CorteTransaction {
   user: { name: string; employeeNumber: string } | null;
 }
 
+interface CashDrawer {
+  initialFloat: string;
+  cashSalesCount: number;
+  cashSalesAmount: string;
+  cashRechargesCount: number;
+  cashRechargesAmount: string;
+  totalChangeGiven: string;
+  expected: string;
+}
+
 interface CorteData {
   cashierName: string;
   date: string;
@@ -32,6 +42,7 @@ interface CorteData {
   totalChargesAmount: string;
   totalRecharges: number;
   totalRechargesAmount: string;
+  cashDrawer?: CashDrawer;
   transactions: CorteTransaction[];
 }
 
@@ -143,6 +154,25 @@ export const CorteDeCaja: React.FC = () => {
                     <span className="font-semibold text-slate-700 dark:text-slate-300">{s.dishesCount ?? s.dishesSoFar ?? 0} platillos · {fmt(s.totalCharges)}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Efectivo físico esperado en caja (fondo + ventas/recargas en efectivo) */}
+        {data?.cashDrawer && (
+          <div className="max-w-3xl mx-auto px-5 mt-6 print:hidden">
+            <div className="bg-amber-500 rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-amber-50 font-semibold flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5" /> Debe haber en caja física hoy
+                  </p>
+                  <p className="text-xs text-amber-50 mt-1">
+                    Fondo ${data.cashDrawer.initialFloat} + ventas efectivo ${data.cashDrawer.cashSalesAmount} ({data.cashDrawer.cashSalesCount}) + recargas efectivo ${data.cashDrawer.cashRechargesAmount} ({data.cashDrawer.cashRechargesCount})
+                  </p>
+                </div>
+                <p className="text-3xl font-extrabold text-white flex-shrink-0" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${data.cashDrawer.expected}</p>
               </div>
             </div>
           </div>
