@@ -4,6 +4,8 @@ import { useAuthStore, Panel, sessionKey } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppNav } from './components/AppNav';
 import { CashierNav } from './components/CashierNav';
+import { CashierLockScreen } from './components/CashierLockScreen';
+import { useIdleLock } from './hooks/useIdleLock';
 import { AdminNav } from './components/AdminNav';
 
 // Auth
@@ -138,9 +140,19 @@ const ComensalLayout: React.FC = () => {
 const CajaLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('cashier');
   useSlugBackfill();
+  // El panel de caja se queda "siempre abierto": en vez de cerrar sesión por
+  // inactividad (lo que obligaría a reloguearse y desgastaría el token), se
+  // bloquea la pantalla y solo se desbloquea con la contraseña del cajero.
+  const { locked, unlock } = useIdleLock(!!session && ready);
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
-  return <><CashierNav /><Outlet /></>;
+  return (
+    <>
+      <CashierNav />
+      <Outlet />
+      {locked && <CashierLockScreen onUnlock={unlock} />}
+    </>
+  );
 };
 
 const AdminLayout: React.FC = () => {

@@ -153,11 +153,11 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       return res.status(403).json({ error: 'Comensal inactivo' });
     }
 
-    // Info de subsidio: cuántas comidas subsidiadas le quedan hoy
-    let subsidy = { enabled: false, limit: 0, usedToday: 0, left: 0 };
+    // Info de subsidio: cuántas comidas subsidiadas le quedan hoy + niveles disponibles
+    let subsidy = { enabled: false, limit: 0, usedToday: 0, left: 0, tiers: [] };
     const branch = await prisma.branch.findUnique({
       where: { id: branchId },
-      include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true } } }
+      include: { company: { select: { id: true, subsidyEnabled: true, subsidyMealsPerDay: true } } }
     });
     if (branch?.company?.subsidyEnabled) {
       const cfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
@@ -167,7 +167,15 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       const usedToday = await prisma.transaction.count({
         where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
       });
-      subsidy = { enabled: true, limit, usedToday, left: Math.max(0, limit - usedToday) };
+      const tiers = await prisma.subsidyTier.findMany({
+        where: { companyId: branch.company.id, isActive: true },
+        orderBy: { cost: 'asc' },
+        select: { id: true, name: true, cost: true }
+      });
+      subsidy = {
+        enabled: true, limit, usedToday, left: Math.max(0, limit - usedToday),
+        tiers: tiers.map(t => ({ ...t, cost: t.cost.toString() }))
+      };
     }
 
     res.json({
@@ -456,7 +464,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
     if (!(await requireBranchAccess(req, res, branchId))) return;
-    const { qrCode, amount, description, clientRef, subsidized, productId } = req.body;
+    const { qrCode, amount, description, clientRef, subsidized, productId, subsidyTierId } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
@@ -508,16 +516,23 @@ router.post('/branch/:branchId/charge', async (req, res) => {
     if (subsidized) {
       const branch = await prisma.branch.findUnique({
         where: { id: branchId },
-        include: { company: { select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyMealCost: true } } }
+        include: { company: { select: { id: true, subsidyEnabled: true, subsidyMealsPerDay: true } } }
       });
       if (!branch?.company?.subsidyEnabled) {
         return res.status(400).json({ error: 'El subsidio no está habilitado para esta empresa' });
       }
+      if (!subsidyTierId) {
+        return res.status(400).json({ error: 'Elige un nivel de subsidio (ej. Estándar, Especial)' });
+      }
+      const tier = await prisma.subsidyTier.findUnique({ where: { id: subsidyTierId } });
+      if (!tier || tier.companyId !== branch.company.id || !tier.isActive) {
+        return res.status(400).json({ error: 'Nivel de subsidio inválido' });
+      }
       const userCfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
       const limit = (userCfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
-      // El monto que se registra como subsidio es el costo fijo configurado por la empresa
-      // (lo que realmente paga al proveedor), no el precio de venta del platillo elegido.
-      const subsidyAmount = parseFloat(branch.company.subsidyMealCost);
+      // El monto que se registra como subsidio es el costo del nivel elegido (lo que
+      // realmente paga la empresa), no el precio de venta de ningún platillo.
+      const subsidyAmount = parseFloat(tier.cost);
 
       const t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
@@ -539,7 +554,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
             data: {
               userId: user.id, type: 'PURCHASE', amount: subsidyAmount,
               balanceBefore: balanceNow, balanceAfter: balanceNow,
-              description: `Subsidiado: ${description || 'Comida'}`,
+              description: `Subsidiado (${tier.name})${description ? `: ${description}` : ''}`,
               cashierId: req.userId, isSubsidized: true, reference: clientRef || null
             }
           });

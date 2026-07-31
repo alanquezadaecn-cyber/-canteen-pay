@@ -70,7 +70,7 @@ router.get('/me', verifyToken, async (req, res) => {
         balance: true,
         qrCode: true,
         createdAt: true,
-        branch: { select: { slug: true, company: { select: { slug: true, name: true } } } }
+        branch: { select: { slug: true, company: { select: { id: true, slug: true, name: true, subsidyEnabled: true, subsidySettledAt: true } } } }
       }
     });
 
@@ -79,9 +79,24 @@ router.get('/me', verifyToken, async (req, res) => {
     }
 
     const { branch, ...rest } = user;
+
+    // Saldo subsidiado: lo que la empresa le ha "abonado" en comidas subsidiadas desde
+    // el último corte que RH pagó (o desde siempre, si nunca se ha liquidado). Es
+    // informativo — no se resta de nada, solo muestra cuánto ha usado del subsidio.
+    let subsidyBalance = null;
+    if (branch?.company?.subsidyEnabled) {
+      const since = branch.company.subsidySettledAt || new Date(0);
+      const agg = await prisma.transaction.aggregate({
+        where: { userId: user.id, isSubsidized: true, createdAt: { gte: since } },
+        _sum: { amount: true }
+      });
+      subsidyBalance = (agg._sum.amount || 0).toString();
+    }
+
     res.json({
       ...rest,
       balance: user.balance.toString(),
+      subsidyBalance,
       branchSlug: branch?.slug || null,
       companySlug: branch?.company?.slug || null,
       company: branch?.company?.name || null

@@ -1,17 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
-import { Coins, Save, Download, FileText, CheckCircle } from 'lucide-react';
+import { Coins, Save, Download, FileText, CheckCircle, Plus, Trash2, Layers, BadgeCheck } from 'lucide-react';
 
 interface ReportRow { name: string; employeeNumber: string; branchName: string; count: number; amount: string; }
+interface Tier { id: string; name: string; cost: string; isActive: boolean }
 
 export const Subsidy: React.FC = () => {
   // Config
   const [enabled, setEnabled] = useState(false);
   const [mealsPerDay, setMealsPerDay] = useState(1);
-  const [mealCost, setMealCost] = useState('75.00');
+  const [ivaRate, setIvaRate] = useState('16');
+  const [settledAt, setSettledAt] = useState<string | null>(null);
   const [savingCfg, setSavingCfg] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
+
+  // Niveles de subsidio
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [newTierName, setNewTierName] = useState('');
+  const [newTierCost, setNewTierCost] = useState('');
+  const [savingTier, setSavingTier] = useState(false);
+  const [tierMsg, setTierMsg] = useState('');
+
+  // Corte / liquidación
+  const [settling, setSettling] = useState(false);
 
   // Reporte
   const today = new Date().toISOString().slice(0, 10);
@@ -20,22 +32,67 @@ export const Subsidy: React.FC = () => {
   const [to, setTo] = useState(today);
   const [branchId, setBranchId] = useState('');
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
-  const [report, setReport] = useState<{ total: string; count: number; byUser: ReportRow[] } | null>(null);
+  const [report, setReport] = useState<{ subtotal: string; iva: string; ivaRate: string; total: string; count: number; byUser: ReportRow[]; settledAt: string | null } | null>(null);
   const [loadingRep, setLoadingRep] = useState(false);
 
-  useEffect(() => {
-    api.get('/admin/subsidy-config').then(({ data }) => { setEnabled(data.enabled); setMealsPerDay(data.mealsPerDay); setMealCost(data.mealCost); }).catch(() => {});
-    loadReport();
-  }, []);
+  const loadConfig = () => {
+    api.get('/admin/subsidy-config').then(({ data }) => {
+      setEnabled(data.enabled); setMealsPerDay(data.mealsPerDay); setIvaRate(data.ivaRate); setSettledAt(data.settledAt);
+    }).catch(() => {});
+  };
+  const loadTiers = () => {
+    api.get('/admin/subsidy-tiers').then(({ data }) => setTiers(data)).catch(() => {});
+  };
+
+  useEffect(() => { loadConfig(); loadTiers(); loadReport(); }, []);
 
   const saveCfg = async () => {
     setSavingCfg(true); setCfgMsg('');
     try {
-      await api.put('/admin/subsidy-config', { enabled, mealsPerDay, mealCost });
+      await api.put('/admin/subsidy-config', { enabled, mealsPerDay, ivaRate });
       setCfgMsg('Configuración guardada');
       setTimeout(() => setCfgMsg(''), 3000);
     } catch { setCfgMsg('Error al guardar'); }
     finally { setSavingCfg(false); }
+  };
+
+  const addTier = async () => {
+    if (!newTierName.trim() || !newTierCost || parseFloat(newTierCost) <= 0) {
+      setTierMsg('Nombre y costo válido requeridos');
+      return;
+    }
+    setSavingTier(true); setTierMsg('');
+    try {
+      await api.post('/admin/subsidy-tiers', { name: newTierName.trim(), cost: newTierCost });
+      setNewTierName(''); setNewTierCost('');
+      loadTiers();
+    } catch (err: any) {
+      setTierMsg(err.response?.data?.error || 'Error al crear nivel');
+    } finally { setSavingTier(false); }
+  };
+
+  const updateTierCost = async (tier: Tier, cost: string) => {
+    setTiers(prev => prev.map(t => t.id === tier.id ? { ...t, cost } : t));
+  };
+  const saveTierCost = async (tier: Tier) => {
+    try { await api.put(`/admin/subsidy-tiers/${tier.id}`, { cost: tier.cost }); } catch { loadTiers(); }
+  };
+
+  const deleteTier = async (tier: Tier) => {
+    if (!confirm(`¿Eliminar el nivel "${tier.name}"? Los cajeros ya no podrán elegirlo.`)) return;
+    try { await api.delete(`/admin/subsidy-tiers/${tier.id}`); loadTiers(); } catch {}
+  };
+
+  const settlePeriod = async () => {
+    if (!report) return;
+    if (!confirm(`¿Marcar este periodo como pagado por RH? El saldo subsidiado de todos los comensales regresará a $0 y empezará a acumularse de nuevo. Total liquidado: $${report.total} MXN.`)) return;
+    setSettling(true);
+    try {
+      const { data } = await api.put('/admin/subsidy-settle');
+      setSettledAt(data.settledAt);
+      setFrom(new Date(data.settledAt).toISOString().slice(0, 10));
+      loadReport();
+    } catch {} finally { setSettling(false); }
   };
 
   const loadReport = async () => {
@@ -53,9 +110,11 @@ export const Subsidy: React.FC = () => {
     if (!report) return;
     const rows = report.byUser.map(r => ({
       Comensal: r.name, '# Empleado': r.employeeNumber, Sucursal: r.branchName,
-      'Comidas subsidiadas': r.count, 'Monto (MXN)': r.amount
+      'Comidas subsidiadas': r.count, 'Monto base (MXN)': r.amount
     }));
-    rows.push({ Comensal: 'TOTAL', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': report.count as any, 'Monto (MXN)': report.total });
+    rows.push({ Comensal: 'SUBTOTAL', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': report.count as any, 'Monto base (MXN)': report.subtotal });
+    rows.push({ Comensal: `IVA (${report.ivaRate}%)`, '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': '' as any, 'Monto base (MXN)': report.iva });
+    rows.push({ Comensal: 'TOTAL A PAGAR', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': '' as any, 'Monto base (MXN)': report.total });
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{ wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
@@ -98,13 +157,13 @@ export const Subsidy: React.FC = () => {
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Costo por comida subsidiada</p>
-              <p className="text-xs text-slate-500">Lo que la empresa paga al proveedor por cada comida, sin importar el platillo que elija el comensal (ej. platillo estándar $75).</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">IVA</p>
+              <p className="text-xs text-slate-500">Se agrega al reporte que paga RH. El comensal nunca ve este porcentaje, solo el costo base del nivel.</p>
             </div>
             <div className="relative flex-shrink-0">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
-              <input type="number" min="0" step="0.01" value={mealCost} onChange={e => setMealCost(e.target.value)}
-                className="w-28 h-11 pl-6 pr-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-400" />
+              <input type="number" min="0" step="0.01" value={ivaRate} onChange={e => setIvaRate(e.target.value)}
+                className="w-20 h-11 pr-7 pl-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-400" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">%</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -115,6 +174,58 @@ export const Subsidy: React.FC = () => {
           </div>
         </div>
 
+        {/* Niveles de subsidio */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
+          <p className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-emerald-600" /> Niveles de subsidio
+          </p>
+          <p className="text-xs text-slate-500 -mt-2">
+            En caja, el cajero solo podrá elegir uno de estos niveles al cobrar subsidiado (ej. Estándar $75, Especial $120) — nunca cualquier platillo del menú.
+          </p>
+
+          {tiers.length > 0 && (
+            <div className="space-y-2">
+              {tiers.map(tier => (
+                <div key={tier.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-3">
+                  <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{tier.name}</span>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                    <input
+                      type="number" min="0" step="0.01" value={tier.cost}
+                      onChange={e => updateTierCost(tier, e.target.value)}
+                      onBlur={() => saveTierCost(tier)}
+                      className="w-24 h-9 pl-6 pr-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                  <button onClick={() => deleteTier(tier)} className="w-9 h-9 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer flex-shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex-1">
+              <label className="text-xs text-slate-400 block mb-1">Nombre del nivel</label>
+              <input type="text" value={newTierName} onChange={e => setNewTierName(e.target.value)} placeholder="Ej. Estándar"
+                className="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+            </div>
+            <div className="w-28">
+              <label className="text-xs text-slate-400 block mb-1">Costo</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                <input type="number" min="0" step="0.01" value={newTierCost} onChange={e => setNewTierCost(e.target.value)} placeholder="75.00"
+                  className="w-full h-11 pl-6 pr-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
+              </div>
+            </div>
+            <button onClick={addTier} disabled={savingTier} className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 text-sm font-bold disabled:opacity-40 cursor-pointer">
+              <Plus className="w-4 h-4" /> Agregar
+            </button>
+          </div>
+          {tierMsg && <p className="text-xs text-red-500">{tierMsg}</p>}
+        </div>
+
         {/* Reporte para RH */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -123,6 +234,12 @@ export const Subsidy: React.FC = () => {
               <Download className="w-4 h-4" /> Exportar Excel
             </button>
           </div>
+
+          <p className="text-xs text-slate-500">
+            {settledAt
+              ? `Último periodo pagado por RH: ${new Date(settledAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}. El reporte muestra el consumo desde entonces.`
+              : 'Aún no se ha liquidado ningún periodo. El reporte muestra el consumo desde el inicio del mes.'}
+          </p>
 
           {/* Filtros */}
           <div className="flex gap-3 flex-wrap">
@@ -145,14 +262,30 @@ export const Subsidy: React.FC = () => {
             )}
           </div>
 
-          {/* Total a pagar */}
-          <div className="bg-emerald-600 rounded-2xl p-5 text-white flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-emerald-100 font-semibold">Total subsidiado en el periodo</p>
-              <p className="text-xs text-emerald-100 mt-0.5">{report?.count || 0} comidas · esto es lo que la empresa paga al proveedor</p>
+          {/* Total a pagar: subtotal + IVA, desglosado (esto NO lo ve el comensal) */}
+          <div className="bg-emerald-600 rounded-2xl p-5 text-white space-y-3">
+            <p className="text-xs uppercase tracking-wider text-emerald-100 font-semibold">{report?.count || 0} comidas subsidiadas en el periodo</p>
+            <div className="flex items-center justify-between text-sm text-emerald-50">
+              <span>Subtotal (lo que consumieron)</span>
+              <span className="font-semibold">${report?.subtotal || '0.00'}</span>
             </div>
-            <p className="text-3xl font-extrabold" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${report?.total || '0.00'}</p>
+            <div className="flex items-center justify-between text-sm text-emerald-50">
+              <span>IVA ({report?.ivaRate || '16'}%)</span>
+              <span className="font-semibold">${report?.iva || '0.00'}</span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-white/20">
+              <span className="text-sm font-bold">Total que RH debe pagar</span>
+              <p className="text-3xl font-extrabold" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${report?.total || '0.00'}</p>
+            </div>
           </div>
+
+          <button
+            onClick={settlePeriod}
+            disabled={settling || !report || parseFloat(report.total) <= 0}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm disabled:opacity-40 cursor-pointer"
+          >
+            <BadgeCheck className="w-4 h-4" /> {settling ? 'Liquidando...' : 'Marcar periodo como pagado por RH'}
+          </button>
 
           {/* Tabla por empleado */}
           {loadingRep ? (
@@ -166,7 +299,7 @@ export const Subsidy: React.FC = () => {
                   <tr className="border-b border-slate-100 dark:border-slate-800">
                     <th className="text-left py-2 px-3 text-xs font-semibold text-slate-400 uppercase">Comensal</th>
                     <th className="text-center py-2 px-3 text-xs font-semibold text-slate-400 uppercase">Comidas</th>
-                    <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase">Monto</th>
+                    <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase">Monto base</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -182,6 +315,7 @@ export const Subsidy: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              <p className="text-xs text-slate-400 mt-2">El monto base no incluye IVA — el desglose con IVA está arriba, en el total a pagar.</p>
             </div>
           )}
         </div>

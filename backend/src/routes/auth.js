@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { QRService } from '../services/qr.service.js';
 import { sendWelcomeEmail } from '../services/email.service.js';
 import { JWT_SECRET } from '../lib/jwtSecret.js';
+import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -227,6 +228,28 @@ router.post('/refresh', (req, res) => {
     });
   } catch (err) {
     return res.status(401).json({ error: 'Refresh token inválido' });
+  }
+});
+
+// Verifica la contraseña del usuario autenticado, sin generar tokens nuevos.
+// Se usa para desbloquear el panel de caja tras un bloqueo por inactividad:
+// la sesión (tokens) sigue viva todo el tiempo, solo se re-confirma identidad.
+router.post('/verify-password', verifyToken, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: 'Contraseña requerida' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ valid: false, error: 'Contraseña incorrecta' });
+
+    res.json({ valid: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al verificar contraseña' });
   }
 });
 

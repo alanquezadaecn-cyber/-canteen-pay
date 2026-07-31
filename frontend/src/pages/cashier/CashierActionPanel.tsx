@@ -17,7 +17,8 @@ interface Shift {
 
 const MAX_SHIFTS = 3;
 
-interface Subsidy { enabled: boolean; limit: number; usedToday: number; left: number }
+interface SubsidyTier { id: string; name: string; cost: number }
+interface Subsidy { enabled: boolean; limit: number; usedToday: number; left: number; tiers?: SubsidyTier[] }
 interface User {
   id: string;
   name: string;
@@ -159,24 +160,35 @@ export const CashierActionPanel: React.FC = () => {
     }
   };
 
-  const handleCharge = async (product: Product, subsidized = false) => {
+  const handleCharge = async (product: Product) => {
     if (!user || !branchId) return;
     setLoading(true);
     try {
-      const res: any = await doCharge(branchId, user, product.price, `Compra: ${product.name}`, subsidized, product.id);
-      if (subsidized) {
-        setSuccess(`✅ ${product.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
-        setUser({ ...user, subsidy: user.subsidy ? { ...user.subsidy, usedToday: user.subsidy.usedToday + 1, left: res.subsidyLeft } : undefined });
-      } else {
-        setSuccess(res.offline
-          ? `⚠️ Sin conexión: ${product.name} cobrado a ${user.name} (se sincronizará). Saldo: $${res.newBalance}`
-          : `✅ ${product.name} cobrado a ${user.name}. Nuevo saldo: $${res.newBalance}`);
-        setUser({ ...user, balance: res.newBalance });
-      }
+      const res: any = await doCharge(branchId, user, product.price, `Compra: ${product.name}`, false, product.id);
+      setSuccess(res.offline
+        ? `⚠️ Sin conexión: ${product.name} cobrado a ${user.name} (se sincronizará). Saldo: $${res.newBalance}`
+        : `✅ ${product.name} cobrado a ${user.name}. Nuevo saldo: $${res.newBalance}`);
+      setUser({ ...user, balance: res.newBalance });
       setMode('select');
       setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al procesar cobro');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChargeSubsidized = async (tier: SubsidyTier) => {
+    if (!user || !branchId) return;
+    setLoading(true);
+    try {
+      const res: any = await doCharge(branchId, user, tier.cost, `Subsidiado (${tier.name})`, true, undefined, tier.id);
+      setSuccess(`✅ ${tier.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
+      setUser({ ...user, subsidy: user.subsidy ? { ...user.subsidy, usedToday: user.subsidy.usedToday + 1, left: res.subsidyLeft } : undefined });
+      setMode('select');
+      setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al procesar cobro subsidiado');
     } finally {
       setLoading(false);
     }
@@ -401,7 +413,30 @@ export const CashierActionPanel: React.FC = () => {
               </div>
             )}
 
-            {(() => {
+            {chargeSubsidized && (user.subsidy?.left ?? 0) > 0 ? (
+              // Cobro subsidiado: solo se puede elegir uno de los niveles que definió la
+              // empresa (ej. Estándar $75, Especial $120), nunca un platillo cualquiera.
+              (user.subsidy?.tiers?.length ?? 0) === 0 ? (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
+                  Esta empresa aún no tiene niveles de subsidio configurados. Pide al administrador que los cree en Subsidio.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {user.subsidy!.tiers!.map(tier => (
+                    <button
+                      key={tier.id}
+                      onClick={() => handleChargeSubsidized(tier)}
+                      disabled={loading}
+                      className="flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400"
+                    >
+                      <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{tier.name}</span>
+                      <span className="text-emerald-600 text-base font-bold mt-2">Subsidiado</span>
+                      <span className="text-xs text-slate-400 mt-1">Costo empresa: ${tier.cost}</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (() => {
               const menuItems = products.filter(p => p.productType !== 'PRODUCTO');
               const snackItems = products.filter(p => p.productType === 'PRODUCTO');
               const activeList = snackItems.length > 0 && chargeTab === 'SNACKS' ? snackItems : menuItems;
@@ -433,19 +468,16 @@ export const CashierActionPanel: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
                       {activeList.map(product => {
-                        const sub = chargeSubsidized && (user.subsidy?.left ?? 0) > 0;
                         const outOfStock = product.productType === 'PRODUCTO' && product.isTracked && (product.stock ?? 0) <= 0;
                         return (
                         <button
                           key={product.id}
-                          onClick={() => handleCharge(product, sub)}
-                          disabled={loading || outOfStock || (!sub && balanceNum < product.price)}
-                          className={`flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 ${sub ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
+                          onClick={() => handleCharge(product)}
+                          disabled={loading || outOfStock || balanceNum < product.price}
+                          className="flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
                         >
                           <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{product.name}</span>
-                          <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                            {sub ? <span className="text-emerald-600 text-base">Subsidiado</span> : `$${product.price}`}
-                          </span>
+                          <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">${product.price}</span>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {product.category && (
                               <span className="text-xs text-slate-400">{product.category}</span>

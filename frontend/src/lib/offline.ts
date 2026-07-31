@@ -61,9 +61,9 @@ function adjustCachedBalance(branchId: string, userId: string, delta: number) {
 
 // ── Operar (online con fallback a cola offline) ──
 // Devuelve { offline, newBalance } — offline=true si quedó en cola.
-export async function doCharge(branchId: string, comensal: any, amount: number, description?: string, subsidized = false, productId?: string) {
+export async function doCharge(branchId: string, comensal: any, amount: number, description?: string, subsidized = false, productId?: string, subsidyTierId?: string) {
   const clientRef = uid();
-  const payload: any = { qrCode: comensal.qrCode, amount, description, clientRef, subsidized, productId };
+  const payload: any = { qrCode: comensal.qrCode, amount, description, clientRef, subsidized, productId, subsidyTierId };
   // El subsidio SIEMPRE requiere conexión (el servidor valida el límite diario)
   if (subsidized) {
     const { data } = await api.post(`/cashier/branch/${branchId}/charge`, payload);

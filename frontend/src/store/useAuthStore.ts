@@ -15,6 +15,7 @@ interface User {
   employeeNumber?: string;
   phone?: string;
   company?: string;
+  subsidyBalance?: string | null;
 }
 
 export type Panel = 'master' | 'admin' | 'cashier' | 'user';

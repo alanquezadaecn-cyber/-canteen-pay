@@ -67,9 +67,15 @@ model Company {
   // Subsidio de comida: la empresa cubre N comidas/día por comensal (se marcan, no se cobran)
   subsidyEnabled     Boolean @default(false)
   subsidyMealsPerDay Int     @default(1)
-  // Costo fijo que la empresa paga por cada comida subsidiada (independiente del precio
-  // del platillo elegido) — es lo que se usa para el reporte de RH, no el precio de venta.
+  // Costo fijo "legado" (antes de tener niveles) — se conserva para no romper compañías
+  // ya configuradas; el costo real ahora vive en SubsidyTier.
   subsidyMealCost    Decimal @default(75) @db.Decimal(10, 2)
+  // Última vez que RH pagó/liquidó el saldo subsidiado acumulado. El "saldo subsidiado"
+  // que ve cada comensal es la suma de sus comidas subsidiadas DESDE esta fecha (sin IVA:
+  // el comensal ve el costo base, el IVA solo aparece en el reporte que paga RH).
+  subsidySettledAt   DateTime?
+  subsidyIvaRate     Decimal   @default(16) @db.Decimal(5, 2)
+  subsidyTiers       SubsidyTier[]
 
   // Secciones habilitadas por el master admin (inventario, RH, pagos...). Claves ausentes = habilitado.
   enabledFeatures Json?
@@ -335,6 +341,20 @@ model RestockRequest {
   @@index([branchId])
   @@index([productId])
   @@index([status])
+}
+
+// Niveles de subsidio de una empresa (ej. Estándar $75, Especial $120). El cajero,
+// al marcar un cobro como subsidiado, elige uno de estos — no cualquier platillo del menú.
+model SubsidyTier {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  cost      Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
 }
 
 model StockMovement {

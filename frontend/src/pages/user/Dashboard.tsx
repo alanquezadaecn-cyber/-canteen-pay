@@ -6,7 +6,7 @@ import { usePanelBase } from '../../hooks/usePanelBase';
 import api from '../../lib/api';
 import {
   QrCode, Plus, UtensilsCrossed, FileText, Download, Printer,
-  ChevronRight, Receipt, X
+  ChevronRight, Receipt, X, HeartHandshake
 } from 'lucide-react';
 import QRCodeComponent from 'qrcode.react';
 
@@ -42,6 +42,7 @@ export const Dashboard: React.FC = () => {
     // volver a esta pestaña para que siempre se vea el saldo real.
     api.get('/users/me').then(({ data }) => {
       if (data.balance !== undefined) useAuthStore.getState().setBalance(data.balance.toString());
+      if (data.subsidyBalance !== undefined) useAuthStore.getState().patchUser({ subsidyBalance: data.subsidyBalance });
     }).catch(() => {});
   };
 
@@ -176,6 +177,26 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── SALDO SUBSIDIADO (solo si la empresa tiene subsidio activo) ── */}
+      {user?.subsidyBalance !== null && user?.subsidyBalance !== undefined && (
+        <div className="max-w-lg mx-auto px-5 mt-6">
+          <div className="relative bg-gradient-to-br from-violet-600 to-violet-500 rounded-3xl p-5 shadow-lg shadow-violet-500/20 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+                <HeartHandshake className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-violet-100 text-xs font-medium">Saldo subsidiado por tu empresa</p>
+                <p className="text-white text-2xl font-extrabold tracking-tight">
+                  ${parseFloat(user.subsidyBalance || '0').toFixed(2)} <span className="text-sm font-semibold text-violet-100">MXN</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HISTORIAL ── */}
       <div className="max-w-lg mx-auto px-5 mt-8">

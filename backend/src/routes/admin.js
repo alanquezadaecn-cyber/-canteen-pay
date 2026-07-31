@@ -72,9 +72,14 @@ router.get('/attendance', async (req, res) => {
 router.get('/subsidy-config', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1, mealCost: '75.00' });
-    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyMealCost: true } });
-    res.json({ enabled: !!c?.subsidyEnabled, mealsPerDay: c?.subsidyMealsPerDay ?? 1, mealCost: (c?.subsidyMealCost ?? 75).toString() });
+    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1, ivaRate: '16', settledAt: null });
+    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyIvaRate: true, subsidySettledAt: true } });
+    res.json({
+      enabled: !!c?.subsidyEnabled,
+      mealsPerDay: c?.subsidyMealsPerDay ?? 1,
+      ivaRate: (c?.subsidyIvaRate ?? 16).toString(),
+      settledAt: c?.subsidySettledAt || null
+    });
   } catch (err) {
     res.status(500).json({ error: 'Error' });
   }
@@ -85,13 +90,13 @@ router.put('/subsidy-config', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
     if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
-    const { enabled, mealsPerDay, mealCost } = req.body;
+    const { enabled, mealsPerDay, ivaRate } = req.body;
     await prisma.company.update({
       where: { id: companyId },
       data: {
         ...(enabled !== undefined && { subsidyEnabled: !!enabled }),
         ...(mealsPerDay !== undefined && { subsidyMealsPerDay: Math.max(0, parseInt(mealsPerDay) || 0) }),
-        ...(mealCost !== undefined && { subsidyMealCost: Math.max(0, parseFloat(mealCost) || 0) })
+        ...(ivaRate !== undefined && { subsidyIvaRate: Math.max(0, parseFloat(ivaRate) || 0) })
       }
     });
     res.json({ success: true });
@@ -101,18 +106,99 @@ router.put('/subsidy-config', async (req, res) => {
   }
 });
 
+// ── Niveles de subsidio (ej. Estándar $75, Especial $120) ──
+router.get('/subsidy-tiers', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json([]);
+    const tiers = await prisma.subsidyTier.findMany({ where: { companyId, isActive: true }, orderBy: { cost: 'asc' } });
+    res.json(tiers.map(t => ({ ...t, cost: t.cost.toString() })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener niveles de subsidio' });
+  }
+});
+
+router.post('/subsidy-tiers', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const { name, cost } = req.body;
+    if (!name?.trim() || !cost || parseFloat(cost) <= 0) {
+      return res.status(400).json({ error: 'Nombre y costo válido requeridos' });
+    }
+    const tier = await prisma.subsidyTier.create({ data: { companyId, name: name.trim(), cost: parseFloat(cost) } });
+    res.status(201).json({ ...tier, cost: tier.cost.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear nivel' });
+  }
+});
+
+router.put('/subsidy-tiers/:id', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    const tier = await prisma.subsidyTier.findUnique({ where: { id: req.params.id } });
+    if (!tier || tier.companyId !== companyId) return res.status(404).json({ error: 'Nivel no encontrado' });
+    const { name, cost, isActive } = req.body;
+    const updated = await prisma.subsidyTier.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name !== undefined && { name: name.trim() }),
+        ...(cost !== undefined && { cost: parseFloat(cost) }),
+        ...(isActive !== undefined && { isActive: !!isActive })
+      }
+    });
+    res.json({ ...updated, cost: updated.cost.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar nivel' });
+  }
+});
+
+router.delete('/subsidy-tiers/:id', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    const tier = await prisma.subsidyTier.findUnique({ where: { id: req.params.id } });
+    if (!tier || tier.companyId !== companyId) return res.status(404).json({ error: 'Nivel no encontrado' });
+    await prisma.subsidyTier.update({ where: { id: req.params.id }, data: { isActive: false } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar nivel' });
+  }
+});
+
+// Marca el saldo subsidiado acumulado como pagado/liquidado por RH: a partir de ahora,
+// el "saldo subsidiado" de cada comensal (y el reporte) arrancan en $0 de nuevo.
+router.put('/subsidy-settle', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const company = await prisma.company.update({ where: { id: companyId }, data: { subsidySettledAt: new Date() } });
+    res.json({ success: true, settledAt: company.subsidySettledAt });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al liquidar el saldo' });
+  }
+});
+
 // GET reporte de subsidio para RH: cuánto se consumió por subsidio (lo que la empresa paga al proveedor)
 router.get('/subsidy-report', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json({ total: 0, count: 0, byUser: [], branches: [] });
+    if (!companyId) return res.json({ total: 0, subtotal: '0.00', iva: '0.00', ivaRate: '16', count: 0, byUser: [], branches: [] });
+
+    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyIvaRate: true, subsidySettledAt: true } });
+    const ivaRate = parseFloat(company?.subsidyIvaRate ?? 16);
 
     const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true } });
     const branchIds = branches.map(b => b.id);
     const bmap = Object.fromEntries(branches.map(b => [b.id, b.name]));
 
-    // Rango de fechas (default: mes actual)
-    const from = req.query.from ? new Date(String(req.query.from)) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    // Rango de fechas: por defecto, desde el último corte pagado (o el mes actual si nunca se ha liquidado)
+    const defaultFrom = company?.subsidySettledAt || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const from = req.query.from ? new Date(String(req.query.from)) : defaultFrom;
     from.setHours(0, 0, 0, 0);
     const to = req.query.to ? new Date(String(req.query.to)) : new Date();
     to.setHours(23, 59, 59, 999);
@@ -132,18 +218,20 @@ router.get('/subsidy-report', async (req, res) => {
         userId: { in: users.map(u => u.id) },
         createdAt: { gte: from, lte: to }
       },
-      select: { userId: true, amount: true }
+      select: { userId: true, amount: true, description: true }
     });
 
-    let total = 0;
+    let subtotal = 0;
     const perUser = {};
     for (const t of txns) {
       const amt = parseFloat(t.amount);
-      total += amt;
+      subtotal += amt;
       if (!perUser[t.userId]) perUser[t.userId] = { count: 0, amount: 0 };
       perUser[t.userId].count++;
       perUser[t.userId].amount += amt;
     }
+    const iva = subtotal * (ivaRate / 100);
+    const total = subtotal + iva;
 
     const byUser = Object.entries(perUser).map(([uid, v]) => ({
       name: umap[uid]?.name || '—',
@@ -154,9 +242,13 @@ router.get('/subsidy-report', async (req, res) => {
     })).sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
 
     res.json({
+      subtotal: subtotal.toFixed(2),
+      iva: iva.toFixed(2),
+      ivaRate: ivaRate.toString(),
       total: total.toFixed(2),
       count: txns.length,
       from: from.toISOString(), to: to.toISOString(),
+      settledAt: company?.subsidySettledAt || null,
       branches, byUser
     });
   } catch (err) {
