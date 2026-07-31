@@ -15,6 +15,11 @@ const __dirname = dirname(__filename);
 
 const app = express();
 
+// Railway pone la app detrás de un proxy: sin esto, express-rate-limit no puede leer
+// la IP real del cliente en X-Forwarded-For y agrupa a TODOS los usuarios bajo el mismo
+// límite compartido (bloqueo global tras pocos intentos). Solo confiamos en el primer hop.
+app.set('trust proxy', 1);
+
 // Cabeceras de seguridad básicas (X-Frame-Options, X-Content-Type-Options, HSTS...).
 // CSP queda desactivado a propósito: el frontend usa estilos/scripts inline y SDKs
 // externos (MercadoPago) que romperían sin una migración cuidadosa, staging-first.
