@@ -170,7 +170,6 @@ import reportRoutes from './routes/reports.js';
 import userMgmtRoutes from './routes/user-management.js';
 import cashierSessionRoutes from './routes/cashier-sessions.js';
 import masterAdminRoutes from './routes/master-admin.js';
-import initRoutes from './routes/init.js';
 import inventoryRoutes from './routes/inventory.js';
 import brandingRoutes from './routes/branding.js';
 
@@ -186,7 +185,6 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/user-management', userMgmtRoutes);
 app.use('/api/cashier-sessions', cashierSessionRoutes);
 app.use('/api/master-admin', masterAdminRoutes);
-app.use('/api/init', initRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/branding', brandingRoutes);
 

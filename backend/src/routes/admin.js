@@ -16,6 +16,15 @@ async function adminCompanyId(req) {
   return admin?.branch?.companyId || null;
 }
 
+// Trae un usuario SOLO si pertenece a una sucursal de la empresa del admin autenticado.
+// Evita que un admin lea/edite/ajuste saldo de usuarios de otras empresas (IDOR).
+async function userInCompany(userId, companyId) {
+  if (!companyId) return null;
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { branch: true } });
+  if (!user || user.branch?.companyId !== companyId) return null;
+  return user;
+}
+
 // GET asistencia (entradas/salidas) por sucursal y día — para el admin
 router.get('/attendance', async (req, res) => {
   try {
@@ -267,10 +276,13 @@ router.get('/users', async (req, res) => {
       branchIds = branches.map(b => b.id);
     }
 
+    // Filtro por sucursal específica: solo se acepta si es una sucursal DE LA PROPIA empresa
+    // (si no, se ignora el parámetro en vez de dejar ver sucursales ajenas).
+    const requestedBranchId = branchId && branchIds.includes(String(branchId)) ? String(branchId) : null;
+
     const where = {
       email: { notIn: masterEmails },
-      // Filtro por sucursal específica, o por todas las de la empresa
-      ...(branchId ? { branchId: String(branchId) } : (branchIds.length ? { branchId: { in: branchIds } } : {})),
+      ...(requestedBranchId ? { branchId: requestedBranchId } : (branchIds.length ? { branchId: { in: branchIds } } : {})),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -324,6 +336,12 @@ router.get('/users', async (req, res) => {
 router.get('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const companyId = await adminCompanyId(req);
+    const owned = await userInCompany(id, companyId);
+    if (!owned) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -431,6 +449,12 @@ router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
     const { name, email, role, employeeNumber, phone, isActive } = req.body;
 
+    const companyId = await adminCompanyId(req);
+    const owned = await userInCompany(id, companyId);
+    if (!owned) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     // Si cambia el email, verificar que no exista en otro usuario
     if (email) {
       const clash = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase(), id: { not: id } } });
@@ -483,46 +507,50 @@ router.put('/users/:id/balance', async (req, res) => {
       return res.status(400).json({ error: 'Tipo debe ser ADD o SUBTRACT' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: { balance: true, name: true }
-    });
-
-    if (!user) {
+    const companyId = await adminCompanyId(req);
+    const owned = await userInCompany(id, companyId);
+    if (!owned) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     const amountNum = parseFloat(amount);
-    const balanceBefore = parseFloat(user.balance);
-    const balanceAfter = type === 'ADD'
-      ? balanceBefore + amountNum
-      : balanceBefore - amountNum;
 
-    if (balanceAfter < 0) {
-      return res.status(400).json({ error: 'Saldo resultante no puede ser negativo' });
+    // Ajuste atómico a nivel de BD: el WHERE con balance >= amount para SUBTRACT
+    // hace que, si dos ajustes concurrentes compiten por el mismo usuario, solo
+    // el que realmente tiene saldo disponible en ese instante logre aplicarse.
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const { count } = await tx.user.updateMany({
+          where: { id, ...(type === 'SUBTRACT' ? { balance: { gte: amountNum } } : {}) },
+          data: { balance: { [type === 'ADD' ? 'increment' : 'decrement']: amountNum } }
+        });
+        if (count === 0) throw new Error('INSUFFICIENT_BALANCE');
+
+        const updatedUser = await tx.user.findUnique({ where: { id }, select: { balance: true } });
+        const balanceAfter = parseFloat(updatedUser.balance);
+
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: id,
+            type: type === 'ADD' ? 'RECHARGE' : 'REFUND',
+            amount: amountNum,
+            balanceBefore: balanceAfter + (type === 'ADD' ? -amountNum : amountNum),
+            balanceAfter,
+            description: `[AJUSTE ADMIN] ${reason}`,
+            cashierId: req.userId,
+            paymentMethod: null
+          }
+        });
+
+        return { ...transaction, balanceAfter };
+      });
+    } catch (txErr) {
+      if (txErr.message === 'INSUFFICIENT_BALANCE') {
+        return res.status(400).json({ error: 'Saldo resultante no puede ser negativo' });
+      }
+      throw txErr;
     }
-
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id },
-        data: { balance: balanceAfter }
-      });
-
-      const transaction = await tx.transaction.create({
-        data: {
-          userId: id,
-          type: type === 'ADD' ? 'RECHARGE' : 'REFUND',
-          amount: amountNum,
-          balanceBefore: balanceBefore,
-          balanceAfter: balanceAfter,
-          description: `[AJUSTE ADMIN] ${reason}`,
-          cashierId: req.userId,
-          paymentMethod: null
-        }
-      });
-
-      return transaction;
-    });
 
     res.json({
       success: true,
@@ -532,8 +560,8 @@ router.put('/users/:id/balance', async (req, res) => {
         balanceBefore: result.balanceBefore.toString(),
         balanceAfter: result.balanceAfter.toString()
       },
-      newBalance: balanceAfter.toFixed(2),
-      userName: user.name
+      newBalance: result.balanceAfter.toFixed(2),
+      userName: owned.name
     });
   } catch (err) {
     console.error(err);

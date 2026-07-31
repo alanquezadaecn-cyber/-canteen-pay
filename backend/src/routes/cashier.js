@@ -8,9 +8,41 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['CASHIER', 'ADMIN']));
 
+// Verifica que el cajero/admin autenticado tenga permiso para operar sobre branchId.
+// CASHIER: debe ser exactamente su propia sucursal. ADMIN: la sucursal debe pertenecer
+// a su misma empresa. Sin este chequeo, cualquier cuenta válida podría leer o mover
+// saldo de comensales de OTRAS sucursales/empresas con solo cambiar el branchId en la URL.
+async function assertBranchAccess(req, branchId) {
+  const requester = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
+  if (!requester) return false;
+  if (requester.role === 'CASHIER') {
+    return requester.branchId === branchId;
+  }
+  if (requester.role === 'ADMIN') {
+    let companyId = req.userCompanyId;
+    if (!companyId) {
+      const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+      companyId = admin?.branch?.companyId || null;
+    }
+    if (!companyId) return false;
+    const targetBranch = await prisma.branch.findUnique({ where: { id: branchId }, select: { companyId: true } });
+    return !!targetBranch && targetBranch.companyId === companyId;
+  }
+  return false;
+}
+
+async function requireBranchAccess(req, res, branchId) {
+  if (!(await assertBranchAccess(req, branchId))) {
+    res.status(403).json({ error: 'No autorizado para esta sucursal' });
+    return false;
+  }
+  return true;
+}
+
 // GET branch info for cashier
 router.get('/branch/:branchId', async (req, res) => {
   try {
+    if (!(await requireBranchAccess(req, res, req.params.branchId))) return;
     const branch = await prisma.branch.findUnique({
       where: { id: req.params.branchId },
       select: {
@@ -36,6 +68,7 @@ router.get('/branch/:branchId', async (req, res) => {
 router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
   try {
     const { branchId, qrCode } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
     const term = decodeURIComponent(qrCode).trim();
     const select = {
       id: true, name: true, email: true, branchId: true,
@@ -123,13 +156,7 @@ router.post('/branch/:branchId/register', async (req, res) => {
     }
 
     // Validar que el cajero pertenece a esa sucursal (admin puede en cualquiera de su empresa)
-    const cashier = await prisma.user.findUnique({
-      where: { id: req.userId },
-      select: { branchId: true, role: true }
-    });
-    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
-      return res.status(403).json({ error: 'No puedes registrar en otra sucursal' });
-    }
+    if (!(await requireBranchAccess(req, res, branchId))) return;
 
     const branch = await prisma.branch.findUnique({ where: { id: branchId } });
     if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
@@ -210,12 +237,7 @@ router.get('/branch/:branchId/users', async (req, res) => {
     const { branchId } = req.params;
     const { search } = req.query;
 
-    const cashier = await prisma.user.findUnique({
-      where: { id: req.userId }, select: { branchId: true, role: true }
-    });
-    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
-      return res.status(403).json({ error: 'No autorizado' });
-    }
+    if (!(await requireBranchAccess(req, res, branchId))) return;
 
     const where = {
       branchId,
@@ -249,12 +271,7 @@ router.post('/branch/:branchId/bulk-import', async (req, res) => {
     const { branchId } = req.params;
     const { users } = req.body;
 
-    const cashier = await prisma.user.findUnique({
-      where: { id: req.userId }, select: { branchId: true, role: true }
-    });
-    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
-      return res.status(403).json({ error: 'No puedes importar en otra sucursal' });
-    }
+    if (!(await requireBranchAccess(req, res, branchId))) return;
 
     const { bulkImportComensales } = await import('../lib/bulkImport.js');
     const { httpError, result } = await bulkImportComensales(branchId, users);
@@ -271,6 +288,7 @@ router.post('/branch/:branchId/bulk-import', async (req, res) => {
 router.post('/branch/:branchId/attendance/scan', async (req, res) => {
   try {
     const { branchId } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
     const term = (req.body.qrCode || '').toString().replace(/^#/, '').trim();
     if (!term) return res.status(400).json({ error: 'QR o número requerido' });
 
@@ -320,6 +338,7 @@ router.post('/branch/:branchId/attendance/scan', async (req, res) => {
 router.get('/branch/:branchId/attendance', async (req, res) => {
   try {
     const { branchId } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
     const day = req.query.date ? new Date(String(req.query.date)) : new Date();
     day.setHours(0, 0, 0, 0);
     const next = new Date(day); next.setDate(next.getDate() + 1);
@@ -349,6 +368,7 @@ router.get('/branch/:branchId/attendance', async (req, res) => {
 // LÍMITE de comensales de la sucursal (uso vs máximo del plan)
 router.get('/branch/:branchId/limit', async (req, res) => {
   try {
+    if (!(await requireBranchAccess(req, res, req.params.branchId))) return;
     const info = await branchUserLimit(req.params.branchId);
     res.json(info);
   } catch (err) {
@@ -362,12 +382,7 @@ router.put('/branch/:branchId/users/:userId', async (req, res) => {
     const { branchId, userId } = req.params;
     const { name, phone, email, employeeNumber, isActive } = req.body;
 
-    const cashier = await prisma.user.findUnique({
-      where: { id: req.userId }, select: { branchId: true, role: true }
-    });
-    if (cashier?.role === 'CASHIER' && cashier.branchId !== branchId) {
-      return res.status(403).json({ error: 'No autorizado' });
-    }
+    if (!(await requireBranchAccess(req, res, branchId))) return;
 
     // El comensal debe pertenecer a esta sucursal
     const target = await prisma.user.findUnique({ where: { id: userId }, select: { branchId: true, role: true } });
@@ -403,6 +418,7 @@ router.put('/branch/:branchId/users/:userId', async (req, res) => {
 router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
     const { qrCode, amount, description, clientRef, subsidized } = req.body;
     const amountDecimal = parseFloat(amount);
 
@@ -465,27 +481,42 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 
       const t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
-      const usedToday = await prisma.transaction.count({
-        where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
-      });
-      if (usedToday >= limit) {
-        return res.status(400).json({ error: `Ya usó sus ${limit} comida(s) subsidiada(s) de hoy` });
+      const balanceNow = parseFloat(user.balance);
+
+      // Lock por fila del usuario: serializa cobros subsidiados concurrentes del MISMO
+      // comensal para que el conteo de "usadas hoy" no pueda leerse dos veces en paralelo
+      // y dejar pasar más comidas subsidiadas de las que el plan permite.
+      let subsidyResult;
+      try {
+        subsidyResult = await prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;
+          const usedToday = await tx.transaction.count({
+            where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
+          });
+          if (usedToday >= limit) throw new Error('SUBSIDY_LIMIT_REACHED');
+
+          const created = await tx.transaction.create({
+            data: {
+              userId: user.id, type: 'PURCHASE', amount: amountDecimal,
+              balanceBefore: balanceNow, balanceAfter: balanceNow,
+              description: `Subsidiado: ${description || 'Comida'}`,
+              cashierId: req.userId, isSubsidized: true, reference: clientRef || null
+            }
+          });
+          return { created, subsidyLeft: limit - usedToday - 1 };
+        });
+      } catch (txErr) {
+        if (txErr.message === 'SUBSIDY_LIMIT_REACHED') {
+          return res.status(400).json({ error: `Ya usó sus ${limit} comida(s) subsidiada(s) de hoy` });
+        }
+        throw txErr;
       }
 
-      const balanceNow = parseFloat(user.balance);
-      const tx = await prisma.transaction.create({
-        data: {
-          userId: user.id, type: 'PURCHASE', amount: amountDecimal,
-          balanceBefore: balanceNow, balanceAfter: balanceNow,
-          description: `Subsidiado: ${description || 'Comida'}`,
-          cashierId: req.userId, isSubsidized: true, reference: clientRef || null
-        }
-      });
       return res.json({
         success: true, subsidized: true,
-        transaction: { ...tx, amount: tx.amount.toString() },
+        transaction: { ...subsidyResult.created, amount: subsidyResult.created.amount.toString() },
         newBalance: balanceNow.toFixed(2), userName: user.name,
-        subsidyLeft: limit - usedToday - 1
+        subsidyLeft: subsidyResult.subsidyLeft
       });
     }
 
@@ -519,31 +550,43 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const balanceBefore = parseFloat(user.balance);
-      const newBalance = balanceBefore - amountDecimal;
+    // Débito atómico: el WHERE con balance >= amount evita que dos cobros concurrentes
+    // al mismo comensal se pisen (lost update) y dejen un saldo incorrecto.
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const { count } = await tx.user.updateMany({
+          where: { id: user.id, balance: { gte: amountDecimal } },
+          data: { balance: { decrement: amountDecimal } }
+        });
+        if (count === 0) throw new Error('INSUFFICIENT_BALANCE');
 
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: { balance: newBalance }
+        const updatedUser = await tx.user.findUnique({ where: { id: user.id }, select: { balance: true } });
+        const newBalance = parseFloat(updatedUser.balance);
+        const balanceBefore = newBalance + amountDecimal;
+
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            type: 'PURCHASE',
+            amount: amountDecimal,
+            balanceBefore,
+            balanceAfter: newBalance,
+            description: description || `Compra en ${new Date().toLocaleString('es-MX')}`,
+            cashierId: req.userId,
+            paymentMethod: 'CASH',
+            reference: clientRef || null
+          }
+        });
+
+        return { transaction, newBalance };
       });
-
-      const transaction = await tx.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'PURCHASE',
-          amount: amountDecimal,
-          balanceBefore: balanceBefore,
-          balanceAfter: newBalance,
-          description: description || `Compra en ${new Date().toLocaleString('es-MX')}`,
-          cashierId: req.userId,
-          paymentMethod: 'CASH',
-          reference: clientRef || null
-        }
-      });
-
-      return { transaction, newBalance };
-    });
+    } catch (txErr) {
+      if (txErr.message === 'INSUFFICIENT_BALANCE') {
+        return res.status(400).json({ error: 'Saldo insuficiente' });
+      }
+      throw txErr;
+    }
 
     // Email + alerta saldo bajo (no bloquean la respuesta)
     const fullUser = await prisma.user.findUnique({
@@ -590,6 +633,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
 router.post('/branch/:branchId/recharge', async (req, res) => {
   try {
     const { branchId } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
     const { qrCode, amount, clientRef } = req.body;
     const amountDecimal = parseFloat(amount);
 
@@ -632,14 +676,14 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
       return res.status(403).json({ error: 'Usuario inactivo' });
     }
 
+    // Crédito atómico (increment a nivel de BD) para no perder recargas concurrentes.
     const result = await prisma.$transaction(async (tx) => {
-      const balanceBefore = parseFloat(user.balance);
-      const newBalance = balanceBefore + amountDecimal;
-
-      await tx.user.update({
+      const updatedUser = await tx.user.update({
         where: { id: user.id },
-        data: { balance: newBalance }
+        data: { balance: { increment: amountDecimal } }
       });
+      const newBalance = parseFloat(updatedUser.balance);
+      const balanceBefore = newBalance - amountDecimal;
 
       const recharge = await tx.recharge.create({
         data: {
@@ -683,190 +727,6 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
     res.json({
       success: true,
       recharge: result.recharge,
-      newBalance: result.newBalance.toFixed(2),
-      userName: user.name
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al procesar recarga' });
-  }
-});
-
-// Endpoints legados (sin filtro por sucursal)
-router.get('/scan/:qrCode', async (req, res) => {
-  try {
-    const { qrCode } = req.params;
-
-    const user = await prisma.user.findUnique({
-      where: { qrCode },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        branchId: true,
-        employeeNumber: true,
-        phone: true,
-        balance: true,
-        isActive: true
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ error: 'Usuario inactivo' });
-    }
-
-    res.json({
-      ...user,
-      balance: user.balance.toString()
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al escanear QR' });
-  }
-});
-
-router.post('/charge', async (req, res) => {
-  try {
-    const { qrCode, amount, description } = req.body;
-    const amountDecimal = parseFloat(amount);
-
-    if (!qrCode || !amountDecimal || amountDecimal <= 0) {
-      return res.status(400).json({ error: 'QR y monto válido requeridos' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { qrCode },
-      select: { id: true, balance: true, name: true, isActive: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ error: 'Usuario inactivo' });
-    }
-
-    const balanceDecimal = parseFloat(user.balance);
-    if (balanceDecimal < amountDecimal) {
-      return res.status(400).json({
-        error: 'Saldo insuficiente',
-        currentBalance: balanceDecimal.toFixed(2),
-        required: amountDecimal.toFixed(2)
-      });
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      const balanceBefore = parseFloat(user.balance);
-      const newBalance = balanceBefore - amountDecimal;
-
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: { balance: newBalance },
-        select: { balance: true }
-      });
-
-      const transaction = await tx.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'PURCHASE',
-          amount: amountDecimal,
-          balanceBefore: balanceBefore,
-          balanceAfter: newBalance,
-          description: description || `Compra en comedor - ${new Date().toLocaleString('es-MX')}`,
-          cashierId: req.userId,
-          paymentMethod: 'CASH'
-        }
-      });
-
-      return { transaction, newBalance };
-    });
-
-    res.json({
-      success: true,
-      transaction: {
-        ...result.transaction,
-        amount: result.transaction.amount.toString(),
-        balanceBefore: result.transaction.balanceBefore.toString(),
-        balanceAfter: result.transaction.balanceAfter.toString()
-      },
-      newBalance: result.newBalance.toFixed(2),
-      userName: user.name
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al procesar pago' });
-  }
-});
-
-router.post('/recharge', async (req, res) => {
-  try {
-    const { qrCode, amount } = req.body;
-    const amountDecimal = parseFloat(amount);
-
-    if (!qrCode || !amountDecimal || amountDecimal <= 0) {
-      return res.status(400).json({ error: 'QR y monto válido requeridos' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { qrCode },
-      select: { id: true, balance: true, name: true, isActive: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ error: 'Usuario inactivo' });
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      const balanceBefore = parseFloat(user.balance);
-      const newBalance = balanceBefore + amountDecimal;
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: { balance: newBalance }
-      });
-
-      const recharge = await tx.recharge.create({
-        data: {
-          userId: user.id,
-          amount: amountDecimal,
-          paymentMethod: 'CASH',
-          status: 'COMPLETED',
-          reference: `CASH-${Date.now()}`
-        }
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'RECHARGE',
-          amount: amountDecimal,
-          balanceBefore: balanceBefore,
-          balanceAfter: newBalance,
-          description: `Recarga en efectivo - ${new Date().toLocaleString('es-MX')}`,
-          cashierId: req.userId,
-          paymentMethod: 'CASH',
-          reference: recharge.id
-        }
-      });
-
-      return { recharge, newBalance };
-    });
-
-    res.json({
-      success: true,
-      recharge: {
-        ...result.recharge,
-        amount: result.recharge.amount.toString()
-      },
       newBalance: result.newBalance.toFixed(2),
       userName: user.name
     });

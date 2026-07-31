@@ -27,6 +27,15 @@ async function resolveCompanyId(req) {
   return admin?.branch?.companyId || null;
 }
 
+// Trae una sucursal SOLO si pertenece a la empresa del admin autenticado.
+// Sin esto, cualquier admin podía leer/editar sucursales (y sus cajeros/comensales) de otras empresas.
+async function branchInCompany(branchId, companyId) {
+  if (!companyId) return null;
+  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  if (!branch || branch.companyId !== companyId) return null;
+  return branch;
+}
+
 // GET all branches (scoped a la empresa del admin) + info de plan
 router.get('/', async (req, res) => {
   try {
@@ -75,24 +84,26 @@ router.get('/plan-info', async (req, res) => {
 // GET single branch with stats
 router.get('/:id', async (req, res) => {
   try {
-    const branch = await prisma.branch.findUnique({
-      where: { id: req.params.id },
-      include: {
-        cashiers: {
-          select: { id: true, name: true, email: true, isActive: true }
-        },
-        users: {
-          where: { role: 'USER' },
-          select: { id: true, name: true, email: true, balance: true, isActive: true }
-        }
-      }
-    });
-
-    if (!branch) {
+    const companyId = await resolveCompanyId(req);
+    const owned = await branchInCompany(req.params.id, companyId);
+    if (!owned) {
       return res.status(404).json({ error: 'Sucursal no encontrada' });
     }
 
-    res.json(branch);
+    // Los cajeros reales son User con role:CASHIER (la relación Branch.cashiers
+    // apunta a un modelo legado que ya no se usa para login).
+    const [cashiers, users] = await Promise.all([
+      prisma.user.findMany({
+        where: { branchId: owned.id, role: 'CASHIER' },
+        select: { id: true, name: true, email: true, isActive: true }
+      }),
+      prisma.user.findMany({
+        where: { branchId: owned.id, role: 'USER' },
+        select: { id: true, name: true, email: true, balance: true, isActive: true }
+      })
+    ]);
+
+    res.json({ ...owned, cashiers, users: users.map(u => ({ ...u, balance: u.balance.toString() })) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener sucursal' });
@@ -183,7 +194,8 @@ router.put('/:id', async (req, res) => {
   try {
     const { name, location, isActive } = req.body;
 
-    const current = await prisma.branch.findUnique({ where: { id: req.params.id } });
+    const companyId = await resolveCompanyId(req);
+    const current = await branchInCompany(req.params.id, companyId);
     if (!current) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
     let slugUpdate = {};
@@ -222,23 +234,34 @@ router.post('/:branchId/cashiers', async (req, res) => {
       return res.status(400).json({ error: 'Email y contraseña requeridos' });
     }
 
-    const existingCashier = await prisma.cashier.findUnique({
-      where: { email }
-    });
+    const companyId = await resolveCompanyId(req);
+    const branch = await branchInCompany(req.params.branchId, companyId);
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
-    if (existingCashier) {
+    // El cajero se guarda como User con role:CASHIER (igual que en el resto del
+    // sistema) — el modelo "Cashier" es legado y el login nunca lo consulta.
+    const existingUser = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (existingUser) {
       return res.status(409).json({ error: 'Email ya está en uso' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const maxCode = await prisma.user.aggregate({ _max: { employeeNumber: true } });
+    let nextNum = 10001;
+    const maxStr = maxCode._max?.employeeNumber;
+    if (maxStr && /^\d+$/.test(maxStr)) nextNum = parseInt(maxStr) + 1;
 
-    const cashier = await prisma.cashier.create({
+    const cashier = await prisma.user.create({
       data: {
         name: name || email.split('@')[0],
-        email,
+        email: email.trim().toLowerCase(),
         password: hashedPassword,
-        phone: phone || null,
-        branchId: req.params.branchId
+        role: 'CASHIER',
+        employeeNumber: String(nextNum),
+        phone: phone || '+52 0000-0000',
+        qrCode: randomUUID(),
+        branchId: branch.id,
+        isActive: true
       }
     });
 
@@ -263,8 +286,12 @@ router.post('/:branchId/users', async (req, res) => {
       return res.status(400).json({ error: 'Email y contraseña requeridos' });
     }
 
+    const companyId = await resolveCompanyId(req);
+    const branch = await branchInCompany(req.params.branchId, companyId);
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: email.trim().toLowerCase() }
     });
 
     if (existingUser) {
@@ -277,12 +304,12 @@ router.post('/:branchId/users', async (req, res) => {
     const user = await prisma.user.create({
       data: {
         name: name || email.split('@')[0],
-        email,
+        email: email.trim().toLowerCase(),
         password: hashedPassword,
         employeeNumber: employeeNumber || `EMP-${Date.now()}`,
         phone: phone || '+52 5555-0000',
         qrCode,
-        branchId: req.params.branchId,
+        branchId: branch.id,
         role: 'USER'
       }
     });

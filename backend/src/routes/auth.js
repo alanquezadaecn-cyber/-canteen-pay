@@ -210,63 +210,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Debug endpoint
-router.get('/test-prisma', async (req, res) => {
-  try {
-    console.log('🧪 Testing Prisma connection...');
-    const user = await prisma.user.findFirst();
-    console.log('✅ Prisma works, found user:', user?.email);
-    res.json({ success: true, userFound: !!user });
-  } catch (err) {
-    console.error('❌ Prisma error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Debug endpoint - show user
-router.get('/test-user/:email', async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email: req.params.email }
-    });
-    if (!user) {
-      return res.json({ found: false });
-    }
-    res.json({
-      found: true,
-      email: user.email,
-      name: user.name,
-      passwordType: typeof user.password,
-      passwordLength: user.password?.length || 0,
-      passwordSample: user.password?.substring(0, 20) || 'NONE'
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Debug endpoint - test bcrypt
-router.post('/test-bcrypt', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      return res.json({ success: false, message: 'User not found' });
-    }
-
-    const match = await bcrypt.compare(password, user.password);
-    res.json({
-      email: user.email,
-      passwordStored: user.password?.substring(0, 30) + '...',
-      passwordProvided: password,
-      matchResult: match
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message, stack: err.stack });
-  }
-});
-
 router.post('/refresh', (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -284,47 +227,6 @@ router.post('/refresh', (req, res) => {
     });
   } catch (err) {
     return res.status(401).json({ error: 'Refresh token inválido' });
-  }
-});
-
-// Create admin user endpoint (temporal para setup)
-router.post('/admin/create-user', async (req, res) => {
-  try {
-    const { email, password, name, role } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y password requeridos' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const qrCode = QRService.generateUniqueCode();
-
-    const user = await prisma.user.create({
-      data: {
-        name: name || email.split('@')[0],
-        email,
-        password: hashedPassword,
-        employeeNumber: String(Date.now()).slice(-5),
-        phone: '+52 5555-0000',
-        role: role || 'ADMIN',
-        balance: 0,
-        qrCode,
-        isActive: true
-      }
-    });
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      }
-    });
-  } catch (err) {
-    console.error('❌ Error creando usuario:', err.message);
-    res.status(500).json({ error: err.message });
   }
 });
 

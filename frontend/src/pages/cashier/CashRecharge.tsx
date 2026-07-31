@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
+import { useAuthStore } from '../../store/useAuthStore';
 import { AlertCircle, CheckCircle, DollarSign, Search, TrendingUp, Briefcase, Printer } from 'lucide-react';
 import { printTicket, TicketData } from '../../lib/printTicket';
 
@@ -25,6 +26,8 @@ interface SuccessData {
 
 export const CashRecharge: React.FC = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuthStore();
+  const branchId = authUser?.branchId || '';
   const [qrOrCode, setQrOrCode] = useState('');
   const [amount, setAmount] = useState('');
   const [user, setUser] = useState<UserData | null>(null);
@@ -41,7 +44,7 @@ export const CashRecharge: React.FC = () => {
     setLoading(true);
 
     try {
-      const { data } = await api.get(`/cashier/scan/${qrOrCode}`);
+      const { data } = await api.get(`/cashier/branch/${branchId}/scan/${encodeURIComponent(qrOrCode)}`);
       setUser(data);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Usuario no encontrado');
@@ -63,7 +66,7 @@ export const CashRecharge: React.FC = () => {
     setCharging(true);
     const balanceBefore = user?.balance || '0';
     try {
-      const { data } = await api.post('/cashier/recharge', {
+      const { data } = await api.post(`/cashier/branch/${branchId}/recharge`, {
         qrCode: qrOrCode,
         amount: amountNum
       });
