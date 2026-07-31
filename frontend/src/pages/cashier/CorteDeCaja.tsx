@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed, Play, Square, Clock } from 'lucide-react';
+import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -52,12 +52,7 @@ export const CorteDeCaja: React.FC = () => {
   const [data, setData] = useState<CorteData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
-  const [shiftBusy, setShiftBusy] = useState(false);
-  const [shiftError, setShiftError] = useState('');
-  const [closeNote, setCloseNote] = useState('');
-  const [showCloseForm, setShowCloseForm] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -71,46 +66,16 @@ export const CorteDeCaja: React.FC = () => {
     }
   };
 
+  // La apertura/cierre de barra se hace desde Inicio; aquí solo se lee el historial de hoy.
   const loadShifts = async () => {
     if (!branchId) return;
     try {
       const { data: today } = await api.get(`/cashier-sessions/today/${branchId}`);
       setTodayShifts(today);
     } catch (err) { console.error(err); }
-    try {
-      const { data: current } = await api.get(`/cashier-sessions/current/${branchId}`);
-      setOpenShift(current);
-    } catch {
-      setOpenShift(null);
-    }
   };
 
   useEffect(() => { load(); loadShifts(); }, [branchId]);
-
-  const openShiftAction = async () => {
-    if (!branchId) return;
-    setShiftBusy(true); setShiftError('');
-    try {
-      await api.post('/cashier-sessions/open', { branchId });
-      await loadShifts();
-    } catch (err: any) {
-      setShiftError(err.response?.data?.error || 'Error al abrir turno');
-    } finally { setShiftBusy(false); }
-  };
-
-  const closeShiftAction = async () => {
-    if (!openShift) return;
-    setShiftBusy(true); setShiftError('');
-    try {
-      await api.post(`/cashier-sessions/${openShift.id}/close`, { notes: closeNote || undefined });
-      setShowCloseForm(false);
-      setCloseNote('');
-      await loadShifts();
-      await load();
-    } catch (err: any) {
-      setShiftError(err.response?.data?.error || 'Error al cerrar turno');
-    } finally { setShiftBusy(false); }
-  };
 
   const handlePrint = () => window.print();
 
@@ -155,82 +120,33 @@ export const CorteDeCaja: React.FC = () => {
           </div>
         </div>
 
-        {/* Turno: apertura de barra / fin de operaciones */}
-        <div className="max-w-3xl mx-auto px-5 mt-6 print:hidden">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="w-5 h-5 text-emerald-600" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Turno de operación</h2>
-              </div>
-              <span className="text-xs text-slate-400">{todayShifts.length}/{MAX_SHIFTS} turnos hoy</span>
-            </div>
-
-            {shiftError && <p className="text-xs text-red-500 mb-2">{shiftError}</p>}
-
-            {openShift ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
-                  <div>
-                    <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Turno {openShift.shiftNumber} abierto</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" /> desde las {new Date(openShift.openedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{openShift.dishesSoFar ?? 0}</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">platillos servidos</p>
-                  </div>
+        {/* Turnos de hoy (historial de lectura — la apertura/cierre de barra se hace desde Inicio) */}
+        {todayShifts.length > 0 && (
+          <div className="max-w-3xl mx-auto px-5 mt-6 print:hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="w-5 h-5 text-emerald-600" />
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">Turnos de hoy</h2>
                 </div>
-
-                {!showCloseForm ? (
-                  <button onClick={() => setShowCloseForm(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-slate-900 dark:bg-slate-100 dark:text-slate-900 text-white font-bold text-sm cursor-pointer">
-                    <Square className="w-4 h-4" /> Cerrar turno / Fin de operaciones
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <input
-                      value={closeNote} onChange={e => setCloseNote(e.target.value)}
-                      placeholder="Nota del turno (opcional)"
-                      className="w-full h-11 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400"
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={closeShiftAction} disabled={shiftBusy} className="flex-1 py-3 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer">
-                        {shiftBusy ? 'Cerrando...' : 'Confirmar cierre'}
-                      </button>
-                      <button onClick={() => setShowCloseForm(false)} className="px-5 py-3 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 text-sm cursor-pointer">Cancelar</button>
-                    </div>
-                  </div>
-                )}
+                <span className="text-xs text-slate-400">{todayShifts.length}/{MAX_SHIFTS}</span>
               </div>
-            ) : (
-              <button
-                onClick={openShiftAction}
-                disabled={shiftBusy || todayShifts.length >= MAX_SHIFTS}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer"
-              >
-                <Play className="w-4 h-4" />
-                {shiftBusy ? 'Abriendo...' : todayShifts.length >= MAX_SHIFTS ? 'Ya se abrieron los 3 turnos de hoy' : `Abrir turno ${todayShifts.length + 1} · Apertura de barra`}
-              </button>
-            )}
-
-            {/* Historial de turnos cerrados de hoy */}
-            {todayShifts.filter(s => s.status !== 'OPEN').length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                {todayShifts.filter(s => s.status !== 'OPEN').map(s => (
+              <div className="space-y-2">
+                {todayShifts.map(s => (
                   <div key={s.id} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">
+                    <span className="text-slate-500 flex items-center gap-1.5">
+                      {s.status === 'OPEN' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                       Turno {s.shiftNumber} · {new Date(s.openedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })}
                       {' – '}
-                      {s.closedAt ? new Date(s.closedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' }) : ''}
+                      {s.closedAt ? new Date(s.closedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' }) : 'en curso'}
                     </span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{s.dishesCount ?? 0} platillos · {fmt(s.totalCharges)}</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{s.dishesCount ?? s.dishesSoFar ?? 0} platillos · {fmt(s.totalCharges)}</span>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3">

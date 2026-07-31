@@ -3,10 +3,19 @@ import { useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { AlertCircle, ShoppingCart, Plus, Search } from 'lucide-react';
+import { AlertCircle, ShoppingCart, Plus, Search, Play, Square, Clock, UtensilsCrossed } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { doCharge, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
+
+interface Shift {
+  id: string;
+  shiftNumber: number;
+  openedAt: string;
+  dishesSoFar?: number;
+}
+
+const MAX_SHIFTS = 3;
 
 interface Subsidy { enabled: boolean; limit: number; usedToday: number; left: number }
 interface User {
@@ -49,6 +58,42 @@ export const CashierActionPanel: React.FC = () => {
   const [searching, setSearching] = useState(false);
   const [chargeSubsidized, setChargeSubsidized] = useState(false);
   const [chargeTab, setChargeTab] = useState<'MENU' | 'SNACKS'>('MENU');
+
+  // Turno de operación: apertura/cierre de barra
+  const [openShift, setOpenShift] = useState<Shift | null>(null);
+  const [todayShiftsCount, setTodayShiftsCount] = useState(0);
+  const [shiftBusy, setShiftBusy] = useState(false);
+  const [shiftError, setShiftError] = useState('');
+
+  const loadShift = () => {
+    if (!branchId) return;
+    api.get(`/cashier-sessions/today/${branchId}`).then(({ data }) => setTodayShiftsCount(data.length)).catch(() => {});
+    api.get(`/cashier-sessions/current/${branchId}`).then(({ data }) => setOpenShift(data)).catch(() => setOpenShift(null));
+  };
+  useEffect(() => { loadShift(); }, [branchId]);
+
+  const openShiftAction = async () => {
+    if (!branchId) return;
+    setShiftBusy(true); setShiftError('');
+    try {
+      await api.post('/cashier-sessions/open', { branchId });
+      loadShift();
+    } catch (err: any) {
+      setShiftError(err.response?.data?.error || 'Error al abrir turno');
+    } finally { setShiftBusy(false); }
+  };
+
+  const closeShiftAction = async () => {
+    if (!openShift) return;
+    if (!confirm(`¿Cerrar el turno ${openShift.shiftNumber}? Esto marca el fin de operaciones.`)) return;
+    setShiftBusy(true); setShiftError('');
+    try {
+      await api.post(`/cashier-sessions/${openShift.id}/close`, {});
+      loadShift();
+    } catch (err: any) {
+      setShiftError(err.response?.data?.error || 'Error al cerrar turno');
+    } finally { setShiftBusy(false); }
+  };
 
   // Cargar productos al montar
   useEffect(() => {
@@ -175,6 +220,41 @@ export const CashierActionPanel: React.FC = () => {
 
         {/* Tarjeta de búsqueda flotante */}
         <div className="max-w-lg mx-auto px-5 -mt-10 relative space-y-4">
+
+          {/* Apertura / cierre de barra */}
+          <div className={`rounded-3xl shadow-xl shadow-slate-900/10 border p-5 ${openShift ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800' : 'bg-slate-900 dark:bg-slate-900 border-slate-800'}`}>
+            {shiftError && <p className="text-xs text-red-500 mb-2">{shiftError}</p>}
+            {openShift ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" /> Turno {openShift.shiftNumber} en operación
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> desde las {new Date(openShift.openedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })}</span>
+                    <span className="flex items-center gap-1"><UtensilsCrossed className="w-3 h-3" /> {openShift.dishesSoFar ?? 0} platillos</span>
+                  </p>
+                </div>
+                <button
+                  onClick={closeShiftAction}
+                  disabled={shiftBusy}
+                  className="flex-shrink-0 flex items-center gap-1.5 h-10 px-4 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold disabled:opacity-40 cursor-pointer"
+                >
+                  <Square className="w-3.5 h-3.5" /> Cerrar barra
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={openShiftAction}
+                disabled={shiftBusy || todayShiftsCount >= MAX_SHIFTS}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 cursor-pointer"
+              >
+                <Play className="w-4 h-4" />
+                {shiftBusy ? 'Abriendo...' : todayShiftsCount >= MAX_SHIFTS ? `Ya se abrieron los ${MAX_SHIFTS} turnos de hoy` : `Apertura de barra${todayShiftsCount > 0 ? ` · turno ${todayShiftsCount + 1}` : ''}`}
+              </button>
+            )}
+          </div>
+
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-900/10 border border-slate-100 dark:border-slate-800 p-6">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Search className="w-4 h-4" /> Buscar comensal
