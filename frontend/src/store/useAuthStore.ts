@@ -34,16 +34,38 @@ export function panelForUser(u: User): Panel {
   return 'user';
 }
 
-export function panelFromPath(pathname: string): Panel {
+// Deriva panel + empresa/sucursal directamente de una URL jerárquica real:
+// /master-admin · /:empresa/admin · /:empresa/:sucursal/caja · /:empresa/:sucursal/user
+export function routeKeyFromPath(pathname: string): string {
   if (pathname.startsWith('/master-admin')) return 'master';
-  if (pathname.startsWith('/admin')) return 'admin';
-  if (pathname.startsWith('/caja') || pathname.startsWith('/cashier')) return 'cashier';
-  return 'user';
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts[1] === 'admin') return sessionKey('admin', parts[0]);
+  if (parts[2] === 'caja' || parts[2] === 'cashier') return sessionKey('cashier', parts[0], parts[1]);
+  if (parts[2] === 'user') return sessionKey('user', parts[0], parts[1]);
+  return sessionKey('user', parts[0], parts[1]);
+}
+
+// Clave de sesión: cada empresa/sucursal tiene su PROPIA sesión, aunque sea el mismo
+// tipo de panel. Sin esto, iniciar sesión como admin de la Empresa B pisaba la sesión
+// de admin de la Empresa A que ya estaba abierta en otra pestaña.
+export function sessionKey(panel: Panel, companySlug?: string | null, branchSlug?: string | null): string {
+  if (panel === 'master') return 'master';
+  if (panel === 'admin') return `admin:${companySlug || ''}`;
+  return `${panel}:${companySlug || ''}:${branchSlug || ''}`;
+}
+
+function keyFromUser(u: User): string {
+  return sessionKey(panelForUser(u), u.companySlug, u.branchSlug);
+}
+
+function panelFromKey(key: string): Panel {
+  return (key.split(':')[0] as Panel) || 'user';
 }
 
 interface AuthStore {
-  // Sesiones independientes por panel — coexisten en el mismo navegador
-  sessions: Partial<Record<Panel, Session>>;
+  // Sesiones independientes por panel + empresa/sucursal — coexisten en el mismo navegador
+  sessions: Record<string, Session>;
+  activeKey: string | null;
   activePanel: Panel;
   // Vista de la sesión activa (lo que leen los componentes)
   user: User | null;
@@ -51,7 +73,7 @@ interface AuthStore {
   refreshToken: string | null;
   _hasHydrated: boolean;
   setAuth: (user: User, accessToken: string | null, refreshToken: string | null) => void;
-  activatePanel: (panel: Panel) => void;
+  activateSession: (key: string) => void;
   updateTokens: (accessToken: string, refreshToken: string) => void;
   patchUser: (patch: Partial<User>) => void;
   logout: () => void;
@@ -63,6 +85,7 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       sessions: {},
+      activeKey: null,
       activePanel: 'user',
       user: null,
       accessToken: null,
@@ -70,25 +93,27 @@ export const useAuthStore = create<AuthStore>()(
       _hasHydrated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
-        const panel = panelForUser(user);
+        const key = keyFromUser(user);
         const session: Session = {
           user,
           accessToken: accessToken || '',
           refreshToken: refreshToken || ''
         };
         set((state) => ({
-          sessions: { ...state.sessions, [panel]: session },
-          activePanel: panel,
+          sessions: { ...state.sessions, [key]: session },
+          activeKey: key,
+          activePanel: panelFromKey(key),
           user,
           accessToken,
           refreshToken
         }));
       },
 
-      activatePanel: (panel) => {
-        const s = get().sessions[panel];
+      activateSession: (key) => {
+        const s = get().sessions[key];
         set({
-          activePanel: panel,
+          activeKey: key,
+          activePanel: panelFromKey(key),
           user: s?.user ?? null,
           accessToken: s?.accessToken ?? null,
           refreshToken: s?.refreshToken ?? null
@@ -97,13 +122,13 @@ export const useAuthStore = create<AuthStore>()(
 
       updateTokens: (accessToken, refreshToken) => {
         set((state) => {
-          const panel = state.activePanel;
-          const s = state.sessions[panel];
+          const key = state.activeKey;
+          const s = key ? state.sessions[key] : undefined;
           return {
             accessToken,
             refreshToken,
-            sessions: s
-              ? { ...state.sessions, [panel]: { ...s, accessToken, refreshToken } }
+            sessions: s && key
+              ? { ...state.sessions, [key]: { ...s, accessToken, refreshToken } }
               : state.sessions
           };
         });
@@ -112,34 +137,34 @@ export const useAuthStore = create<AuthStore>()(
       // Actualiza campos del usuario de la sesión activa (ej. backfill de slugs)
       patchUser: (patch) => {
         set((state) => {
-          if (!state.user) return {};
+          if (!state.user || !state.activeKey) return {};
           const user = { ...state.user, ...patch };
-          const panel = state.activePanel;
-          const s = state.sessions[panel];
-          return {
-            user,
-            sessions: s ? { ...state.sessions, [panel]: { ...s, user } } : state.sessions
-          };
+          // Si el patch cambia companySlug/branchSlug, la clave de la sesión también cambia
+          const newKey = keyFromUser(user);
+          const sessions = { ...state.sessions };
+          delete sessions[state.activeKey];
+          sessions[newKey] = { user, accessToken: state.accessToken || '', refreshToken: state.refreshToken || '' };
+          return { user, sessions, activeKey: newKey, activePanel: panelFromKey(newKey) };
         });
       },
 
       logout: () => {
         set((state) => {
+          if (!state.activeKey) return {};
           const sessions = { ...state.sessions };
-          delete sessions[state.activePanel];
-          return { sessions, user: null, accessToken: null, refreshToken: null };
+          delete sessions[state.activeKey];
+          return { sessions, activeKey: null, user: null, accessToken: null, refreshToken: null };
         });
       },
 
       setBalance: (balance) => {
         set((state) => {
-          if (!state.user) return {};
+          if (!state.user || !state.activeKey) return {};
           const user = { ...state.user, balance };
-          const panel = state.activePanel;
-          const s = state.sessions[panel];
+          const s = state.sessions[state.activeKey];
           return {
             user,
-            sessions: s ? { ...state.sessions, [panel]: { ...s, user } } : state.sessions
+            sessions: s ? { ...state.sessions, [state.activeKey]: { ...s, user } } : state.sessions
           };
         });
       },
@@ -148,28 +173,28 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'auth-store',
-      version: 2,
+      version: 3,
       partialize: (state) => ({ sessions: state.sessions }),
-      migrate: (persisted: any) => {
-        // Migrar formato viejo (una sola sesión) al nuevo (multi-sesión)
+      migrate: (persisted: any, version) => {
+        // v0/v1: una sola sesión suelta. v2: sesiones keyed por Panel. v3: keyed por panel+empresa+sucursal.
         if (persisted?.user && persisted?.accessToken) {
-          const panel = panelForUser(persisted.user);
-          return {
-            sessions: {
-              [panel]: {
-                user: persisted.user,
-                accessToken: persisted.accessToken,
-                refreshToken: persisted.refreshToken || ''
-              }
-            }
-          };
+          const key = keyFromUser(persisted.user);
+          return { sessions: { [key]: { user: persisted.user, accessToken: persisted.accessToken, refreshToken: persisted.refreshToken || '' } } };
         }
-        return { sessions: persisted?.sessions || {} };
+        const oldSessions = persisted?.sessions || {};
+        if (version < 3) {
+          const migrated: Record<string, Session> = {};
+          for (const s of Object.values(oldSessions) as Session[]) {
+            if (s?.user) migrated[keyFromUser(s.user)] = s;
+          }
+          return { sessions: migrated };
+        }
+        return { sessions: oldSessions };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Activar la sesión que corresponde a la URL actual
-          state.activatePanel(panelFromPath(window.location.pathname));
+          // Activar la sesión que corresponde a la URL actual (empresa/sucursal incluidas)
+          state.activateSession(routeKeyFromPath(window.location.pathname));
           state.setHasHydrated(true);
         }
       }

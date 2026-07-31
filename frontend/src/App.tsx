@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useAuthStore, Panel } from './store/useAuthStore';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { useAuthStore, Panel, sessionKey } from './store/useAuthStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppNav } from './components/AppNav';
 import { CashierNav } from './components/CashierNav';
@@ -80,18 +80,21 @@ function getRoleHome(u?: SessionUser): string {
 }
 
 // ── Guards ───────────────────────────────────────────────────────────────────
-// Cada guard lee SU propia sesión (multi-sesión por panel) y solo renderiza
-// cuando su panel está activo, garantizando que los hijos usen el token correcto.
+// Cada guard busca la sesión de ESTA empresa/sucursal específica (según la URL),
+// nunca "la sesión de admin que sea" — así abrir el link de otra empresa mientras
+// ya tienes sesión abierta en una distinta muestra login, no los datos de la otra.
 
 function usePanelGuard(panel: Panel) {
-  const { sessions, activePanel } = useAuthStore();
-  const session = sessions[panel];
+  const params = useParams<{ companySlug?: string; branchSlug?: string }>();
+  const key = sessionKey(panel, params.companySlug, params.branchSlug);
+  const { sessions, activeKey } = useAuthStore();
+  const session = sessions[key];
   React.useEffect(() => {
-    if (session && activePanel !== panel) {
-      useAuthStore.getState().activatePanel(panel);
+    if (session && activeKey !== key) {
+      useAuthStore.getState().activateSession(key);
     }
-  }, [session, activePanel, panel]);
-  return { session, ready: activePanel === panel };
+  }, [session, activeKey, key]);
+  return { session, ready: activeKey === key };
 }
 
 // Self-healing: si la sesión activa no tiene slugs (sesión vieja), los rellena desde /users/me
@@ -121,36 +124,12 @@ const PanelSpinner = () => (
   </div>
 );
 
-// Autocorrige la URL: si el slug de empresa/sucursal en la URL no coincide
-// con el de la sesión (ej. link viejo), reescribe la URL al slug correcto.
-function useSlugCorrection(kind: 'company' | 'branch') {
-  const params = useParams<{ companySlug?: string; branchSlug?: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-
-  React.useEffect(() => {
-    if (!user) return;
-    let target = location.pathname;
-    if (params.companySlug && user.companySlug && params.companySlug !== user.companySlug) {
-      target = target.replace(`/${params.companySlug}`, `/${user.companySlug}`);
-    }
-    if (kind === 'branch' && params.branchSlug && user.branchSlug && params.branchSlug !== user.branchSlug) {
-      target = target.replace(`/${params.branchSlug}`, `/${user.branchSlug}`);
-    }
-    if (target !== location.pathname) {
-      navigate(target + location.search, { replace: true });
-    }
-  }, [params.companySlug, params.branchSlug, user, location.pathname]);
-}
-
 // Layouts: renderizan nav + Outlet. Si no hay sesión, muestran el login inline
 // (conservando la URL con empresa/sucursal).
 
 const ComensalLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('user');
   useSlugBackfill();
-  useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
   return <><AppNav /><Outlet /></>;
@@ -159,7 +138,6 @@ const ComensalLayout: React.FC = () => {
 const CajaLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('cashier');
   useSlugBackfill();
-  useSlugCorrection('branch');
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
   return <><CashierNav /><Outlet /></>;
@@ -168,7 +146,6 @@ const CajaLayout: React.FC = () => {
 const AdminLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('admin');
   useSlugBackfill();
-  useSlugCorrection('company');
   if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;
   return <><AdminNav /><Outlet /></>;
@@ -181,22 +158,30 @@ const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return <>{children}</>;
 };
 
+// Con claves compuestas (panel:empresa:sucursal), busca la primera sesión que exista
+// para cada panel en orden de prioridad — sin importar de qué empresa/sucursal sea.
+function findAnySession(sessions: Record<string, { user: any }>, order: Panel[] = ['master', 'admin', 'cashier', 'user']) {
+  for (const panel of order) {
+    const match = Object.entries(sessions).find(([k]) => k === panel || k.startsWith(`${panel}:`));
+    if (match) return match[1];
+  }
+  return null;
+}
+
 // Redirige la raíz al panel con sesión activa (prioridad: master > admin > cajero > comensal)
 const RootRedirect: React.FC = () => {
   const { sessions } = useAuthStore();
-  const order: Panel[] = ['master', 'admin', 'cashier', 'user'];
-  const panel = order.find(p => sessions[p]);
-  if (!panel) return <Navigate to="/login" replace />;
-  return <Navigate to={getRoleHome(sessions[panel]!.user)} replace />;
+  const session = findAnySession(sessions);
+  if (!session) return <Navigate to="/login" replace />;
+  return <Navigate to={getRoleHome(session.user)} replace />;
 };
 
 // Raíz "/": landing informativa si no hay sesión; si hay, al panel correspondiente
 const HomeRoute: React.FC = () => {
   const { sessions } = useAuthStore();
-  const order: Panel[] = ['master', 'admin', 'cashier', 'user'];
-  const panel = order.find(p => sessions[p]);
-  if (!panel) return <Landing />;
-  return <Navigate to={getRoleHome(sessions[panel]!.user)} replace />;
+  const session = findAnySession(sessions);
+  if (!session) return <Landing />;
+  return <Navigate to={getRoleHome(session.user)} replace />;
 };
 
 // ── App ──────────────────────────────────────────────────────────────────────
@@ -204,7 +189,7 @@ const HomeRoute: React.FC = () => {
 function App() {
   const { sessions, _hasHydrated } = useAuthStore();
   // Para /login y /register genéricos: redirigir solo si hay sesión de comensal
-  const comensalHome = sessions.user ? '/dashboard' : null;
+  const comensalHome = findAnySession(sessions, ['user']) ? '/dashboard' : null;
 
   if (!_hasHydrated) {
     return (
