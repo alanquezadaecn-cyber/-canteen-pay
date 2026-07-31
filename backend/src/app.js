@@ -185,6 +185,7 @@ import cashierSessionRoutes from './routes/cashier-sessions.js';
 import masterAdminRoutes from './routes/master-admin.js';
 import inventoryRoutes from './routes/inventory.js';
 import brandingRoutes from './routes/branding.js';
+import pushRoutes from './routes/push.js';
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
@@ -200,6 +201,7 @@ app.use('/api/cashier-sessions', cashierSessionRoutes);
 app.use('/api/master-admin', masterAdminRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/branding', brandingRoutes);
+app.use('/api/push', pushRoutes);
 
 // SPA Fallback - sirve index.html para cualquier ruta que no sea API
 app.get('*', (req, res) => {

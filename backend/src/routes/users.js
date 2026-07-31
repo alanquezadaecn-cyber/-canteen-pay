@@ -29,6 +29,32 @@ router.put('/me/password', verifyToken, async (req, res) => {
   }
 });
 
+// Centro de notificaciones del propio usuario (cobros, recargas, subsidios, saldo bajo...)
+router.get('/me/alerts', verifyToken, async (req, res) => {
+  try {
+    const alerts = await prisma.userAlert.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 30
+    });
+    const unread = await prisma.userAlert.count({ where: { userId: req.userId, isRead: false } });
+    res.json({ alerts, unread });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener notificaciones' });
+  }
+});
+
+router.put('/me/alerts/read-all', verifyToken, async (req, res) => {
+  try {
+    await prisma.userAlert.updateMany({ where: { userId: req.userId, isRead: false }, data: { isRead: true } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al marcar notificaciones' });
+  }
+});
+
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({

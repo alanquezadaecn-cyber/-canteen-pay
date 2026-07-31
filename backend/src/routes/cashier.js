@@ -3,10 +3,18 @@ import { prisma } from '../lib/prisma.js';
 import { verifyToken, checkRole } from '../middleware/auth.js';
 import { sendRechargeConfirmation, sendPurchaseNotification } from '../services/email.service.js';
 import { assertBranchHasRoom, branchUserLimit } from '../lib/limits.js';
+import { sendPushToUser } from '../lib/push.js';
 
 const router = express.Router();
 
 router.use(verifyToken, checkRole(['CASHIER', 'ADMIN']));
+
+// Notificación in-app (campanita del comensal) + push del navegador. No bloquea la
+// respuesta del cobro/recarga ni la tumba si falla — es "mejor esfuerzo".
+function notifyUser(userId, { type, message, title, url }) {
+  prisma.userAlert.create({ data: { userId, type, message } }).catch(() => {});
+  sendPushToUser(userId, { title, body: message, url }).catch(() => {});
+}
 
 // Verifica que el cajero/admin autenticado tenga permiso para operar sobre branchId.
 // CASHIER: debe ser exactamente su propia sucursal. ADMIN: la sucursal debe pertenecer
@@ -548,6 +556,13 @@ router.post('/branch/:branchId/charge', async (req, res) => {
         throw txErr;
       }
 
+      notifyUser(user.id, {
+        type: 'SUBSIDIZED',
+        title: 'Comida subsidiada',
+        message: `${description || 'Comida'} marcada como subsidiada. Te quedan ${subsidyResult.subsidyLeft} hoy.`,
+        url: '/purchases'
+      });
+
       return res.json({
         success: true, subsidized: true,
         transaction: { ...subsidyResult.created, amount: subsidyResult.created.amount.toString() },
@@ -629,7 +644,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       throw txErr;
     }
 
-    // Email + alerta saldo bajo (no bloquean la respuesta)
+    // Email + notificación in-app/push + alerta saldo bajo (no bloquean la respuesta)
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { email: true, name: true, minBalance: true }
@@ -643,15 +658,21 @@ router.post('/branch/:branchId/charge', async (req, res) => {
         newBalance: result.newBalance
       });
 
+      notifyUser(user.id, {
+        type: 'PURCHASE',
+        title: 'Cobro en el comedor',
+        message: `${description || 'Compra'}: -$${amountDecimal.toFixed(2)}. Saldo: $${result.newBalance.toFixed(2)}`,
+        url: '/purchases'
+      });
+
       const threshold = parseFloat(fullUser.minBalance || 0);
       if (threshold > 0 && result.newBalance < threshold) {
-        prisma.userAlert.create({
-          data: {
-            userId: user.id,
-            type: 'LOW_BALANCE',
-            message: `Saldo bajo: $${result.newBalance.toFixed(2)} (umbral: $${threshold.toFixed(2)})`
-          }
-        }).catch(console.error);
+        notifyUser(user.id, {
+          type: 'LOW_BALANCE',
+          title: 'Saldo bajo',
+          message: `Saldo bajo: $${result.newBalance.toFixed(2)} (umbral: $${threshold.toFixed(2)})`,
+          url: '/recharges'
+        });
       }
     }
 
@@ -753,7 +774,7 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
       return { recharge, newBalance };
     });
 
-    // Email de notificación (no bloquea la respuesta)
+    // Email + notificación in-app/push (no bloquean la respuesta)
     const fullUser = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } });
     if (fullUser) {
       sendRechargeConfirmation({
@@ -762,6 +783,13 @@ router.post('/branch/:branchId/recharge', async (req, res) => {
         amount: amountDecimal,
         newBalance: result.newBalance,
         method: 'CASH'
+      });
+
+      notifyUser(user.id, {
+        type: 'RECHARGE',
+        title: 'Recarga confirmada',
+        message: `Se recargaron $${amountDecimal.toFixed(2)}. Nuevo saldo: $${result.newBalance.toFixed(2)}`,
+        url: '/recharges'
       });
     }
 

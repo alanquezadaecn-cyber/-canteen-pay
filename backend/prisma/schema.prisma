@@ -401,10 +401,25 @@ model CashierSession {
 model UserAlert {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // LOW_BALANCE, BLOCKED, etc
+  type      String   // LOW_BALANCE, BLOCKED, PURCHASE, RECHARGE, SUBSIDIZED, etc
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Suscripción a notificaciones push del navegador (Web Push). Un usuario puede tener
+// varias (un dispositivo/navegador distinto = una suscripción distinta).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Registro de asistencia (entrada/salida de operación por QR)
