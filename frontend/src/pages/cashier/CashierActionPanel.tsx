@@ -24,6 +24,9 @@ interface Product {
   price: number;
   category?: string;
   image?: string;
+  productType?: 'PLATILLO' | 'PRODUCTO' | 'INSUMO';
+  stock?: number;
+  isTracked?: boolean;
 }
 
 export const CashierActionPanel: React.FC = () => {
@@ -45,6 +48,7 @@ export const CashierActionPanel: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searching, setSearching] = useState(false);
   const [chargeSubsidized, setChargeSubsidized] = useState(false);
+  const [chargeTab, setChargeTab] = useState<'MENU' | 'SNACKS'>('MENU');
 
   // Cargar productos al montar
   useEffect(() => {
@@ -114,7 +118,7 @@ export const CashierActionPanel: React.FC = () => {
     if (!user || !branchId) return;
     setLoading(true);
     try {
-      const res: any = await doCharge(branchId, user, product.price, `Compra: ${product.name}`, subsidized);
+      const res: any = await doCharge(branchId, user, product.price, `Compra: ${product.name}`, subsidized, product.id);
       if (subsidized) {
         setSuccess(`✅ ${product.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
         setUser({ ...user, subsidy: user.subsidy ? { ...user.subsidy, usedToday: user.subsidy.usedToday + 1, left: res.subsidyLeft } : undefined });
@@ -268,7 +272,7 @@ export const CashierActionPanel: React.FC = () => {
         {mode === 'select' && (
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); }}
+              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); setChargeTab('MENU'); }}
               disabled={loading}
               className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-40 shadow-lg shadow-emerald-600/25 cursor-pointer"
             >
@@ -317,33 +321,68 @@ export const CashierActionPanel: React.FC = () => {
               </div>
             )}
 
-            {products.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
-                No hay productos configurados para esta sucursal
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {products.map(product => {
-                  const sub = chargeSubsidized && (user.subsidy?.left ?? 0) > 0;
-                  return (
-                  <button
-                    key={product.id}
-                    onClick={() => handleCharge(product, sub)}
-                    disabled={loading || (!sub && balanceNum < product.price)}
-                    className={`flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 ${sub ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
-                  >
-                    <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{product.name}</span>
-                    <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                      {sub ? <span className="text-emerald-600 text-base">Subsidiado</span> : `$${product.price}`}
-                    </span>
-                    {product.category && (
-                      <span className="text-xs text-slate-400 mt-1">{product.category}</span>
-                    )}
-                  </button>
-                  );
-                })}
-              </div>
-            )}
+            {(() => {
+              const menuItems = products.filter(p => p.productType !== 'PRODUCTO');
+              const snackItems = products.filter(p => p.productType === 'PRODUCTO');
+              const activeList = snackItems.length > 0 && chargeTab === 'SNACKS' ? snackItems : menuItems;
+
+              return (
+                <>
+                  {snackItems.length > 0 && (
+                    <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+                      <button
+                        onClick={() => setChargeTab('MENU')}
+                        className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'MENU' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        Menú ({menuItems.length})
+                      </button>
+                      <button
+                        onClick={() => setChargeTab('SNACKS')}
+                        className={`flex-1 h-9 rounded-full text-sm font-semibold cursor-pointer transition-colors ${chargeTab === 'SNACKS' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        Snacks / Tiendita ({snackItems.length})
+                      </button>
+                    </div>
+                  )}
+
+                  {activeList.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
+                      {chargeTab === 'SNACKS' ? 'No hay snacks configurados en el inventario' : 'No hay productos configurados para esta sucursal'}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {activeList.map(product => {
+                        const sub = chargeSubsidized && (user.subsidy?.left ?? 0) > 0;
+                        const outOfStock = product.productType === 'PRODUCTO' && product.isTracked && (product.stock ?? 0) <= 0;
+                        return (
+                        <button
+                          key={product.id}
+                          onClick={() => handleCharge(product, sub)}
+                          disabled={loading || outOfStock || (!sub && balanceNum < product.price)}
+                          className={`flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 ${sub ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}`}
+                        >
+                          <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{product.name}</span>
+                          <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">
+                            {sub ? <span className="text-emerald-600 text-base">Subsidiado</span> : `$${product.price}`}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {product.category && (
+                              <span className="text-xs text-slate-400">{product.category}</span>
+                            )}
+                            {product.productType === 'PRODUCTO' && product.isTracked && (
+                              <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${outOfStock ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                                {outOfStock ? 'Agotado' : `Quedan ${product.stock}`}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

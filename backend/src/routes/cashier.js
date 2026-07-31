@@ -39,6 +39,35 @@ async function requireBranchAccess(req, res, branchId) {
   return true;
 }
 
+// Si el cobro corresponde a un producto de la tiendita (snack) con stock rastreado,
+// lo descuenta de forma atómica y deja el detalle en TransactionItem para que el
+// inventario de Caja/Admin refleje la venta real. Los platillos del menú y los
+// productos sin seguimiento de stock (isTracked:false o stock:-1 = "sin límite")
+// no tocan inventario, solo quedan registrados en TransactionItem para reportes.
+async function applyProductSale(tx, productId, transactionId, cashierId) {
+  const product = await tx.product.findUnique({ where: { id: productId } });
+  if (!product) return;
+
+  if (product.productType === 'PRODUCTO' && product.isTracked && product.stock !== -1) {
+    const { count } = await tx.product.updateMany({
+      where: { id: productId, stock: { gte: 1 } },
+      data: { stock: { decrement: 1 } }
+    });
+    if (count === 0) throw new Error('OUT_OF_STOCK');
+    await tx.stockMovement.create({
+      data: {
+        productId, type: 'SALE', quantity: -1,
+        prevStock: product.stock, newStock: product.stock - 1,
+        note: 'Venta en caja', createdBy: cashierId
+      }
+    });
+  }
+
+  await tx.transactionItem.create({
+    data: { transactionId, productId, quantity: 1, unitPrice: product.price, subtotal: product.price }
+  });
+}
+
 // GET branch info for cashier
 router.get('/branch/:branchId', async (req, res) => {
   try {
@@ -419,7 +448,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
   try {
     const { branchId } = req.params;
     if (!(await requireBranchAccess(req, res, branchId))) return;
-    const { qrCode, amount, description, clientRef, subsidized } = req.body;
+    const { qrCode, amount, description, clientRef, subsidized, productId } = req.body;
     const amountDecimal = parseFloat(amount);
 
     if (!qrCode || !amountDecimal || amountDecimal <= 0) {
@@ -503,11 +532,15 @@ router.post('/branch/:branchId/charge', async (req, res) => {
               cashierId: req.userId, isSubsidized: true, reference: clientRef || null
             }
           });
+          if (productId) await applyProductSale(tx, productId, created.id, req.userId);
           return { created, subsidyLeft: limit - usedToday - 1 };
         });
       } catch (txErr) {
         if (txErr.message === 'SUBSIDY_LIMIT_REACHED') {
           return res.status(400).json({ error: `Ya usó sus ${limit} comida(s) subsidiada(s) de hoy` });
+        }
+        if (txErr.message === 'OUT_OF_STOCK') {
+          return res.status(400).json({ error: 'Sin existencias de este producto' });
         }
         throw txErr;
       }
@@ -579,11 +612,16 @@ router.post('/branch/:branchId/charge', async (req, res) => {
           }
         });
 
+        if (productId) await applyProductSale(tx, productId, transaction.id, req.userId);
+
         return { transaction, newBalance };
       });
     } catch (txErr) {
       if (txErr.message === 'INSUFFICIENT_BALANCE') {
         return res.status(400).json({ error: 'Saldo insuficiente' });
+      }
+      if (txErr.message === 'OUT_OF_STOCK') {
+        return res.status(400).json({ error: 'Sin existencias de este producto' });
       }
       throw txErr;
     }

@@ -16,6 +16,7 @@ export interface QueuedOp {
   qrCode: string;      // identificador usado (qrCode del comensal)
   amount: number;
   description?: string;
+  productId?: string;  // producto cobrado (para descontar stock de snacks al sincronizar)
   userName: string;
   userId: string;
   ts: number;
@@ -60,9 +61,9 @@ function adjustCachedBalance(branchId: string, userId: string, delta: number) {
 
 // ── Operar (online con fallback a cola offline) ──
 // Devuelve { offline, newBalance } — offline=true si quedó en cola.
-export async function doCharge(branchId: string, comensal: any, amount: number, description?: string, subsidized = false) {
+export async function doCharge(branchId: string, comensal: any, amount: number, description?: string, subsidized = false, productId?: string) {
   const clientRef = uid();
-  const payload: any = { qrCode: comensal.qrCode, amount, description, clientRef, subsidized };
+  const payload: any = { qrCode: comensal.qrCode, amount, description, clientRef, subsidized, productId };
   // El subsidio SIEMPRE requiere conexión (el servidor valida el límite diario)
   if (subsidized) {
     const { data } = await api.post(`/cashier/branch/${branchId}/charge`, payload);
@@ -77,8 +78,8 @@ export async function doCharge(branchId: string, comensal: any, amount: number, 
       if (e.response && e.response.status >= 400 && e.response.status < 500) throw e;
     }
   }
-  // Offline: encolar y ajustar saldo local
-  enqueueOp({ clientRef, kind: 'charge', branchId, qrCode: comensal.qrCode, amount, description, userName: comensal.name, userId: comensal.id, ts: Date.now() });
+  // Offline: encolar y ajustar saldo local (el stock del snack se descuenta al sincronizar)
+  enqueueOp({ clientRef, kind: 'charge', branchId, qrCode: comensal.qrCode, amount, description, productId, userName: comensal.name, userId: comensal.id, ts: Date.now() });
   adjustCachedBalance(branchId, comensal.id, -amount);
   const newBalance = (parseFloat(comensal.balance) - amount).toFixed(2);
   return { offline: true, newBalance };
@@ -111,7 +112,7 @@ export async function flushQueue(): Promise<{ synced: number; failed: number; er
   for (const op of getQueue()) {
     try {
       const url = `/cashier/branch/${op.branchId}/${op.kind}`;
-      await api.post(url, { qrCode: op.qrCode, amount: op.amount, description: op.description, clientRef: op.clientRef });
+      await api.post(url, { qrCode: op.qrCode, amount: op.amount, description: op.description, clientRef: op.clientRef, productId: op.productId });
       synced++;
     } catch (e: any) {
       if (e.response && e.response.status >= 400 && e.response.status < 500) {
