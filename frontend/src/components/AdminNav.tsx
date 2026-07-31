@@ -69,7 +69,9 @@ export const AdminNav: React.FC = () => {
   const unreadCount = alerts.filter(a => !a.isRead).length;
 
   const AlertPanel = () => (
-    <div className="absolute right-0 top-10 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50">
+    // Móvil: panel fijo con márgenes laterales (no se sale de la pantalla).
+    // Desktop (md+): dropdown anclado a la campanita, ancho fijo.
+    <div className="fixed left-3 right-3 top-16 md:absolute md:left-auto md:right-0 md:top-10 md:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
         <span className="text-sm font-semibold text-slate-900 dark:text-white">Alertas ({unreadCount})</span>
         {unreadCount > 0 && (
@@ -78,7 +80,7 @@ export const AdminNav: React.FC = () => {
           </button>
         )}
       </div>
-      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="max-h-[60vh] md:max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
         {alerts.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">Sin alertas</p>
         ) : alerts.map(a => (

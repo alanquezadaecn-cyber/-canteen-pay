@@ -63,7 +63,9 @@ export const NotificationBell: React.FC<{ light?: boolean }> = ({ light }) => {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 max-h-[26rem] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-2xl z-50">
+          {/* Móvil: panel fijo con márgenes laterales (nunca se sale de la pantalla).
+              Desktop (md+): dropdown anclado a la campanita, ancho fijo. */}
+          <div className="fixed left-3 right-3 top-16 md:absolute md:left-auto md:right-0 md:top-auto md:mt-2 md:w-80 max-h-[70vh] md:max-h-[26rem] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-2xl z-50">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-50">Notificaciones</p>
               <button onClick={() => setOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
