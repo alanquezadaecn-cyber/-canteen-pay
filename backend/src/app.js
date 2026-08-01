@@ -226,11 +226,14 @@ app.get('*', (req, res) => {
   }
 });
 
-// Error handling
+// Error handling — el detalle real siempre queda en el log del servidor. Al cliente solo
+// se le pasa err.message si es un error controlado (con err.status explícito, ej. errores
+// de negocio lanzados a propósito); cualquier error inesperado (Prisma, conexión a BD,
+// etc.) responde con un mensaje genérico para no filtrar detalles internos.
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
-    error: err.message || 'Error interno del servidor'
+    error: err.status ? (err.message || 'Error') : 'Error interno del servidor'
   });
 });
 

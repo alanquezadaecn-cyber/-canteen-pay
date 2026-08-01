@@ -207,7 +207,7 @@ router.post('/branch/:branchId/create', async (req, res) => {
     res.status(201).json({ ...product, price: product.price.toString() });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al crear producto: ' + err.message });
+    res.status(500).json({ error: 'Error al crear producto' });
   }
 });
 
