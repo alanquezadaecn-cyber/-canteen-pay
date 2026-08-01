@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { BarChart2, ArrowDownLeft, ArrowUpRight, Users, TrendingUp, Download, Trophy } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BarChart2, ArrowDownLeft, ArrowUpRight, Users, TrendingUp, Download, Trophy, Coins, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
+import { usePanelBase } from '../../hooks/usePanelBase';
 
 interface Report {
   period: string;
@@ -9,6 +11,8 @@ interface Report {
   purchasesTotal: string;
   rechargesCount: number;
   rechargesTotal: string;
+  subsidyCount: number;
+  subsidyTotal: string;
   activeUsers: number;
   topUsers: Array<{ userId: string; name: string; amount: string }>;
   dailyBreakdown: Record<string, { purchases: string; recharges: string; neto: string }>;
@@ -25,6 +29,7 @@ const fmt = (n: string | number) =>
   `$${parseFloat(String(n)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const AdminReports: React.FC = () => {
+  const base = usePanelBase();
   const [report, setReport] = useState<Report | null>(null);
   const [period, setPeriod] = useState('today');
   const [loading, setLoading] = useState(true);
@@ -47,6 +52,8 @@ export const AdminReports: React.FC = () => {
       { Métrica: 'Compras (total)', Valor: parseFloat(report.purchasesTotal) },
       { Métrica: 'Recargas (cantidad)', Valor: report.rechargesCount },
       { Métrica: 'Recargas (total)', Valor: parseFloat(report.rechargesTotal) },
+      { Métrica: 'Compras con subsidio (cantidad)', Valor: report.subsidyCount },
+      { Métrica: 'Compras con subsidio (total, sin IVA)', Valor: parseFloat(report.subsidyTotal) },
       { Métrica: 'Neto', Valor: parseFloat(report.rechargesTotal) - parseFloat(report.purchasesTotal) },
       { Métrica: 'Usuarios activos', Valor: report.activeUsers },
     ];
@@ -75,13 +82,13 @@ export const AdminReports: React.FC = () => {
     XLSX.writeFile(wb, `mealpay-reporte-${period}-${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
-  const selectCls = 'bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer';
+  const selectCls = 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer';
 
   if (loading && !report) {
     return (
-      <div className="min-h-screen bg-slate-950 md:ml-64 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 border-t-emerald-500 rounded-full animate-spin" />
           <span className="text-sm text-slate-400">Cargando reportes...</span>
         </div>
       </div>
@@ -92,17 +99,17 @@ export const AdminReports: React.FC = () => {
   const maxAmount = report ? Math.max(...report.topUsers.map(u => parseFloat(u.amount)), 1) : 1;
 
   return (
-    <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0">
       {/* Header */}
-      <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
+      <div className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 px-6 py-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
-              <BarChart2 className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-600/20 flex items-center justify-center">
+              <BarChart2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-white">Reportes</h1>
-              <p className="text-xs text-slate-400">Análisis y estadísticas</p>
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Reportes</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Análisis y estadísticas</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -125,72 +132,86 @@ export const AdminReports: React.FC = () => {
         <div className="p-6 space-y-6">
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-red-500/10 flex items-center justify-center">
-                  <ArrowDownLeft className="w-3 h-3 text-red-400" />
+                <span className="w-5 h-5 rounded bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+                  <ArrowDownLeft className="w-3 h-3 text-red-500 dark:text-red-400" />
                 </span>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Compras</p>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Compras</p>
               </div>
-              <p className="text-2xl font-bold text-red-400">{fmt(report.purchasesTotal)}</p>
-              <p className="text-xs text-slate-500 mt-1">{report.purchasesCount} transacciones</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{fmt(report.purchasesTotal)}</p>
+              <p className="text-xs text-slate-400 mt-1">{report.purchasesCount} transacciones</p>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center">
-                  <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                <span className="w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                  <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 </span>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Recargas</p>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Recargas</p>
               </div>
-              <p className="text-2xl font-bold text-emerald-400">{fmt(report.rechargesTotal)}</p>
-              <p className="text-xs text-slate-500 mt-1">{report.rechargesCount} transacciones</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(report.rechargesTotal)}</p>
+              <p className="text-xs text-slate-400 mt-1">{report.rechargesCount} transacciones</p>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            {/* Subsidiado — lo que la empresa cubrió, para pasarle el dato a RH */}
+            <Link to={`${base}/subsidio`} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 hover:border-violet-300 dark:hover:border-violet-700 transition-colors cursor-pointer group">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-3 h-3 text-emerald-400" />
+                <span className="w-5 h-5 rounded bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
+                  <Coins className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                 </span>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Neto</p>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Subsidiado</p>
               </div>
-              <p className={`text-2xl font-bold ${neto >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">{fmt(report.subsidyTotal)}</p>
+              <p className="text-xs text-slate-400 mt-1 flex items-center gap-0.5">
+                {report.subsidyCount} comidas · reporte para RH <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </p>
+            </Link>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                </span>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Neto</p>
+              </div>
+              <p className={`text-2xl font-bold ${neto >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                 {fmt(neto)}
               </p>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center">
-                  <Users className="w-3 h-3 text-emerald-400" />
+                <span className="w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                  <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 </span>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Usuarios activos</p>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Usuarios activos</p>
               </div>
-              <p className="text-2xl font-bold text-emerald-400">{report.activeUsers}</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{report.activeUsers}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Usuarios */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-800">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <h2 className="text-sm font-semibold text-white">Top 5 por Gasto</h2>
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+                <Trophy className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Top 5 por Gasto</h2>
               </div>
               <div className="p-5 space-y-4">
                 {report.topUsers.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">Sin datos</p>
+                  <p className="text-sm text-slate-400 text-center py-4">Sin datos</p>
                 ) : report.topUsers.map((user, idx) => (
                   <div key={idx}>
                     <div className="flex justify-between items-center mb-1.5">
-                      <p className="text-sm text-slate-200">
-                        <span className="text-slate-500 mr-2">#{idx + 1}</span>
+                      <p className="text-sm text-slate-700 dark:text-slate-200">
+                        <span className="text-slate-400 mr-2">#{idx + 1}</span>
                         {user.name}
                       </p>
-                      <p className="text-sm font-semibold text-red-400">{fmt(user.amount)}</p>
+                      <p className="text-sm font-semibold text-red-600 dark:text-red-400">{fmt(user.amount)}</p>
                     </div>
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${(parseFloat(user.amount) / maxAmount) * 100}%` }}
@@ -202,39 +223,39 @@ export const AdminReports: React.FC = () => {
             </div>
 
             {/* Desglose Diario */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-800">
-                <h2 className="text-sm font-semibold text-white">Desglose Diario</h2>
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Desglose Diario</h2>
               </div>
               {Object.keys(report.dailyBreakdown).length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-8">Sin datos para este período</p>
+                <p className="text-sm text-slate-400 text-center py-8">Sin datos para este período</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-800">
-                        <th className="text-left py-2 px-4 text-xs text-slate-500 font-semibold uppercase">Fecha</th>
-                        <th className="text-right py-2 px-4 text-xs text-slate-500 font-semibold uppercase">Compras</th>
-                        <th className="text-right py-2 px-4 text-xs text-slate-500 font-semibold uppercase">Recargas</th>
-                        <th className="text-right py-2 px-4 text-xs text-slate-500 font-semibold uppercase">Neto</th>
+                      <tr className="border-b border-slate-100 dark:border-slate-800">
+                        <th className="text-left py-2 px-4 text-xs text-slate-400 font-semibold uppercase">Fecha</th>
+                        <th className="text-right py-2 px-4 text-xs text-slate-400 font-semibold uppercase">Compras</th>
+                        <th className="text-right py-2 px-4 text-xs text-slate-400 font-semibold uppercase">Recargas</th>
+                        <th className="text-right py-2 px-4 text-xs text-slate-400 font-semibold uppercase">Neto</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                       {Object.entries(report.dailyBreakdown)
                         .sort(([a], [b]) => b.localeCompare(a))
                         .map(([date, d], idx) => (
-                          <tr key={idx} className="hover:bg-slate-800/40">
-                            <td className="py-2.5 px-4 text-slate-300 text-xs">
+                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="py-2.5 px-4 text-slate-600 dark:text-slate-300 text-xs">
                               {new Date(date).toLocaleDateString('es-MX')}
                             </td>
-                            <td className="py-2.5 px-4 text-right text-red-400 text-xs font-medium tabular-nums">
+                            <td className="py-2.5 px-4 text-right text-red-600 dark:text-red-400 text-xs font-medium tabular-nums">
                               -{fmt(d.purchases)}
                             </td>
-                            <td className="py-2.5 px-4 text-right text-emerald-400 text-xs font-medium tabular-nums">
+                            <td className="py-2.5 px-4 text-right text-emerald-600 dark:text-emerald-400 text-xs font-medium tabular-nums">
                               +{fmt(d.recharges)}
                             </td>
                             <td className={`py-2.5 px-4 text-right text-xs font-semibold tabular-nums ${
-                              parseFloat(d.neto) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                              parseFloat(d.neto) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                             }`}>
                               {fmt(d.neto)}
                             </td>

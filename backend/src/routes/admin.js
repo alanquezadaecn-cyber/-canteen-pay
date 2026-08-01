@@ -692,14 +692,25 @@ router.put('/users/:id/balance', async (req, res) => {
 
 router.get('/transactions', async (req, res) => {
   try {
-    const { page = 1, limit = 30, type = '', userId = '', cashierId = '', startDate = '', endDate = '' } = req.query;
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ data: [], pagination: { total: 0, page: 1, limit: 30, pages: 0 }, branches: [] });
+
+    const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true } });
+    const branchIds = branches.map(b => b.id);
+
+    const { page = 1, limit = 30, type = '', userId = '', cashierId = '', startDate = '', endDate = '', branchId = '' } = req.query;
     const skip = (page - 1) * limit;
 
+    // Sin esto, cualquier admin veía las transacciones de TODAS las empresas (IDOR):
+    // el filtro siempre queda acotado a las sucursales de la empresa del admin.
+    const targetBranchId = branchId && branchIds.includes(String(branchId)) ? String(branchId) : null;
+
     const where = {
+      user: { branchId: targetBranchId || { in: branchIds } },
       ...(type && { type }),
       ...(userId && { userId }),
       ...(cashierId && { cashierId }),
-      ...(startDate || endDate && {
+      ...((startDate || endDate) && {
         createdAt: {
           ...(startDate && { gte: new Date(startDate) }),
           ...(endDate && { lte: new Date(endDate) })
@@ -734,7 +745,8 @@ router.get('/transactions', async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         pages: Math.ceil(total / limit)
-      }
+      },
+      branches
     });
   } catch (err) {
     console.error(err);
@@ -861,6 +873,14 @@ router.get('/cashiers', async (req, res) => {
 
 router.get('/reports', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) {
+      return res.json({
+        period: req.query.period || 'today', purchasesCount: 0, purchasesTotal: '0.00',
+        rechargesCount: 0, rechargesTotal: '0.00', subsidyCount: 0, subsidyTotal: '0.00',
+        activeUsers: 0, topUsers: [], dailyBreakdown: {}
+      });
+    }
     const { period = 'today' } = req.query;
 
     const now = new Date();
@@ -883,9 +903,12 @@ router.get('/reports', async (req, res) => {
         break;
     }
 
+    // Sin el filtro por empresa (vía la sucursal del comensal), cualquier admin veía
+    // las transacciones de TODAS las empresas — mismo IDOR que en /transactions.
     const transactions = await prisma.transaction.findMany({
       where: {
-        createdAt: { gte: startDate, lte: now }
+        createdAt: { gte: startDate, lte: now },
+        user: { branch: { companyId } }
       },
       include: {
         user: { select: { id: true, name: true } }
@@ -894,9 +917,12 @@ router.get('/reports', async (req, res) => {
 
     const purchases = transactions.filter(t => t.type === 'PURCHASE');
     const recharges = transactions.filter(t => t.type === 'RECHARGE');
+    // Compras con subsidio: lo que la empresa le cubrió al comensal, para pasarle el dato a RH.
+    const subsidized = purchases.filter(t => t.isSubsidized);
 
     const purchasesTotal = purchases.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     const rechargesTotal = recharges.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    const subsidyTotal = subsidized.reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
     const activeUsersSet = new Set(transactions.map(t => t.userId));
 
@@ -933,6 +959,8 @@ router.get('/reports', async (req, res) => {
       purchasesTotal: purchasesTotal.toFixed(2),
       rechargesCount: recharges.length,
       rechargesTotal: rechargesTotal.toFixed(2),
+      subsidyCount: subsidized.length,
+      subsidyTotal: subsidyTotal.toFixed(2),
       activeUsers: activeUsersSet.size,
       topUsers,
       dailyBreakdown: Object.entries(dailyBreakdown)
