@@ -795,11 +795,20 @@ async function companyBranchIds(companyId) {
 }
 
 // ── ALERTAS ─────────────────────────────────────────────────────────────────────
+// UserAlert solo tiene userId como columna suelta (sin relación de Prisma hacia User),
+// así que no se puede filtrar por user:{branchId:...} directo — hay que resolver primero
+// los userIds de la empresa y filtrar por userId: { in }.
+async function companyUserIds(companyId) {
+  if (!companyId) return [];
+  const users = await prisma.user.findMany({ where: { branch: { companyId } }, select: { id: true } });
+  return users.map(u => u.id);
+}
+
 router.get('/alerts', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
     if (!companyId) return res.json([]);
-    const branchIds = await companyBranchIds(companyId);
+    const userIds = await companyUserIds(companyId);
 
     const { unread } = req.query;
     // Sin acotar por usuarios de la propia empresa, cualquier admin veía alertas
@@ -807,7 +816,7 @@ router.get('/alerts', async (req, res) => {
     const alerts = await prisma.userAlert.findMany({
       where: {
         ...(unread === 'true' ? { isRead: false } : {}),
-        user: { branchId: { in: branchIds } }
+        userId: { in: userIds }
       },
       orderBy: { createdAt: 'desc' },
       take: 50
@@ -832,8 +841,9 @@ router.get('/alerts', async (req, res) => {
 router.put('/alerts/:id/read', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    const alert = await prisma.userAlert.findUnique({ where: { id: req.params.id }, include: { user: { include: { branch: true } } } });
-    if (!alert || alert.user?.branch?.companyId !== companyId) {
+    const alert = await prisma.userAlert.findUnique({ where: { id: req.params.id } });
+    const owner = alert ? await prisma.user.findUnique({ where: { id: alert.userId }, include: { branch: true } }) : null;
+    if (!alert || owner?.branch?.companyId !== companyId) {
       return res.status(404).json({ error: 'Alerta no encontrada' });
     }
     await prisma.userAlert.update({
@@ -851,9 +861,9 @@ router.put('/alerts/read-all', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
     if (!companyId) return res.json({ success: true });
-    const branchIds = await companyBranchIds(companyId);
+    const userIds = await companyUserIds(companyId);
     await prisma.userAlert.updateMany({
-      where: { isRead: false, user: { branchId: { in: branchIds } } },
+      where: { isRead: false, userId: { in: userIds } },
       data: { isRead: true }
     });
     res.json({ success: true });
