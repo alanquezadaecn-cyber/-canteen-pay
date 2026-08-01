@@ -177,6 +177,7 @@ model Branch {
   payments        BranchPayment[]
   products        Product[]
   cashierSessions CashierSession[]
+  subsidyTiers    SubsidyTier[]
 
   @@index([companyId])
 }
@@ -352,12 +353,15 @@ model SubsidyTier {
   id        String   @id @default(cuid())
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branchId  String?  // null = aplica a todas las sucursales de la empresa
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
   name      String
   cost      Decimal  @db.Decimal(10, 2)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   @@index([companyId])
+  @@index([branchId])
 }
 
 model StockMovement {

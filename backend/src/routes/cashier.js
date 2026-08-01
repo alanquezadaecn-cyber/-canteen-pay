@@ -167,8 +167,9 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
       const usedToday = await prisma.transaction.count({
         where: { userId: user.id, isSubsidized: true, createdAt: { gte: t0, lt: t1 } }
       });
+      // Solo niveles de ESTA sucursal, o los que aplican a toda la empresa (branchId null)
       const tiers = await prisma.subsidyTier.findMany({
-        where: { companyId: branch.company.id, isActive: true },
+        where: { companyId: branch.company.id, isActive: true, OR: [{ branchId }, { branchId: null }] },
         orderBy: { cost: 'asc' },
         select: { id: true, name: true, cost: true }
       });
@@ -575,6 +576,10 @@ router.post('/branch/:branchId/charge', async (req, res) => {
       const tier = await prisma.subsidyTier.findUnique({ where: { id: subsidyTierId } });
       if (!tier || tier.companyId !== branch.company.id || !tier.isActive) {
         return res.status(400).json({ error: 'Nivel de subsidio inválido' });
+      }
+      // Un nivel asignado a otra sucursal (branchId distinto y no "todas") no se puede cobrar aquí
+      if (tier.branchId && tier.branchId !== branchId) {
+        return res.status(400).json({ error: 'Este nivel de subsidio no aplica a esta sucursal' });
       }
       const userCfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
       const limit = (userCfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;

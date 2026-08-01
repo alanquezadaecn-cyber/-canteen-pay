@@ -139,6 +139,33 @@ describe('POST /cashier/branch/:branchId/charge — cobro subsidiado', () => {
     expect(res.body.error).toMatch(/nivel de subsidio inválido/i);
   });
 
+  it('rechaza un nivel asignado a otra sucursal de la misma empresa', async () => {
+    setupUserLookups({ balance: '100' });
+    mockPrisma.branch.findUnique.mockResolvedValueOnce({
+      id: BRANCH_ID, company: { id: COMPANY_ID, subsidyEnabled: true, subsidyMealsPerDay: 1 }
+    });
+    mockPrisma.subsidyTier.findUnique.mockResolvedValueOnce({ id: TIER_ID, companyId: COMPANY_ID, branchId: 'otra-sucursal', isActive: true, cost: 80 });
+
+    const res = await charge({ qrCode: COMENSAL_QR, amount: 80, subsidized: true, subsidyTierId: TIER_ID, clientRef: 'ref-6b' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/no aplica a esta sucursal/i);
+  });
+
+  it('acepta un nivel con branchId null (aplica a todas las sucursales)', async () => {
+    setupUserLookups({ balance: '100' });
+    mockPrisma.branch.findUnique.mockResolvedValueOnce({
+      id: BRANCH_ID, company: { id: COMPANY_ID, subsidyEnabled: true, subsidyMealsPerDay: 1 }
+    });
+    mockPrisma.subsidyTier.findUnique.mockResolvedValueOnce({ id: TIER_ID, name: 'Estándar', companyId: COMPANY_ID, branchId: null, isActive: true, cost: 80 });
+    mockPrisma.transaction.count.mockResolvedValueOnce(0);
+    mockPrisma.transaction.create.mockResolvedValueOnce({ id: 'tx-6c', amount: 80 });
+
+    const res = await charge({ qrCode: COMENSAL_QR, amount: 80, subsidized: true, subsidyTierId: TIER_ID, clientRef: 'ref-6c' });
+
+    expect(res.status).toBe(200);
+  });
+
   it('cobra el costo del nivel (no el amount recibido) y no descuenta saldo', async () => {
     setupUserLookups({ balance: '100' });
     mockPrisma.branch.findUnique.mockResolvedValueOnce({

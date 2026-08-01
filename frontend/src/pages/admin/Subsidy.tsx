@@ -4,7 +4,7 @@ import api from '../../lib/api';
 import { Coins, Save, Download, FileText, CheckCircle, Plus, Trash2, Layers, BadgeCheck } from 'lucide-react';
 
 interface ReportRow { name: string; employeeNumber: string; branchName: string; count: number; amount: string; }
-interface Tier { id: string; name: string; cost: string; isActive: boolean }
+interface Tier { id: string; name: string; cost: string; isActive: boolean; branchId: string | null; branch: { id: string; name: string } | null }
 
 export const Subsidy: React.FC = () => {
   // Config
@@ -19,6 +19,7 @@ export const Subsidy: React.FC = () => {
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [newTierName, setNewTierName] = useState('');
   const [newTierCost, setNewTierCost] = useState('');
+  const [newTierBranchId, setNewTierBranchId] = useState('');
   const [savingTier, setSavingTier] = useState(false);
   const [tierMsg, setTierMsg] = useState('');
 
@@ -41,7 +42,10 @@ export const Subsidy: React.FC = () => {
     }).catch(() => {});
   };
   const loadTiers = () => {
-    api.get('/admin/subsidy-tiers').then(({ data }) => setTiers(data)).catch(() => {});
+    api.get('/admin/subsidy-tiers').then(({ data }) => {
+      setTiers(data.tiers);
+      if (data.branches) setBranches(data.branches);
+    }).catch(() => {});
   };
 
   useEffect(() => { loadConfig(); loadTiers(); loadReport(); }, []);
@@ -63,8 +67,8 @@ export const Subsidy: React.FC = () => {
     }
     setSavingTier(true); setTierMsg('');
     try {
-      await api.post('/admin/subsidy-tiers', { name: newTierName.trim(), cost: newTierCost });
-      setNewTierName(''); setNewTierCost('');
+      await api.post('/admin/subsidy-tiers', { name: newTierName.trim(), cost: newTierCost, branchId: newTierBranchId || null });
+      setNewTierName(''); setNewTierCost(''); setNewTierBranchId('');
       loadTiers();
     } catch (err: any) {
       setTierMsg(err.response?.data?.error || 'Error al crear nivel');
@@ -76,6 +80,12 @@ export const Subsidy: React.FC = () => {
   };
   const saveTierCost = async (tier: Tier) => {
     try { await api.put(`/admin/subsidy-tiers/${tier.id}`, { cost: tier.cost }); } catch { loadTiers(); }
+  };
+
+  const saveTierBranch = async (tier: Tier, newBranchId: string) => {
+    const branch = branches.find(b => b.id === newBranchId) || null;
+    setTiers(prev => prev.map(t => t.id === tier.id ? { ...t, branchId: newBranchId || null, branch } : t));
+    try { await api.put(`/admin/subsidy-tiers/${tier.id}`, { branchId: newBranchId || null }); } catch { loadTiers(); }
   };
 
   const deleteTier = async (tier: Tier) => {
@@ -186,31 +196,53 @@ export const Subsidy: React.FC = () => {
           {tiers.length > 0 && (
             <div className="space-y-2">
               {tiers.map(tier => (
-                <div key={tier.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-3">
-                  <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{tier.name}</span>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
-                    <input
-                      type="number" min="0" step="0.01" value={tier.cost}
-                      onChange={e => updateTierCost(tier, e.target.value)}
-                      onBlur={() => saveTierCost(tier)}
-                      className="w-24 h-9 pl-6 pr-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-emerald-400"
-                    />
+                <div key={tier.id} className="bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="flex-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{tier.name}</span>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                      <input
+                        type="number" min="0" step="0.01" value={tier.cost}
+                        onChange={e => updateTierCost(tier, e.target.value)}
+                        onBlur={() => saveTierCost(tier)}
+                        className="w-24 h-9 pl-6 pr-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                    <button onClick={() => deleteTier(tier)} className="w-9 h-9 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer flex-shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button onClick={() => deleteTier(tier)} className="w-9 h-9 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer flex-shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {branches.length > 1 && (
+                    <select
+                      value={tier.branchId || ''}
+                      onChange={e => saveTierBranch(tier, e.target.value)}
+                      className="w-full h-9 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs focus:outline-none focus:border-emerald-400"
+                    >
+                      <option value="">Todas las sucursales</option>
+                      {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          <div className="flex items-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex-1">
+          <div className="flex items-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+            <div className="flex-1 min-w-[140px]">
               <label className="text-xs text-slate-400 block mb-1">Nombre del nivel</label>
               <input type="text" value={newTierName} onChange={e => setNewTierName(e.target.value)} placeholder="Ej. Estándar"
                 className="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400" />
             </div>
+            {branches.length > 1 && (
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-xs text-slate-400 block mb-1">Sucursal</label>
+                <select value={newTierBranchId} onChange={e => setNewTierBranchId(e.target.value)}
+                  className="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400">
+                  <option value="">Todas las sucursales</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="w-28">
               <label className="text-xs text-slate-400 block mb-1">Costo</label>
               <div className="relative">

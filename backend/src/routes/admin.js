@@ -106,28 +106,51 @@ router.put('/subsidy-config', async (req, res) => {
   }
 });
 
-// ── Niveles de subsidio (ej. Estándar $75, Especial $120) ──
+// ── Niveles de subsidio (ej. Estándar $75, Especial $120) — cada nivel puede aplicar a
+// una sucursal específica (branchId) o a todas las sucursales de la empresa (branchId null),
+// para empresas donde el costo de la comida varía por planta/proveedor local.
 router.get('/subsidy-tiers', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json([]);
-    const tiers = await prisma.subsidyTier.findMany({ where: { companyId, isActive: true }, orderBy: { cost: 'asc' } });
-    res.json(tiers.map(t => ({ ...t, cost: t.cost.toString() })));
+    if (!companyId) return res.json({ tiers: [], branches: [] });
+    const [tiers, branches] = await Promise.all([
+      prisma.subsidyTier.findMany({
+        where: { companyId, isActive: true },
+        include: { branch: { select: { id: true, name: true } } },
+        orderBy: { cost: 'asc' }
+      }),
+      prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true } })
+    ]);
+    res.json({ tiers: tiers.map(t => ({ ...t, cost: t.cost.toString() })), branches });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener niveles de subsidio' });
   }
 });
 
+// Verifica que branchId (si viene) sea una sucursal real de la empresa del admin —
+// sin esto, un admin podría asignar un nivel a la sucursal de OTRA empresa.
+async function assertBranchInCompany(branchId, companyId) {
+  if (!branchId) return true; // null = aplica a todas las sucursales
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { companyId: true } });
+  return !!branch && branch.companyId === companyId;
+}
+
 router.post('/subsidy-tiers', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
     if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
-    const { name, cost } = req.body;
+    const { name, cost, branchId } = req.body;
     if (!name?.trim() || !cost || parseFloat(cost) <= 0) {
       return res.status(400).json({ error: 'Nombre y costo válido requeridos' });
     }
-    const tier = await prisma.subsidyTier.create({ data: { companyId, name: name.trim(), cost: parseFloat(cost) } });
+    if (!(await assertBranchInCompany(branchId, companyId))) {
+      return res.status(400).json({ error: 'Sucursal inválida' });
+    }
+    const tier = await prisma.subsidyTier.create({
+      data: { companyId, name: name.trim(), cost: parseFloat(cost), branchId: branchId || null },
+      include: { branch: { select: { id: true, name: true } } }
+    });
     res.status(201).json({ ...tier, cost: tier.cost.toString() });
   } catch (err) {
     console.error(err);
@@ -140,14 +163,19 @@ router.put('/subsidy-tiers/:id', async (req, res) => {
     const companyId = await adminCompanyId(req);
     const tier = await prisma.subsidyTier.findUnique({ where: { id: req.params.id } });
     if (!tier || tier.companyId !== companyId) return res.status(404).json({ error: 'Nivel no encontrado' });
-    const { name, cost, isActive } = req.body;
+    const { name, cost, isActive, branchId } = req.body;
+    if (branchId !== undefined && !(await assertBranchInCompany(branchId, companyId))) {
+      return res.status(400).json({ error: 'Sucursal inválida' });
+    }
     const updated = await prisma.subsidyTier.update({
       where: { id: req.params.id },
       data: {
         ...(name !== undefined && { name: name.trim() }),
         ...(cost !== undefined && { cost: parseFloat(cost) }),
-        ...(isActive !== undefined && { isActive: !!isActive })
-      }
+        ...(isActive !== undefined && { isActive: !!isActive }),
+        ...(branchId !== undefined && { branchId: branchId || null })
+      },
+      include: { branch: { select: { id: true, name: true } } }
     });
     res.json({ ...updated, cost: updated.cost.toString() });
   } catch (err) {
