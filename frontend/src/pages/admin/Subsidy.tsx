@@ -118,16 +118,20 @@ export const Subsidy: React.FC = () => {
 
   const exportExcel = () => {
     if (!report) return;
-    const rows = report.byUser.map(r => ({
-      Comensal: r.name, '# Empleado': r.employeeNumber, Sucursal: r.branchName,
-      'Comidas subsidiadas': r.count, 'Monto base (MXN)': r.amount
-    }));
-    rows.push({ Comensal: 'SUBTOTAL', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': report.count as any, 'Monto base (MXN)': report.subtotal });
-    rows.push({ Comensal: `IVA (${report.ivaRate}%)`, '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': '' as any, 'Monto base (MXN)': report.iva });
-    rows.push({ Comensal: 'TOTAL A PAGAR', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': '' as any, 'Monto base (MXN)': report.total });
+    const ivaRate = parseFloat(report.ivaRate) / 100;
+    const rows = report.byUser.map(r => {
+      const base = parseFloat(r.amount);
+      const iva = base * ivaRate;
+      return {
+        Comensal: r.name, '# Empleado': r.employeeNumber, Sucursal: r.branchName,
+        'Comidas subsidiadas': r.count, 'Monto base (MXN)': base.toFixed(2),
+        'IVA (MXN)': iva.toFixed(2), 'Total (MXN)': (base + iva).toFixed(2)
+      };
+    });
+    rows.push({ Comensal: 'TOTAL A PAGAR', '# Empleado': '', Sucursal: '', 'Comidas subsidiadas': report.count as any, 'Monto base (MXN)': report.subtotal, 'IVA (MXN)': report.iva, 'Total (MXN)': report.total });
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
+    ws['!cols'] = [{ wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, ws, 'Subsidio');
     XLSX.writeFile(wb, `subsidio_${from}_a_${to}.xlsx`);
   };
