@@ -5,70 +5,41 @@ import { verifyToken, checkRole } from '../middleware/auth.js';
 const router = express.Router();
 router.use(verifyToken, checkRole(['ADMIN', 'CASHIER']));
 
+async function adminCompanyId(req) {
+  if (req.userCompanyId) return req.userCompanyId;
+  const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+  return admin?.branch?.companyId || null;
+}
+
+// Resuelve las sucursales visibles para el usuario autenticado: el cajero solo la suya,
+// el admin todas las de su empresa. Antes, si no se podía determinar una empresa, caía
+// en "todas las sucursales de la plataforma" — eso exponía inventario de OTRAS empresas
+// (IDOR); ahora sin empresa resuelta simplemente no se ve ninguna sucursal.
+async function visibleBranches(req) {
+  const companyId = await adminCompanyId(req);
+  if (!companyId) return [];
+  const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
+  if (me?.role === 'CASHIER') {
+    const branch = await prisma.branch.findUnique({ where: { id: me.branchId || '' }, select: { id: true, name: true, companyId: true } });
+    return branch && branch.companyId === companyId ? [branch] : [];
+  }
+  return prisma.branch.findMany({
+    where: { companyId, isActive: true },
+    select: { id: true, name: true, companyId: true },
+    orderBy: { name: 'asc' }
+  });
+}
+
 // GET branches available for admin inventory view
 router.get('/branches', async (req, res) => {
   try {
-    const admin = await prisma.user.findUnique({
-      where: { id: req.userId },
-      select: { branchId: true, role: true }
-    });
-
-    if (admin?.role === 'CASHIER') {
-      const branch = await prisma.branch.findUnique({
-        where: { id: admin.branchId || '' },
-        select: { id: true, name: true }
-      });
-      return res.json(branch ? [branch] : []);
-    }
-
-    // Para ADMIN: obtener todas las sucursales de su empresa
-    if (admin?.branchId) {
-      const branch = await prisma.branch.findUnique({
-        where: { id: admin.branchId },
-        select: { companyId: true }
-      });
-      if (branch) {
-        const branches = await prisma.branch.findMany({
-          where: { companyId: branch.companyId, isActive: true },
-          select: { id: true, name: true },
-          orderBy: { name: 'asc' }
-        });
-        return res.json(branches);
-      }
-    }
-
-    // Master admin: todas las sucursales
-    const branches = await prisma.branch.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-      orderBy: { name: 'asc' }
-    });
-    res.json(branches);
+    const branches = await visibleBranches(req);
+    res.json(branches.map(({ id, name }) => ({ id, name })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener sucursales' });
   }
 });
-
-// Resuelve las sucursales visibles para el usuario autenticado (mismo criterio que /branches)
-async function visibleBranches(req) {
-  const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
-  if (me?.role === 'CASHIER') {
-    const branch = await prisma.branch.findUnique({ where: { id: me.branchId || '' }, select: { id: true, name: true, companyId: true } });
-    return branch ? [branch] : [];
-  }
-  if (me?.branchId) {
-    const own = await prisma.branch.findUnique({ where: { id: me.branchId }, select: { companyId: true } });
-    if (own) {
-      return prisma.branch.findMany({
-        where: { companyId: own.companyId, isActive: true },
-        select: { id: true, name: true, companyId: true },
-        orderBy: { name: 'asc' }
-      });
-    }
-  }
-  return prisma.branch.findMany({ where: { isActive: true }, select: { id: true, name: true, companyId: true } });
-}
 
 // GET resumen de inventario por sucursal — para que el admin vea de un vistazo
 // qué sucursal tiene stock bajo/agotado/solicitudes pendientes, sin cambiar el filtro una por una.
@@ -106,8 +77,8 @@ router.post('/:productId/request-restock', async (req, res) => {
     const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true, name: true, branchId: true } });
     if (!product || !product.branchId) return res.status(404).json({ error: 'Producto no encontrado' });
 
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
-    if (me?.role === 'CASHIER' && me.branchId !== product.branchId) {
+    const branches = await visibleBranches(req);
+    if (!branches.some(b => b.id === product.branchId)) {
       return res.status(403).json({ error: 'No autorizado para este producto' });
     }
 
@@ -204,9 +175,11 @@ router.post('/branch/:branchId/create', async (req, res) => {
 
     const productType = type === 'INSUMO' ? 'INSUMO' : 'PRODUCTO';
 
-    // El cajero solo en su sucursal
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true, role: true } });
-    if (me?.role === 'CASHIER' && me.branchId !== branchId) {
+    // Tanto cajero como admin solo pueden crear productos en una sucursal visible para
+    // ellos (antes solo se validaba para CASHIER; un ADMIN podía crear productos en la
+    // sucursal de OTRA empresa con solo mandar su branchId).
+    const branches = await visibleBranches(req);
+    if (!branches.some(b => b.id === branchId)) {
       return res.status(403).json({ error: 'No autorizado en esta sucursal' });
     }
 
@@ -238,9 +211,22 @@ router.post('/branch/:branchId/create', async (req, res) => {
   }
 });
 
+// Trae un producto SOLO si pertenece a una sucursal visible para el usuario autenticado.
+// Sin esto, cualquier cajero/admin podía leer, modificar stock, reabastecer o eliminar
+// CUALQUIER producto del sistema por ID, sin importar de qué sucursal/empresa fuera.
+async function productInScope(req, productId) {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) return null;
+  const branches = await visibleBranches(req);
+  if (!branches.some(b => b.id === product.branchId)) return null;
+  return product;
+}
+
 // DELETE producto físico (desactivar)
 router.delete('/:id', async (req, res) => {
   try {
+    const product = await productInScope(req, req.params.id);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     await prisma.product.update({ where: { id: req.params.id }, data: { isActive: false } });
     res.json({ success: true });
   } catch (err) {
@@ -251,6 +237,10 @@ router.delete('/:id', async (req, res) => {
 // GET inventory for a branch — productos físicos (PRODUCTO, se venden) + insumos (INSUMO, operación)
 router.get('/branch/:branchId', async (req, res) => {
   try {
+    const branches = await visibleBranches(req);
+    if (!branches.some(b => b.id === req.params.branchId)) {
+      return res.status(403).json({ error: 'No autorizado en esta sucursal' });
+    }
     const products = await prisma.product.findMany({
       where: { branchId: req.params.branchId, isActive: true, productType: { in: ['PRODUCTO', 'INSUMO'] } },
       orderBy: [{ productType: 'asc' }, { category: 'asc' }, { name: 'asc' }]
@@ -268,8 +258,11 @@ router.get('/branch/:branchId', async (req, res) => {
 // PUT actualizar stock/tracking de un producto
 router.put('/:id/stock', async (req, res) => {
   try {
+    const product = await productInScope(req, req.params.id);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const { stock, minStock, isTracked } = req.body;
-    const product = await prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id: req.params.id },
       data: {
         ...(stock !== undefined && { stock: parseInt(stock) }),
@@ -277,7 +270,7 @@ router.put('/:id/stock', async (req, res) => {
         ...(isTracked !== undefined && { isTracked: Boolean(isTracked) })
       }
     });
-    res.json({ ...product, price: product.price.toString() });
+    res.json({ ...updated, price: updated.price.toString() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al actualizar stock' });
@@ -287,12 +280,12 @@ router.put('/:id/stock', async (req, res) => {
 // POST reabastecer producto
 router.post('/:id/restock', async (req, res) => {
   try {
+    const product = await productInScope(req, req.params.id);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const { quantity, note } = req.body;
     const qty = parseInt(quantity);
     if (!qty || qty <= 0) return res.status(400).json({ error: 'Cantidad inválida' });
-
-    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
-    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const prevStock = product.stock;
     const newStock = prevStock === -1 ? qty : prevStock + qty;
@@ -325,6 +318,9 @@ router.post('/:id/restock', async (req, res) => {
 // GET historial de movimientos
 router.get('/:id/movements', async (req, res) => {
   try {
+    const product = await productInScope(req, req.params.id);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const movements = await prisma.stockMovement.findMany({
       where: { productId: req.params.id },
       orderBy: { createdAt: 'desc' },

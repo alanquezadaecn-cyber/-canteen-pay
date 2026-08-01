@@ -7,6 +7,15 @@ const router = express.Router();
 // GET products by branch (menú/cobro) — excluye INSUMO (esos son solo de operación, no se venden)
 router.get('/branch/:branchId', verifyToken, checkRole(['ADMIN', 'CASHIER', 'USER']), async (req, res) => {
   try {
+    // Sin esto, cualquier usuario autenticado (comensal, cajero o admin) podía ver el
+    // menú de una sucursal de OTRA empresa con solo cambiar el branchId en la URL.
+    const requester = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+    const companyId = req.userCompanyId || requester?.branch?.companyId;
+    const targetBranch = companyId ? await prisma.branch.findUnique({ where: { id: req.params.branchId }, select: { companyId: true } }) : null;
+    if (!targetBranch || targetBranch.companyId !== companyId) {
+      return res.status(404).json({ error: 'Sucursal no encontrada' });
+    }
+
     const products = await prisma.product.findMany({
       where: { branchId: req.params.branchId, isActive: true, productType: { not: 'INSUMO' } },
       orderBy: [{ category: 'asc' }, { name: 'asc' }]

@@ -6,9 +6,29 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['ADMIN']));
 
+async function adminCompanyId(req) {
+  if (req.userCompanyId) return req.userCompanyId;
+  const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+  return admin?.branch?.companyId || null;
+}
+
+// Verifica que branchId sea una sucursal de la empresa del admin autenticado. Sin esto,
+// cualquier admin podía leer ingresos/usuarios/turnos de cualquier sucursal del sistema
+// con solo cambiar el branchId en la URL (IDOR).
+async function requireBranchInCompany(req, res, branchId) {
+  const companyId = await adminCompanyId(req);
+  const branch = companyId ? await prisma.branch.findUnique({ where: { id: branchId }, select: { companyId: true } }) : null;
+  if (!branch || branch.companyId !== companyId) {
+    res.status(404).json({ error: 'Sucursal no encontrada' });
+    return false;
+  }
+  return true;
+}
+
 // GET branch statistics
 router.get('/branch/:branchId/stats', async (req, res) => {
   try {
+    if (!(await requireBranchInCompany(req, res, req.params.branchId))) return;
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
@@ -75,6 +95,7 @@ router.get('/branch/:branchId/stats', async (req, res) => {
 // GET daily revenue report
 router.get('/branch/:branchId/daily', async (req, res) => {
   try {
+    if (!(await requireBranchInCompany(req, res, req.params.branchId))) return;
     const { month, year } = req.query;
     const currentMonth = month ? parseInt(month) : new Date().getMonth() + 1;
     const currentYear = year ? parseInt(year) : new Date().getFullYear();
@@ -114,6 +135,14 @@ router.get('/branch/:branchId/daily', async (req, res) => {
 // GET user history in detail
 router.get('/user/:userId/history', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    const targetUser = await prisma.user.findUnique({ where: { id: req.params.userId }, include: { branch: true } });
+    // Sin esto, un admin podía leer el historial completo (montos, saldo, email) de
+    // CUALQUIER comensal del sistema con solo conocer su ID.
+    if (!targetUser || targetUser.branch?.companyId !== companyId) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     const { limit = 50 } = req.query;
 
     const transactions = await prisma.transaction.findMany({
@@ -127,13 +156,8 @@ router.get('/user/:userId/history', async (req, res) => {
       take: parseInt(limit)
     });
 
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.userId },
-      select: { name: true, email: true, balance: true, createdAt: true }
-    });
-
     res.json({
-      user,
+      user: { name: targetUser.name, email: targetUser.email, balance: targetUser.balance, createdAt: targetUser.createdAt },
       transactions: transactions.map(t => ({
         id: t.id,
         type: t.type,
@@ -160,6 +184,9 @@ router.get('/cashier-session/:sessionId', async (req, res) => {
     if (!session) {
       return res.status(404).json({ error: 'Sesión no encontrada' });
     }
+
+    // Sin esto, un admin podía leer el detalle de cualquier turno de caja del sistema.
+    if (!(await requireBranchInCompany(req, res, session.branchId))) return;
 
     res.json(session);
   } catch (err) {

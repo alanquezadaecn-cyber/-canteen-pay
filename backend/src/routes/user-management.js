@@ -6,9 +6,29 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['ADMIN']));
 
+async function adminCompanyId(req) {
+  if (req.userCompanyId) return req.userCompanyId;
+  const admin = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+  return admin?.branch?.companyId || null;
+}
+
+// Trae un usuario SOLO si pertenece a una sucursal de la empresa del admin autenticado.
+// Sin esto, un admin podía bloquear/agregar o quitar saldo/leer alertas de comensales
+// de OTRAS empresas con solo conocer su ID (IDOR de lectura y escritura).
+async function userInCompany(userId, companyId) {
+  if (!companyId) return null;
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { branch: true } });
+  if (!user || user.branch?.companyId !== companyId) return null;
+  return user;
+}
+
 // BLOCK user
 router.post('/:userId/block', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    const target = await userInCompany(req.params.userId, companyId);
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
     const { reason } = req.body;
 
     const user = await prisma.user.update({
@@ -38,6 +58,10 @@ router.post('/:userId/block', async (req, res) => {
 // UNBLOCK user
 router.post('/:userId/unblock', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    const target = await userInCompany(req.params.userId, companyId);
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
     await prisma.user.update({
       where: { id: req.params.userId },
       data: {
@@ -62,7 +86,8 @@ router.post('/:userId/add-credit', async (req, res) => {
       return res.status(400).json({ error: 'Monto inválido' });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
+    const companyId = await adminCompanyId(req);
+    const user = await userInCompany(req.params.userId, companyId);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -103,7 +128,8 @@ router.post('/:userId/remove-credit', async (req, res) => {
       return res.status(400).json({ error: 'Monto inválido' });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
+    const companyId = await adminCompanyId(req);
+    const user = await userInCompany(req.params.userId, companyId);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -149,6 +175,10 @@ router.post('/:userId/set-min-balance', async (req, res) => {
       return res.status(400).json({ error: 'Min balance requerido' });
     }
 
+    const companyId = await adminCompanyId(req);
+    const target = await userInCompany(req.params.userId, companyId);
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
     await prisma.user.update({
       where: { id: req.params.userId },
       data: { minBalance: parseFloat(minBalance) }
@@ -164,6 +194,10 @@ router.post('/:userId/set-min-balance', async (req, res) => {
 // GET user alerts
 router.get('/:userId/alerts', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    const target = await userInCompany(req.params.userId, companyId);
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
     const alerts = await prisma.userAlert.findMany({
       where: { userId: req.params.userId },
       orderBy: { createdAt: 'desc' }

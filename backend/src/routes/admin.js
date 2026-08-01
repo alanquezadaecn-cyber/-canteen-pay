@@ -332,28 +332,31 @@ router.put('/payment-config', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ totalUsers: 0, totalBalance: '0.00', todayTransactions: 0, todayRevenue: '0.00', todayRecharges: '0.00', totalTransactions: 0 });
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [totalUsers, totalBalance, todayTransactions, totalTransactions, users] = await Promise.all([
-      prisma.user.count({ where: { isActive: true } }),
-      prisma.user.aggregate({ _sum: { balance: true } }),
+    // Sin acotar por empresa, un admin veía usuarios/saldo/transacciones de TODA la plataforma.
+    const userWhere = { branch: { companyId } };
+    const txWhere = { user: { branch: { companyId } } };
+
+    const [totalUsers, totalBalance, todayTransactions, totalTransactions] = await Promise.all([
+      prisma.user.count({ where: { ...userWhere, isActive: true } }),
+      prisma.user.aggregate({ where: userWhere, _sum: { balance: true } }),
       prisma.transaction.count({
-        where: {
-          createdAt: { gte: today, lt: tomorrow }
-        }
+        where: { ...txWhere, createdAt: { gte: today, lt: tomorrow } }
       }),
-      prisma.transaction.count(),
-      prisma.user.findMany({
-        select: { balance: true }
-      })
+      prisma.transaction.count({ where: txWhere })
     ]);
 
     const todayTransactionsData = await prisma.transaction.findMany({
       where: {
+        ...txWhere,
         type: { in: ['PURCHASE', 'RECHARGE'] },
         createdAt: { gte: today, lt: tomorrow }
       }
@@ -522,9 +525,18 @@ router.post('/users', async (req, res) => {
       return res.status(409).json({ error: 'El email ya está registrado' });
     }
 
-    // Obtener branchId del admin si no se proporcionó
+    // Obtener branchId del admin si no se proporcionó. Si sí se proporcionó, debe ser
+    // una sucursal de la PROPIA empresa — si no, un admin podía crear usuarios (incluso
+    // ADMIN o CAJERO) en la sucursal de otra empresa con solo mandar su branchId.
     const adminUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { branchId: true } });
-    const finalBranchId = bodyBranchId || adminUser?.branchId;
+    let finalBranchId = bodyBranchId || adminUser?.branchId;
+    if (bodyBranchId) {
+      const companyId = await adminCompanyId(req);
+      const targetBranch = await prisma.branch.findUnique({ where: { id: bodyBranchId }, select: { companyId: true } });
+      if (!targetBranch || targetBranch.companyId !== companyId) {
+        return res.status(400).json({ error: 'Sucursal inválida' });
+      }
+    }
 
     // Límite de comensales según el plan (solo aplica a comensales)
     if ((role === 'USER' || !role) && finalBranchId) {
@@ -759,6 +771,12 @@ router.post('/users/bulk-import', async (req, res) => {
   try {
     const { branchId, users } = req.body;
     if (!branchId) return res.status(400).json({ error: 'Sucursal requerida' });
+    // Sin esto, se podía importar comensales masivamente a la sucursal de OTRA empresa.
+    const companyId = await adminCompanyId(req);
+    const targetBranch = await prisma.branch.findUnique({ where: { id: branchId }, select: { companyId: true } });
+    if (!targetBranch || targetBranch.companyId !== companyId) {
+      return res.status(400).json({ error: 'Sucursal inválida' });
+    }
     const { bulkImportComensales } = await import('../lib/bulkImport.js');
     const { httpError, result } = await bulkImportComensales(branchId, users);
     if (httpError) return res.status(httpError.status).json({ error: httpError.error });
@@ -769,17 +787,30 @@ router.post('/users/bulk-import', async (req, res) => {
   }
 });
 
+// Sucursales de la empresa del admin autenticado (usado para acotar consultas globales).
+async function companyBranchIds(companyId) {
+  if (!companyId) return [];
+  const branches = await prisma.branch.findMany({ where: { companyId }, select: { id: true } });
+  return branches.map(b => b.id);
+}
+
 // ── ALERTAS ─────────────────────────────────────────────────────────────────────
 router.get('/alerts', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json([]);
+    const branchIds = await companyBranchIds(companyId);
+
     const { unread } = req.query;
+    // Sin acotar por usuarios de la propia empresa, cualquier admin veía alertas
+    // (bloqueos, saldo bajo, compras...) de comensales de TODAS las empresas.
     const alerts = await prisma.userAlert.findMany({
-      where: unread === 'true' ? { isRead: false } : {},
+      where: {
+        ...(unread === 'true' ? { isRead: false } : {}),
+        user: { branchId: { in: branchIds } }
+      },
       orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: {
-        // No hay relación directa, hacemos lookup manual
-      }
+      take: 50
     });
 
     // Enrich con nombre de usuario
@@ -800,6 +831,11 @@ router.get('/alerts', async (req, res) => {
 
 router.put('/alerts/:id/read', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    const alert = await prisma.userAlert.findUnique({ where: { id: req.params.id }, include: { user: { include: { branch: true } } } });
+    if (!alert || alert.user?.branch?.companyId !== companyId) {
+      return res.status(404).json({ error: 'Alerta no encontrada' });
+    }
     await prisma.userAlert.update({
       where: { id: req.params.id },
       data: { isRead: true }
@@ -813,8 +849,11 @@ router.put('/alerts/:id/read', async (req, res) => {
 
 router.put('/alerts/read-all', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ success: true });
+    const branchIds = await companyBranchIds(companyId);
     await prisma.userAlert.updateMany({
-      where: { isRead: false },
+      where: { isRead: false, user: { branchId: { in: branchIds } } },
       data: { isRead: true }
     });
     res.json({ success: true });
@@ -826,14 +865,19 @@ router.put('/alerts/read-all', async (req, res) => {
 
 router.get('/cashiers', async (req, res) => {
   try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json([]);
+    const branchIds = await companyBranchIds(companyId);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Sin acotar por sucursal de la empresa, se exponía personal y ventas de otras empresas.
     const cashiers = await prisma.user.findMany({
-      where: { role: { in: ['CASHIER', 'ADMIN'] } },
+      where: { role: { in: ['CASHIER', 'ADMIN'] }, branchId: { in: branchIds } },
       select: {
         id: true,
         name: true,
