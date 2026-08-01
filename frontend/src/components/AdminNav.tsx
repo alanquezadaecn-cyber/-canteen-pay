@@ -70,8 +70,10 @@ export const AdminNav: React.FC = () => {
 
   const AlertPanel = () => (
     // Móvil: panel fijo con márgenes laterales (no se sale de la pantalla).
-    // Desktop (md+): dropdown anclado a la campanita, ancho fijo.
-    <div className="fixed left-3 right-3 top-16 md:absolute md:left-auto md:right-0 md:top-10 md:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50">
+    // Desktop (md+): dropdown anclado a la campanita, abriendo hacia la derecha —
+    // la campanita está en el borde derecho del sidebar angosto (izquierda de la
+    // pantalla), así que anclar con right-0 lo mandaba fuera de la pantalla.
+    <div className="fixed left-3 right-3 top-16 md:absolute md:left-0 md:right-auto md:top-10 md:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
         <span className="text-sm font-semibold text-slate-900 dark:text-white">Alertas ({unreadCount})</span>
         {unreadCount > 0 && (
