@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../lib/api';
 import { Clock, ArrowDownLeft, ArrowUpRight, Camera, Keyboard, CheckCircle } from 'lucide-react';
+import { isOnline, cacheAttendanceRecords, getCachedAttendanceRecords, resolveAttendancePerson, queueAttendance } from '../../lib/offline';
 
 interface Record {
   id: string;
@@ -20,7 +21,7 @@ export const CashierAttendance: React.FC = () => {
 
   const [records, setRecords] = useState<Record[]>([]);
   const [manual, setManual] = useState('');
-  const [flash, setFlash] = useState<{ type: 'IN' | 'OUT'; name: string; position: string; time: string } | null>(null);
+  const [flash, setFlash] = useState<{ type: 'IN' | 'OUT'; name: string; position: string; time: string; offline?: boolean } | null>(null);
   const [error, setError] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
   const qrRef = useRef<Html5Qrcode | null>(null);
@@ -28,7 +29,14 @@ export const CashierAttendance: React.FC = () => {
 
   const load = () => {
     if (!branchId) return;
-    api.get(`/cashier/branch/${branchId}/attendance`).then(r => setRecords(r.data)).catch(() => {});
+    api.get(`/cashier/branch/${branchId}/attendance`).then(r => {
+      setRecords(r.data);
+      cacheAttendanceRecords(branchId, r.data);
+    }).catch(() => {
+      // Sin conexión: mostrar lo último que se vio de hoy en vez de dejar la lista vacía.
+      const cached = getCachedAttendanceRecords(branchId);
+      if (cached.length > 0) setRecords(cached);
+    });
   };
 
   useEffect(() => { load(); }, [branchId]);
@@ -38,14 +46,34 @@ export const CashierAttendance: React.FC = () => {
     busyRef.current = true;
     setError('');
     try {
-      const { data } = await api.post(`/cashier/branch/${branchId}/attendance/scan`, { qrCode: term.trim() });
-      setFlash({ type: data.type, name: data.name, position: data.position, time: fmtTime(data.time) });
-      setManual('');
-      load();
-      setTimeout(() => setFlash(null), 3500);
+      if (isOnline()) {
+        const { data } = await api.post(`/cashier/branch/${branchId}/attendance/scan`, { qrCode: term.trim() });
+        setFlash({ type: data.type, name: data.name, position: data.position, time: fmtTime(data.time) });
+        setManual('');
+        load();
+        setTimeout(() => setFlash(null), 3500);
+        return;
+      }
+      throw { offline: true };
     } catch (err: any) {
-      setError(err.response?.data?.error || 'No se pudo registrar');
-      setTimeout(() => setError(''), 3000);
+      if (err?.offline || !err?.response) {
+        // Sin conexión: se guarda local (entrada/salida calculada con lo último que se
+        // sabía de esta persona) y se sincroniza sola al volver la señal.
+        const person = resolveAttendancePerson(branchId, term.trim());
+        if (!person) {
+          setError('Sin conexión: no se pudo identificar (solo funciona offline para comensales ya vistos hoy)');
+          setTimeout(() => setError(''), 3500);
+        } else {
+          const result = queueAttendance(branchId, person);
+          setFlash({ type: result.type, name: result.name, position: result.position, time: fmtTime(result.time), offline: true });
+          setManual('');
+          setRecords(getCachedAttendanceRecords(branchId));
+          setTimeout(() => setFlash(null), 3500);
+        }
+      } else {
+        setError(err.response?.data?.error || 'No se pudo registrar');
+        setTimeout(() => setError(''), 3000);
+      }
     } finally {
       setTimeout(() => { busyRef.current = false; }, 1200); // evitar doble-scan del mismo QR
     }
@@ -92,6 +120,7 @@ export const CashierAttendance: React.FC = () => {
             </div>
             <p className="text-2xl font-bold">{flash.type === 'IN' ? 'Entrada' : 'Salida'} · {flash.time}</p>
             <p className="text-white/90 mt-1">{flash.name}{flash.position ? ` · ${flash.position}` : ''}</p>
+            {flash.offline && <p className="text-white/80 text-xs mt-2">⚠️ Sin conexión: guardado, se sincronizará solo</p>}
           </div>
         )}
         {error && (

@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { AlertCircle, ShoppingCart, Plus, Search, Play, Square, Clock, UtensilsCrossed } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
-import { doCharge, doCashSale, doRecharge, findCachedComensal, cacheComensales, isOnline } from '../../lib/offline';
+import { doCharge, doCashSale, doRecharge, findCachedComensal, cacheComensales, cacheComensalSubsidy, cacheProducts, getCachedProducts, isOnline } from '../../lib/offline';
 
 interface CashDrawer {
   initialFloat: string;
@@ -156,6 +156,9 @@ export const CashierActionPanel: React.FC = () => {
       const { data } = await api.get(`/cashier/branch/${branchId}/scan/${encodeURIComponent(clean)}`);
       setUser(data);
       setError('');
+      // Guardar el subsidio (niveles, límite, cuántas lleva hoy) para que si justo después
+      // se pierde la conexión, se pueda seguir cobrando subsidiado con ese último dato.
+      if (data.subsidy) cacheComensalSubsidy(branchId, data.id, data.subsidy);
     } catch (err: any) {
       // Si falló por red, intentar el cache local
       if (!err.response) {
@@ -179,8 +182,15 @@ export const CashierActionPanel: React.FC = () => {
     try {
       const { data } = await api.get(`/products/branch/${branchId}`);
       setProducts(data);
+      if (branchId) cacheProducts(branchId, data);
     } catch (err) {
       console.error('Error cargando productos:', err);
+      // Sin conexión: usar el menú/snacks que se guardó la última vez que sí hubo señal,
+      // en vez de dejar la pantalla vacía como si no hubiera nada que cobrar.
+      if (branchId) {
+        const cached = getCachedProducts(branchId);
+        if (cached.length > 0) setProducts(cached);
+      }
     }
     // Cachear comensales para operar offline (en segundo plano, no bloquea)
     if (branchId && isOnline()) {
@@ -211,7 +221,9 @@ export const CashierActionPanel: React.FC = () => {
     setLoading(true);
     try {
       const res: any = await doCharge(branchId, user, tier.cost, `Subsidiado (${tier.name})`, true, undefined, tier.id);
-      setSuccess(`✅ ${tier.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
+      setSuccess(res.offline
+        ? `⚠️ Sin conexión: ${tier.name} subsidiado a ${user.name} (se sincronizará). Le quedan ${res.subsidyLeft} hoy.`
+        : `✅ ${tier.name} SUBSIDIADO a ${user.name}. Le quedan ${res.subsidyLeft} hoy.`);
       setUser({ ...user, subsidy: user.subsidy ? { ...user.subsidy, usedToday: user.subsidy.usedToday + 1, left: res.subsidyLeft } : undefined });
       setMode('select');
       setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
