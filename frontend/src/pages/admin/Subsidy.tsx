@@ -5,6 +5,7 @@ import { Coins, Save, Download, FileText, CheckCircle, Plus, Trash2, Layers, Bad
 
 interface ReportRow { name: string; employeeNumber: string; branchName: string; count: number; amount: string; }
 interface Tier { id: string; name: string; cost: string; isActive: boolean; branchId: string | null; branch: { id: string; name: string } | null }
+interface BranchMeals { id: string; name: string; mealsPerDay: number | null }
 
 export const Subsidy: React.FC = () => {
   // Config
@@ -14,6 +15,7 @@ export const Subsidy: React.FC = () => {
   const [settledAt, setSettledAt] = useState<string | null>(null);
   const [savingCfg, setSavingCfg] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
+  const [branchMeals, setBranchMeals] = useState<BranchMeals[]>([]);
 
   // Niveles de subsidio
   const [tiers, setTiers] = useState<Tier[]>([]);
@@ -39,7 +41,15 @@ export const Subsidy: React.FC = () => {
   const loadConfig = () => {
     api.get('/admin/subsidy-config').then(({ data }) => {
       setEnabled(data.enabled); setMealsPerDay(data.mealsPerDay); setIvaRate(data.ivaRate); setSettledAt(data.settledAt);
+      if (data.branches) setBranchMeals(data.branches);
     }).catch(() => {});
+  };
+
+  const saveBranchMeals = async (branchId: string, value: string) => {
+    setBranchMeals(prev => prev.map(b => b.id === branchId ? { ...b, mealsPerDay: value === '' ? null : parseInt(value) } : b));
+    try {
+      await api.put(`/admin/subsidy-config/branch/${branchId}`, { mealsPerDay: value === '' ? null : value });
+    } catch { loadConfig(); }
   };
   const loadTiers = () => {
     api.get('/admin/subsidy-tiers').then(({ data }) => {
@@ -169,6 +179,28 @@ export const Subsidy: React.FC = () => {
             <input type="number" min="0" value={mealsPerDay} onChange={e => setMealsPerDay(parseInt(e.target.value) || 0)}
               className="w-20 h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-lg font-bold focus:outline-none focus:border-emerald-400" />
           </div>
+
+          {/* Excepciones por sucursal: si una planta permite un número distinto de comidas
+              subsidiadas al día, se sobreescribe aquí solo para esa sucursal. */}
+          {branchMeals.length > 1 && (
+            <div className="pt-1 pb-1 space-y-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Excepciones por sucursal (opcional)</p>
+              {branchMeals.map(b => (
+                <div key={b.id} className="flex items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-2.5">
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{b.name}</span>
+                  <input
+                    type="number" min="0"
+                    value={b.mealsPerDay ?? ''}
+                    placeholder={String(mealsPerDay)}
+                    onChange={e => saveBranchMeals(b.id, e.target.value)}
+                    className="w-20 h-9 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-center text-sm font-bold focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-slate-400">Vacío = usa el valor general de arriba ({mealsPerDay}).</p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">IVA</p>

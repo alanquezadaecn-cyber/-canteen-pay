@@ -72,13 +72,18 @@ router.get('/attendance', async (req, res) => {
 router.get('/subsidy-config', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1, ivaRate: '16', settledAt: null });
-    const c = await prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyIvaRate: true, subsidySettledAt: true } });
+    if (!companyId) return res.json({ enabled: false, mealsPerDay: 1, ivaRate: '16', settledAt: null, branches: [] });
+    const [c, branches] = await Promise.all([
+      prisma.company.findUnique({ where: { id: companyId }, select: { subsidyEnabled: true, subsidyMealsPerDay: true, subsidyIvaRate: true, subsidySettledAt: true } }),
+      prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true, subsidyMealsPerDay: true } })
+    ]);
     res.json({
       enabled: !!c?.subsidyEnabled,
       mealsPerDay: c?.subsidyMealsPerDay ?? 1,
       ivaRate: (c?.subsidyIvaRate ?? 16).toString(),
-      settledAt: c?.subsidySettledAt || null
+      settledAt: c?.subsidySettledAt || null,
+      // Cada sucursal puede tener su propio límite de comidas subsidiadas/día; null = usa el de la empresa
+      branches: branches.map(b => ({ id: b.id, name: b.name, mealsPerDay: b.subsidyMealsPerDay }))
     });
   } catch (err) {
     res.status(500).json({ error: 'Error' });
@@ -100,6 +105,28 @@ router.put('/subsidy-config', async (req, res) => {
       }
     });
     res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar' });
+  }
+});
+
+// PUT límite de comidas subsidiadas/día para UNA sucursal específica (override del valor
+// de la empresa). mealsPerDay null/vacío = quitar el override y volver a usar el de la empresa.
+router.put('/subsidy-config/branch/:branchId', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const branch = await prisma.branch.findUnique({ where: { id: req.params.branchId }, select: { companyId: true } });
+    if (!branch || branch.companyId !== companyId) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    const { mealsPerDay } = req.body;
+    const value = mealsPerDay === null || mealsPerDay === '' || mealsPerDay === undefined
+      ? null
+      : Math.max(0, parseInt(mealsPerDay) || 0);
+
+    await prisma.branch.update({ where: { id: req.params.branchId }, data: { subsidyMealsPerDay: value } });
+    res.json({ success: true, mealsPerDay: value });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar' });

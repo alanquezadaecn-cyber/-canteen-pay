@@ -161,7 +161,7 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
     });
     if (branch?.company?.subsidyEnabled) {
       const cfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
-      const limit = (cfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
+      const limit = (cfg?.subsidyMealsPerDay ?? branch.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
       const t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
       const usedToday = await prisma.transaction.count({
@@ -582,7 +582,7 @@ router.post('/branch/:branchId/charge', async (req, res) => {
         return res.status(400).json({ error: 'Este nivel de subsidio no aplica a esta sucursal' });
       }
       const userCfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
-      const limit = (userCfg?.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
+      const limit = (userCfg?.subsidyMealsPerDay ?? branch.subsidyMealsPerDay ?? branch.company.subsidyMealsPerDay) || 0;
       // El monto que se registra como subsidio es el costo del nivel elegido (lo que
       // realmente paga la empresa), no el precio de venta de ningún platillo.
       const subsidyAmount = parseFloat(tier.cost);

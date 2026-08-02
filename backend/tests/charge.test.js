@@ -197,4 +197,20 @@ describe('POST /cashier/branch/:branchId/charge — cobro subsidiado', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/ya usó/i);
   });
+
+  it('usa el límite de la sucursal por encima del de la empresa cuando está definido', async () => {
+    setupUserLookups({ balance: '100' });
+    // La empresa permite 1 comida/día, pero esta sucursal tiene override a 2
+    mockPrisma.branch.findUnique.mockResolvedValueOnce({
+      id: BRANCH_ID, subsidyMealsPerDay: 2, company: { id: COMPANY_ID, subsidyEnabled: true, subsidyMealsPerDay: 1 }
+    });
+    mockPrisma.subsidyTier.findUnique.mockResolvedValueOnce({ id: TIER_ID, name: 'Estándar', companyId: COMPANY_ID, isActive: true, cost: 80 });
+    mockPrisma.transaction.count.mockResolvedValueOnce(1); // ya usó 1 hoy — con el límite de empresa (1) esto rechazaría
+    mockPrisma.transaction.create.mockResolvedValueOnce({ id: 'tx-9', amount: 80 });
+
+    const res = await charge({ qrCode: COMENSAL_QR, amount: 80, subsidized: true, subsidyTierId: TIER_ID, clientRef: 'ref-9' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.subsidyLeft).toBe(0); // limite 2, usadas 2 (1 previa + esta)
+  });
 });

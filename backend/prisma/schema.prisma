@@ -157,6 +157,8 @@ model Branch {
   location        String?
   isActive        Boolean   @default(true)
 
+  subsidyMealsPerDay Int?   // Override de comidas subsidiadas/día para esta sucursal (null = usar el de la empresa)
+
   // Licencia y Pago
   licenseStatus   String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, TRIAL
   licenseExpiry   DateTime?
