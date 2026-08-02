@@ -43,11 +43,20 @@ function todayRange() {
 
 // Cuenta platillos (productType PLATILLO) servidos por este cajero en la ventana [from, to)
 async function countDishes(cashierId, from, to) {
-  const items = await prisma.transactionItem.findMany({
-    where: { transaction: { cashierId, createdAt: { gte: from, lt: to } } },
-    select: { quantity: true, product: { select: { productType: true } } }
-  });
-  return items.filter(i => i.product?.productType === 'PLATILLO').reduce((sum, i) => sum + i.quantity, 0);
+  // Las ventas subsidiadas nunca crean un TransactionItem (van por nivel, no por producto),
+  // así que sin esto no contaban como "platillos" servidos en el turno aunque sí fue una
+  // comida real entregada.
+  const [items, subsidizedCount] = await Promise.all([
+    prisma.transactionItem.findMany({
+      where: { transaction: { cashierId, createdAt: { gte: from, lt: to } } },
+      select: { quantity: true, product: { select: { productType: true } } }
+    }),
+    prisma.transaction.count({
+      where: { cashierId, isSubsidized: true, createdAt: { gte: from, lt: to } }
+    })
+  ]);
+  const platilloItems = items.filter(i => i.product?.productType === 'PLATILLO').reduce((sum, i) => sum + i.quantity, 0);
+  return platilloItems + subsidizedCount;
 }
 
 // Efectivo físico que debería haber en caja para ESTE turno: el fondo con el que se abrió

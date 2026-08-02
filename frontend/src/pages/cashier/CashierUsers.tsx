@@ -6,7 +6,7 @@ import { useBranding } from '../../hooks/useBranding';
 import { QRModal } from '../../components/QRModal';
 import { BulkImportComensales } from '../../components/BulkImportComensales';
 import api from '../../lib/api';
-import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus, QrCode, Upload, ChefHat } from 'lucide-react';
+import { Search, Pencil, Check, X, Power, Users as UsersIcon, UserPlus, QrCode, Upload, ChefHat, ChevronLeft, ChevronRight, ArrowDownAZ, Hash } from 'lucide-react';
 
 interface Comensal {
   id: string;
@@ -41,23 +41,38 @@ export const CashierUsers: React.FC = () => {
   const [qrUser, setQrUser] = useState<Comensal | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [limit, setLimit] = useState<{ max: number | null; used: number } | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState({ comensal: 0, staff: 0 });
+  const [sort, setSort] = useState<'name' | 'employeeNumber'>('name');
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     if (!branchId) return;
     api.get(`/cashier/branch/${branchId}/limit`).then(r => setLimit(r.data)).catch(() => {});
   }, [branchId]);
 
+  useEffect(() => { setPage(1); }, [search, tab, sort]);
+
   useEffect(() => {
     if (!branchId) return;
     const t = setTimeout(() => load(), 300);
     return () => clearTimeout(t);
-  }, [branchId, search]);
+  }, [branchId, search, tab, sort, page]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/cashier/branch/${branchId}/users?search=${encodeURIComponent(search)}`);
-      setUsers(data);
+      const params = new URLSearchParams({
+        search, sort, page: String(page), limit: String(PAGE_SIZE),
+        isStaff: tab === 'STAFF' ? 'true' : 'false'
+      });
+      const { data } = await api.get(`/cashier/branch/${branchId}/users?${params}`);
+      setUsers(data.data);
+      setPageCount(data.pagination.pages || 1);
+      setTotal(data.pagination.total || 0);
+      setCounts(data.counts || { comensal: 0, staff: 0 });
     } catch {
       setError('Error al cargar comensales');
     } finally {
@@ -92,9 +107,9 @@ export const CashierUsers: React.FC = () => {
     } catch {}
   };
 
-  const filtered = users.filter(u => tab === 'STAFF' ? u.isStaff : !u.isStaff);
-  const staffCount = users.filter(u => u.isStaff).length;
-  const comensalCount = users.filter(u => !u.isStaff).length;
+  const filtered = users; // ya viene filtrado y paginado por el servidor (tab + página)
+  const staffCount = counts.staff;
+  const comensalCount = counts.comensal;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pb-28 md:pb-8 pt-16 md:pt-8">
@@ -152,6 +167,23 @@ export const CashierUsers: React.FC = () => {
             placeholder="Buscar por nombre, email o número..."
             className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 transition-colors"
           />
+        </div>
+
+        {/* Orden */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Ordenar por:</span>
+          <button
+            onClick={() => setSort('name')}
+            className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold cursor-pointer transition-colors ${sort === 'name' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+          >
+            <ArrowDownAZ className="w-3.5 h-3.5" /> Nombre
+          </button>
+          <button
+            onClick={() => setSort('employeeNumber')}
+            className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold cursor-pointer transition-colors ${sort === 'employeeNumber' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+          >
+            <Hash className="w-3.5 h-3.5" /> # Empleado
+          </button>
         </div>
 
         {error && (
@@ -270,6 +302,31 @@ export const CashierUsers: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Paginación */}
+        {pageCount > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-slate-400">
+              Página {page} de {pageCount} · {total} en total
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:border-emerald-400 transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                disabled={page === pageCount}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:border-emerald-400 transition-colors cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

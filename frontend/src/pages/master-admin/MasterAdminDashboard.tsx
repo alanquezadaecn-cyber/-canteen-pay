@@ -940,31 +940,31 @@ export const MasterAdminDashboard: React.FC = () => {
         ];
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-700 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-white">URLs de acceso</h2>
-                  <p className="text-sm text-slate-400">{urlsModal.name}</p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">URLs de acceso</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{urlsModal.name}</p>
                 </div>
-                <button onClick={() => setUrlsModal(null)} className="text-slate-500 hover:text-white">
+                <button onClick={() => setUrlsModal(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="space-y-3">
                 {links.map((link, i) => (
-                  <div key={i} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{link.label}</p>
-                    <p className="text-xs text-slate-500 mb-2">{link.desc}</p>
+                  <div key={i} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{link.label}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">{link.desc}</p>
                     <div className="flex items-center gap-2">
-                      <p className="flex-1 text-xs font-mono text-slate-300 break-all">{link.url}</p>
+                      <p className="flex-1 text-xs font-mono text-slate-600 dark:text-slate-300 break-all">{link.url}</p>
                       <button
                         onClick={() => copyUrl(link.url)}
-                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                       >
                         {copiedUrl === link.url
-                          ? <CheckCircle className="w-4 h-4 text-white" />
-                          : <Copy className="w-4 h-4 text-slate-400" />
+                          ? <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-white" />
+                          : <Copy className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                         }
                       </button>
                     </div>
@@ -974,7 +974,7 @@ export const MasterAdminDashboard: React.FC = () => {
 
               <button
                 onClick={() => setUrlsModal(null)}
-                className="w-full h-10 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold transition-colors"
+                className="w-full h-10 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm font-semibold transition-colors"
               >
                 Cerrar
               </button>

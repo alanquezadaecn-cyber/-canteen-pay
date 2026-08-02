@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed, Wallet } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { ClipboardList, ArrowDownLeft, ArrowUpRight, Printer, RefreshCw, UtensilsCrossed, Wallet, Coins, Download } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -46,6 +47,9 @@ interface CorteData {
   transactions: CorteTransaction[];
 }
 
+interface SubsidyReportRow { name: string; employeeNumber: string; count: number; amount: string; }
+interface SubsidyReport { subtotal: string; iva: string; ivaRate: string; total: string; count: number; byUser: SubsidyReportRow[]; settledAt: string | null }
+
 const fmt = (n: string | number) =>
   `$${parseFloat(String(n)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -64,6 +68,7 @@ export const CorteDeCaja: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
+  const [subsidyReport, setSubsidyReport] = useState<SubsidyReport | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -86,7 +91,37 @@ export const CorteDeCaja: React.FC = () => {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { load(); loadShifts(); }, [branchId]);
+  const loadSubsidyReport = async () => {
+    if (!branchId) return;
+    try {
+      const { data: r } = await api.get(`/cashier/branch/${branchId}/subsidy-report`);
+      setSubsidyReport(r);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => { load(); loadShifts(); loadSubsidyReport(); }, [branchId]);
+
+  const exportSubsidyExcel = () => {
+    if (!subsidyReport) return;
+    const ivaRate = parseFloat(subsidyReport.ivaRate) / 100;
+    const rows = subsidyReport.byUser.map(r => {
+      const base = parseFloat(r.amount);
+      const iva = base * ivaRate;
+      return {
+        Comensal: r.name, '# Empleado': r.employeeNumber, 'Comidas subsidiadas': r.count,
+        'Monto base (MXN)': base.toFixed(2), 'IVA (MXN)': iva.toFixed(2), 'Total (MXN)': (base + iva).toFixed(2)
+      };
+    });
+    rows.push({
+      Comensal: 'TOTAL A PAGAR', '# Empleado': '', 'Comidas subsidiadas': subsidyReport.count,
+      'Monto base (MXN)': subsidyReport.subtotal, 'IVA (MXN)': subsidyReport.iva, 'Total (MXN)': subsidyReport.total
+    });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Subsidio');
+    XLSX.writeFile(wb, `subsidio_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const handlePrint = () => window.print();
 
@@ -173,6 +208,38 @@ export const CorteDeCaja: React.FC = () => {
                   </p>
                 </div>
                 <p className="text-3xl font-extrabold text-white flex-shrink-0" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${data.cashDrawer.expected}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reporte de subsidio para RH — de esta sucursal, desde el último corte pagado */}
+        {subsidyReport && subsidyReport.count > 0 && (
+          <div className="max-w-3xl mx-auto px-5 mt-6 print:hidden">
+            <div className="bg-violet-600 rounded-3xl p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs uppercase tracking-wider text-violet-50 font-semibold flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5" /> Reporte de subsidio para RH
+                </p>
+                <button
+                  onClick={exportSubsidyExcel}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-violet-700 text-xs font-bold rounded-full hover:bg-violet-50 transition-colors cursor-pointer flex-shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" /> Excel
+                </button>
+              </div>
+              <p className="text-xs text-violet-100">{subsidyReport.count} comidas subsidiadas en el periodo</p>
+              <div className="flex items-center justify-between text-sm text-violet-50">
+                <span>Subtotal</span>
+                <span className="font-semibold">${subsidyReport.subtotal}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-violet-50">
+                <span>IVA ({subsidyReport.ivaRate}%)</span>
+                <span className="font-semibold">${subsidyReport.iva}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                <span className="text-sm font-bold text-white">Total que RH debe pagar</span>
+                <p className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${subsidyReport.total}</p>
               </div>
             </div>
           </div>

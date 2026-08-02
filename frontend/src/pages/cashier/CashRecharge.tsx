@@ -147,7 +147,7 @@ export const CashRecharge: React.FC = () => {
           <Card variant="elevated" className="animate-fade-in">
             <CardHeader borderBottom>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg  dark:from-emerald-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                   <Search className="w-5 h-5 text-slate-700 dark:text-emerald-400" />
                 </div>
                 <div>
@@ -177,7 +177,7 @@ export const CashRecharge: React.FC = () => {
                   type="submit"
                   disabled={loading || !qrOrCode.trim()}
                   variant="primary"
-                  className="w-full  hover:from-emerald-600 hover:to-emerald-600"
+                  className="w-full"
                   size="lg"
                 >
                   {loading ? 'Buscando...' : 'Buscar Usuario'}
@@ -191,10 +191,10 @@ export const CashRecharge: React.FC = () => {
         {user && (
           <>
             <Card variant="elevated" className="animate-fade-in border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
-              <CardHeader borderBottom className=" dark:from-emerald-900/20 dark:to-teal-900/20">
+              <CardHeader borderBottom className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
                       <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
@@ -234,7 +234,7 @@ export const CashRecharge: React.FC = () => {
             <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '100ms' }}>
               <CardHeader borderBottom>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg  dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
@@ -305,7 +305,7 @@ export const CashRecharge: React.FC = () => {
                     <Button
                       type="submit"
                       disabled={charging || !amount || parseFloat(amount) <= 0}
-                      className="flex-1  hover:from-emerald-600 hover:to-teal-600 text-white"
+                      className="flex-1"
                       size="lg"
                     >
                       {charging ? 'Procesando...' : 'Recargar'}

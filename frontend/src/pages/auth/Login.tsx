@@ -118,10 +118,10 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
           <p className="text-emerald-100 text-sm mt-2">{subtitle}</p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl shadow-emerald-900/20 p-6 space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-emerald-900/20 p-6 space-y-4">
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl flex items-center gap-2 text-sm">
+            <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 rounded-2xl flex items-center gap-2 text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -138,7 +138,7 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
                 onChange={e => setEmail(e.target.value)}
                 placeholder={context.type === 'branch' ? 'Número o tu@email.com' : 'tu@email.com'}
                 required
-                className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                className="w-full h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white dark:focus:bg-slate-800 transition-colors"
               />
             </div>
             <div>
@@ -149,7 +149,7 @@ export const Login: React.FC<LoginProps> = ({ mode }) => {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full h-12 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                className="w-full h-12 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white dark:focus:bg-slate-800 transition-colors"
               />
             </div>
             <button

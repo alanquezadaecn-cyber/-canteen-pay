@@ -83,12 +83,12 @@ export const CashierHistory: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen  dark:from-slate-950 dark:to-slate-900 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0">
       <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold  dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
-            Historial de Caja 📊
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+            Historial de Caja
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Todas las operaciones registradas
@@ -107,7 +107,7 @@ export const CashierHistory: React.FC = () => {
                       {pagination.total}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg  opacity-10">
+                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
                     <ShoppingCart className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -123,7 +123,7 @@ export const CashierHistory: React.FC = () => {
                       {pagination.page} / {pagination.pages}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg  opacity-10">
+                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
                     <Clock className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -139,7 +139,7 @@ export const CashierHistory: React.FC = () => {
                       {pagination.limit}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg  opacity-10">
+                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
                     <User className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>

@@ -101,48 +101,48 @@ export const Branding: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0 flex items-center justify-center">
         <Loader className="w-8 h-8 text-slate-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 md:ml-64 pt-16 md:pt-0">
-      <div className="border-b border-slate-800 bg-slate-900/50 px-6 py-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:ml-64 pt-16 md:pt-0">
+      <div className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 px-6 py-6">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
-            <ImagePlus className="w-4 h-4 text-emerald-400" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-600/20 flex items-center justify-center">
+            <ImagePlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h1 className="text-xl font-semibold text-white">Marca / Logo</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Marca / Logo</h1>
         </div>
-        <p className="text-sm text-slate-400 ml-11">
-          Personaliza el logo de <span className="text-emerald-400 font-medium">{companyName}</span> en pantallas de login, panel y navegación
+        <p className="text-sm text-slate-500 dark:text-slate-400 ml-11">
+          Personaliza el logo de <span className="text-emerald-600 dark:text-emerald-400 font-medium">{companyName}</span> en pantallas de login, panel y navegación
         </p>
       </div>
 
       <div className="p-6 max-w-lg space-y-5">
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-300">{error}</p>
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
           </div>
         )}
         {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-emerald-300">Logo guardado. Ya se verá en todas las pantallas.</p>
+          <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">Logo guardado. Ya se verá en todas las pantallas.</p>
           </div>
         )}
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-6 space-y-5">
           {/* Preview */}
           <div className="flex flex-col items-center gap-3">
-            <div className="w-32 h-32 rounded-2xl bg-slate-800 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden">
+            <div className="w-32 h-32 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
               ) : (
-                <span className="text-3xl font-bold text-slate-600">{companyName?.[0] || 'M'}</span>
+                <span className="text-3xl font-bold text-slate-300 dark:text-slate-600">{companyName?.[0] || 'M'}</span>
               )}
             </div>
             {!logoUrl && (
@@ -157,7 +157,7 @@ export const Branding: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer"
             >
               <ImagePlus className="w-4 h-4" />
               {logoUrl ? 'Cambiar imagen' : 'Subir imagen'}
@@ -166,7 +166,7 @@ export const Branding: React.FC = () => {
               <button
                 onClick={handleRemove}
                 disabled={saving}
-                className="w-10 h-10 flex items-center justify-center rounded-lg border border-red-900 text-red-400 hover:bg-red-950 transition-colors cursor-pointer disabled:opacity-40"
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-red-200 dark:border-red-900 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors cursor-pointer disabled:opacity-40"
                 title="Quitar logo"
               >
                 <Trash2 className="w-4 h-4" />

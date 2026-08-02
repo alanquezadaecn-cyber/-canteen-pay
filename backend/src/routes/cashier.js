@@ -281,13 +281,14 @@ router.post('/branch/:branchId/register', async (req, res) => {
 router.get('/branch/:branchId/users', async (req, res) => {
   try {
     const { branchId } = req.params;
-    const { search } = req.query;
+    const { search, page, limit, sort, isStaff } = req.query;
 
     if (!(await requireBranchAccess(req, res, branchId))) return;
 
     const where = {
       branchId,
       role: 'USER',
+      ...(isStaff !== undefined && { isStaff: isStaff === 'true' }),
       ...(search ? {
         OR: [
           { name: { contains: String(search), mode: 'insensitive' } },
@@ -296,15 +297,33 @@ router.get('/branch/:branchId/users', async (req, res) => {
         ]
       } : {})
     };
+    const orderBy = sort === 'employeeNumber' ? { employeeNumber: 'asc' } : { name: 'asc' };
+    const select = { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true, position: true, isStaff: true, photoUrl: true };
 
-    const users = await prisma.user.findMany({
-      where,
-      select: { id: true, name: true, email: true, employeeNumber: true, phone: true, balance: true, qrCode: true, isActive: true, position: true, isStaff: true, photoUrl: true },
-      orderBy: { name: 'asc' },
-      take: 100
+    // Sin page: modo "lista completa" (lo usa el cache offline de caja, que necesita
+    // poder buscar a CUALQUIER comensal sin conexión, no solo los primeros 100).
+    if (page === undefined) {
+      const users = await prisma.user.findMany({ where, select, orderBy, take: 2000 });
+      return res.json(users.map(u => ({ ...u, balance: u.balance.toString() })));
+    }
+
+    // Modo paginado: para la lista visible en pantalla.
+    const pageNum = Math.max(1, parseInt(String(page)) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit)) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [users, total, comensalCount, staffCount] = await Promise.all([
+      prisma.user.findMany({ where, select, orderBy, skip, take: limitNum }),
+      prisma.user.count({ where }),
+      prisma.user.count({ where: { branchId, role: 'USER', isStaff: false } }),
+      prisma.user.count({ where: { branchId, role: 'USER', isStaff: true } })
+    ]);
+
+    res.json({
+      data: users.map(u => ({ ...u, balance: u.balance.toString() })),
+      pagination: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
+      counts: { comensal: comensalCount, staff: staffCount }
     });
-
-    res.json(users.map(u => ({ ...u, balance: u.balance.toString() })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener comensales' });
@@ -991,6 +1010,64 @@ router.get('/corte', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener corte' });
+  }
+});
+
+// Reporte de subsidio para RH, acotado a ESTA sucursal — para que el cajero también pueda
+// sacarlo sin depender de que un admin entre a Admin -> Subsidio.
+router.get('/branch/:branchId/subsidy-report', async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+      include: { company: { select: { subsidyIvaRate: true, subsidySettledAt: true } } }
+    });
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+    const ivaRate = parseFloat(branch.company?.subsidyIvaRate ?? 16);
+
+    const defaultFrom = branch.company?.subsidySettledAt || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const from = req.query.from ? new Date(String(req.query.from)) : defaultFrom;
+    from.setHours(0, 0, 0, 0);
+    const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+    to.setHours(23, 59, 59, 999);
+
+    const users = await prisma.user.findMany({ where: { branchId }, select: { id: true, name: true, employeeNumber: true } });
+    const umap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    const txns = await prisma.transaction.findMany({
+      where: { isSubsidized: true, userId: { in: users.map(u => u.id) }, createdAt: { gte: from, lte: to } },
+      select: { userId: true, amount: true }
+    });
+
+    let subtotal = 0;
+    const perUser = {};
+    for (const t of txns) {
+      const amt = parseFloat(t.amount);
+      subtotal += amt;
+      if (!perUser[t.userId]) perUser[t.userId] = { count: 0, amount: 0 };
+      perUser[t.userId].count++;
+      perUser[t.userId].amount += amt;
+    }
+    const iva = subtotal * (ivaRate / 100);
+    const total = subtotal + iva;
+
+    const byUser = Object.entries(perUser).map(([uid, v]) => ({
+      name: umap[uid]?.name || '—',
+      employeeNumber: umap[uid]?.employeeNumber || '',
+      count: v.count,
+      amount: v.amount.toFixed(2)
+    })).sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+
+    res.json({
+      subtotal: subtotal.toFixed(2), iva: iva.toFixed(2), ivaRate: ivaRate.toString(), total: total.toFixed(2),
+      count: txns.length, from: from.toISOString(), to: to.toISOString(),
+      settledAt: branch.company?.subsidySettledAt || null, byUser
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al generar reporte' });
   }
 });
 
