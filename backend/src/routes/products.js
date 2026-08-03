@@ -54,8 +54,8 @@ router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 
     const companyId = req.userCompanyId || requester?.branch?.companyId;
     if (!branch || branch.companyId !== companyId) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
-    if (!branch.company?.menuRotationEnabled || !branch.useMenuRotation) {
-      return res.json({ active: false });
+    if (!branch.company?.menuRotationEnabled) {
+      return res.json({ companyEnabled: false, active: false });
     }
 
     // Los niveles de subsidio que aplican a esta sucursal (propios de la sucursal + los generales de la empresa)
@@ -64,33 +64,34 @@ router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 
       orderBy: { name: 'asc' }
     });
 
-    // MANUAL: esta sucursal puso su propio platillo de hoy por nivel, ignora el ciclo.
-    if (branch.menuRotationMode === 'MANUAL') {
+    const mode = branch.menuRotationMode === 'MANUAL' ? 'MANUAL' : 'AUTO';
+    // Se calculan los platillos aunque la sucursal tenga el rotativo apagado (useMenuRotation:
+    // false), así el cajero puede dejar listo el platillo manual ANTES de activarlo.
+    let items, week, dayOfWeek;
+    if (mode === 'MANUAL') {
       const manualMenus = await prisma.branchManualMenu.findMany({ where: { branchId: branch.id } });
-      return res.json({
-        active: true, mode: 'MANUAL',
-        items: tiers.map(t => {
-          const m = manualMenus.find(x => x.subsidyTierId === t.id);
-          return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: m?.dishName || null };
-        })
+      items = tiers.map(t => {
+        const m = manualMenus.find(x => x.subsidyTierId === t.id);
+        return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: m?.dishName || null };
+      });
+    } else {
+      week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
+      const jsDay = new Date().getDay(); // 0=domingo...6=sábado
+      dayOfWeek = jsDay === 0 ? 7 : jsDay; // 1=lunes...7=domingo
+      const days = await prisma.menuRotationDay.findMany({
+        where: { companyId: branch.company.id, week, dayOfWeek, subsidyTierId: { in: tiers.map(t => t.id) } }
+      });
+      items = tiers.map(t => {
+        const d = days.find(x => x.subsidyTierId === t.id);
+        return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: d?.dishName || null };
       });
     }
 
-    // AUTO (default): sigue el ciclo de 8 semanas de la empresa, un platillo por nivel.
-    const week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
-    const jsDay = new Date().getDay(); // 0=domingo...6=sábado
-    const dayOfWeek = jsDay === 0 ? 7 : jsDay; // 1=lunes...7=domingo
-
-    const days = await prisma.menuRotationDay.findMany({
-      where: { companyId: branch.company.id, week, dayOfWeek, subsidyTierId: { in: tiers.map(t => t.id) } }
-    });
-
     res.json({
-      active: true, mode: 'AUTO', week, dayOfWeek,
-      items: tiers.map(t => {
-        const d = days.find(x => x.subsidyTierId === t.id);
-        return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: d?.dishName || null };
-      })
+      companyEnabled: true,
+      useMenuRotation: !!branch.useMenuRotation,
+      active: !!branch.useMenuRotation, // compatibilidad: el comensal solo lo ve si está activo
+      mode, week, dayOfWeek, items
     });
   } catch (err) {
     console.error(err);

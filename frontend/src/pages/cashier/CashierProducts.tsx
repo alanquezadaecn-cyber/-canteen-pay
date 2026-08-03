@@ -12,7 +12,14 @@ interface Product {
 }
 
 interface RotationItem { subsidyTierId: string; tierName: string; cost: string; dishName: string | null }
-interface RotationToday { active: boolean; mode?: 'AUTO' | 'MANUAL'; week?: number; items?: RotationItem[] }
+interface RotationToday {
+  companyEnabled: boolean;
+  active: boolean;
+  useMenuRotation?: boolean;
+  mode?: 'AUTO' | 'MANUAL';
+  week?: number;
+  items?: RotationItem[];
+}
 
 export const CashierProducts: React.FC = () => {
   const { user } = useAuthStore();
@@ -27,13 +34,45 @@ export const CashierProducts: React.FC = () => {
   const [editValues, setEditValues] = useState({ name: '', price: '', category: '' });
   const [saving, setSaving] = useState(false);
   const [rotation, setRotation] = useState<RotationToday | null>(null);
+  const [manualDraft, setManualDraft] = useState<Record<string, string>>({});
+
+  const loadRotation = () => {
+    if (!branchId) return;
+    api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => {
+      setRotation(data);
+      const draft: Record<string, string> = {};
+      (data.items || []).forEach((it: RotationItem) => { draft[it.subsidyTierId] = it.dishName || ''; });
+      setManualDraft(draft);
+    }).catch(() => {});
+  };
 
   useEffect(() => {
-    if (branchId) {
-      load();
-      api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => setRotation(data)).catch(() => {});
-    }
+    if (branchId) { load(); loadRotation(); }
   }, [branchId]);
+
+  const toggleRotationActive = async (value: boolean) => {
+    if (!rotation) return;
+    setRotation({ ...rotation, useMenuRotation: value, active: value });
+    try { await api.put(`/cashier/branch/${branchId}/rotation-today`, { useMenuRotation: value }); } catch { loadRotation(); }
+  };
+
+  const setRotationMode = async (mode: 'AUTO' | 'MANUAL') => {
+    if (!rotation) return;
+    setRotation({ ...rotation, mode });
+    try {
+      await api.put(`/cashier/branch/${branchId}/rotation-today`, { mode });
+      loadRotation();
+    } catch { loadRotation(); }
+  };
+
+  const saveManualDish = async (subsidyTierId: string) => {
+    try {
+      await api.put(`/cashier/branch/${branchId}/rotation-today`, {
+        manualMenus: [{ subsidyTierId, dishName: manualDraft[subsidyTierId] || '' }]
+      });
+      loadRotation();
+    } catch { loadRotation(); }
+  };
 
   const load = async () => {
     try {
@@ -126,8 +165,10 @@ export const CashierProducts: React.FC = () => {
 
         {/* Menú de la semana (ciclo de 8 semanas) = el menú subsidiado de hoy, un platillo por
             nivel. Es informativo: el cobro se hace desde Caja al marcar "Subsidiado". Si la
-            sucursal no lo tiene activado desde Admin -> Menú semanal, esta tarjeta no aparece. */}
-        {rotation?.active && (
+            sucursal no lo tiene activado desde Admin -> Menú semanal, esta tarjeta no aparece.
+            El cajero puede apagarlo (ej. falta de insumos) o poner un platillo manual sin
+            depender del admin. */}
+        {rotation?.companyEnabled && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4 space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
@@ -139,11 +180,51 @@ export const CashierProducts: React.FC = () => {
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Se cobra desde Caja marcando "Subsidiado"</p>
               </div>
+              <button
+                onClick={() => toggleRotationActive(!rotation.useMenuRotation)}
+                className={`h-8 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors flex-shrink-0 ${rotation.useMenuRotation ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+              >
+                {rotation.useMenuRotation ? 'Activo' : 'Inactivo'}
+              </button>
             </div>
+
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-full p-1 w-fit">
+              <button
+                onClick={() => setRotationMode('AUTO')}
+                className={`h-7 px-3 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${rotation.mode !== 'MANUAL' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Automático{rotation.week ? ` · Semana ${rotation.week}` : ''}
+              </button>
+              <button
+                onClick={() => setRotationMode('MANUAL')}
+                className={`h-7 px-3 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${rotation.mode === 'MANUAL' ? 'bg-amber-500 text-slate-950' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Manual
+              </button>
+            </div>
+
             {!rotation.items || rotation.items.length === 0 ? (
               <p className="text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
                 Aún no hay niveles de subsidio configurados.
               </p>
+            ) : rotation.mode === 'MANUAL' ? (
+              // Manual: el cajero escribe directamente el platillo de hoy por nivel (ej. se
+              // acabó el camarón, hoy Especial es otra cosa), sin pasar por el admin.
+              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                {rotation.items.map(it => (
+                  <div key={it.subsidyTierId} className="flex items-center gap-2">
+                    <span className="w-20 flex-shrink-0 text-xs font-semibold text-slate-500">{it.tierName}</span>
+                    <input
+                      type="text"
+                      value={manualDraft[it.subsidyTierId] ?? ''}
+                      onChange={e => setManualDraft(prev => ({ ...prev, [it.subsidyTierId]: e.target.value }))}
+                      onBlur={() => saveManualDish(it.subsidyTierId)}
+                      placeholder="Platillo de hoy"
+                      className="flex-1 h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
                 {rotation.items.map(it => (

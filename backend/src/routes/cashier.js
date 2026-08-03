@@ -59,6 +59,42 @@ async function requireBranchAccess(req, res, branchId) {
   return true;
 }
 
+// El cajero (o admin) puede, sobre SU sucursal: apagar el menú rotativo por hoy (ej. falta
+// de insumos), o poner un platillo manual por nivel, sin depender de que el admin entre a
+// configurarlo. Es el mismo mecanismo que ya usa el admin en /admin/menu-rotation/branches.
+router.put('/branch/:branchId/rotation-today', async (req, res) => {
+  try {
+    const branchId = req.params.branchId;
+    if (!(await requireBranchAccess(req, res, branchId))) return;
+    const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { companyId: true } });
+    if (!branch) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    const { useMenuRotation, mode, manualMenus } = req.body;
+    await prisma.branch.update({
+      where: { id: branchId },
+      data: {
+        ...(useMenuRotation !== undefined && { useMenuRotation: !!useMenuRotation }),
+        ...(mode !== undefined && { menuRotationMode: mode === 'MANUAL' ? 'MANUAL' : 'AUTO' })
+      }
+    });
+
+    if (Array.isArray(manualMenus)) {
+      const validTierIds = new Set((await prisma.subsidyTier.findMany({ where: { companyId: branch.companyId }, select: { id: true } })).map(t => t.id));
+      const rows = manualMenus.filter(m => validTierIds.has(m.subsidyTierId));
+      await prisma.$transaction(rows.map(m => prisma.branchManualMenu.upsert({
+        where: { branchId_subsidyTierId: { branchId, subsidyTierId: m.subsidyTierId } },
+        create: { branchId, subsidyTierId: m.subsidyTierId, dishName: (m.dishName || '').trim() },
+        update: { dishName: (m.dishName || '').trim() }
+      })));
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar' });
+  }
+});
+
 // Si el cobro corresponde a un producto de la tiendita (snack) con stock rastreado,
 // lo descuenta de forma atómica y deja el detalle en TransactionItem para que el
 // inventario de Caja/Admin refleje la venta real. Los platillos del menú y los
