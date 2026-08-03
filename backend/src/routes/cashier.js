@@ -1066,6 +1066,7 @@ router.get('/corte', async (req, res) => {
         description: t.description,
         createdAt: t.createdAt,
         isCashSale: t.isCashSale,
+        isSubsidized: t.isSubsidized,
         cashReceived: t.cashReceived != null ? t.cashReceived.toString() : null,
         cashChange: t.cashChange != null ? t.cashChange.toString() : null,
         user: t.user

@@ -23,6 +23,7 @@ interface CorteTransaction {
   balanceAfter: string;
   description: string;
   createdAt: string;
+  isSubsidized?: boolean;
   user: { name: string; employeeNumber: string } | null;
 }
 
@@ -48,7 +49,7 @@ interface CorteData {
 }
 
 interface SubsidyReportRow { name: string; employeeNumber: string; count: number; amount: string; }
-interface SubsidyReport { subtotal: string; iva: string; ivaRate: string; total: string; count: number; byUser: SubsidyReportRow[]; settledAt: string | null }
+interface SubsidyReport { subtotal: string; iva: string; ivaRate: string; total: string; count: number; from: string; to: string; byUser: SubsidyReportRow[]; settledAt: string | null }
 
 const fmt = (n: string | number) =>
   `$${parseFloat(String(n)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -213,34 +214,59 @@ export const CorteDeCaja: React.FC = () => {
           </div>
         )}
 
-        {/* Reporte de subsidio para RH — de esta sucursal, desde el último corte pagado */}
-        {subsidyReport && subsidyReport.count > 0 && (
+        {/* Reporte de subsidio para RH — de esta sucursal, desde el último corte pagado.
+            Siempre visible (aunque no haya comidas subsidiadas todavía) para que el cajero
+            sepa que existe y pueda revisar el periodo, no solo cuando ya hay datos. */}
+        {subsidyReport && (
           <div className="max-w-3xl mx-auto px-5 mt-6 print:hidden">
             <div className="bg-violet-600 rounded-3xl p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs uppercase tracking-wider text-violet-50 font-semibold flex items-center gap-1.5">
                   <Coins className="w-3.5 h-3.5" /> Reporte de subsidio para RH
                 </p>
-                <button
-                  onClick={exportSubsidyExcel}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-violet-700 text-xs font-bold rounded-full hover:bg-violet-50 transition-colors cursor-pointer flex-shrink-0"
-                >
-                  <Download className="w-3.5 h-3.5" /> Excel
-                </button>
+                {subsidyReport.count > 0 && (
+                  <button
+                    onClick={exportSubsidyExcel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-violet-700 text-xs font-bold rounded-full hover:bg-violet-50 transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Excel
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-violet-100">{subsidyReport.count} comidas subsidiadas en el periodo</p>
-              <div className="flex items-center justify-between text-sm text-violet-50">
-                <span>Subtotal</span>
-                <span className="font-semibold">${subsidyReport.subtotal}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-violet-50">
-                <span>IVA ({subsidyReport.ivaRate}%)</span>
-                <span className="font-semibold">${subsidyReport.iva}</span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                <span className="text-sm font-bold text-white">Total que RH debe pagar</span>
-                <p className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${subsidyReport.total}</p>
-              </div>
+
+              {subsidyReport.count === 0 ? (
+                <p className="text-sm text-violet-100">Sin comidas subsidiadas todavía en este periodo (desde {new Date(subsidyReport.from).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}).</p>
+              ) : (
+                <>
+                  <p className="text-xs text-violet-100">{subsidyReport.count} comidas subsidiadas en el periodo</p>
+
+                  {/* Desglose por comensal, visible en pantalla (no solo en el Excel) */}
+                  <div className="bg-white/10 rounded-2xl divide-y divide-white/10 max-h-52 overflow-y-auto">
+                    {subsidyReport.byUser.map(row => (
+                      <div key={row.employeeNumber + row.name} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="text-white font-medium truncate">{row.name}</p>
+                          <p className="text-violet-200 text-xs">#{row.employeeNumber} · {row.count} {row.count === 1 ? 'comida' : 'comidas'}</p>
+                        </div>
+                        <span className="text-white font-semibold flex-shrink-0">${row.amount}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-violet-50 pt-1">
+                    <span>Subtotal</span>
+                    <span className="font-semibold">${subsidyReport.subtotal}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-violet-50">
+                    <span>IVA ({subsidyReport.ivaRate}%)</span>
+                    <span className="font-semibold">${subsidyReport.iva}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                    <span className="text-sm font-bold text-white">Total que RH debe pagar</span>
+                    <p className="text-2xl font-extrabold text-white" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>${subsidyReport.total}</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -323,16 +349,23 @@ export const CorteDeCaja: React.FC = () => {
                             <p className="text-xs text-slate-400">#{tx.user?.employeeNumber}</p>
                           </td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                              tx.type === 'PURCHASE'
-                                ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
-                                : tx.type === 'RECHARGE'
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                            }`}>
-                              {tx.type === 'PURCHASE' ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
-                              {tx.type === 'PURCHASE' ? 'Cobro' : tx.type === 'RECHARGE' ? 'Recarga' : 'Reembolso'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                tx.type === 'PURCHASE'
+                                  ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                                  : tx.type === 'RECHARGE'
+                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                  : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              }`}>
+                                {tx.type === 'PURCHASE' ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                                {tx.type === 'PURCHASE' ? 'Cobro' : tx.type === 'RECHARGE' ? 'Recarga' : 'Reembolso'}
+                              </span>
+                              {tx.isSubsidized && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                                  <Coins className="w-3 h-3" /> Subsidiado
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className={`py-3 px-4 text-right font-bold tabular-nums text-sm ${
                             tx.type === 'PURCHASE' ? 'text-red-500' : 'text-emerald-600'
