@@ -161,6 +161,10 @@ const CajaLayout: React.FC = () => {
 const AdminLayout: React.FC = () => {
   const { session, ready } = usePanelGuard('admin');
   useSlugBackfill();
+  // Igual que master-admin: sin esto, la sesión de admin queda guardada en el navegador
+  // indefinidamente (localStorage) y cualquiera que abra la pestaña/equipo entra directo
+  // al panel de la empresa sin volver a pedir contraseña.
+  useIdleLogout(!!session && ready, () => useAuthStore.getState().logout());
   if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;
   // La empresa está suspendida (falta de pago, etc.): el admin sí puede entrar, pero
