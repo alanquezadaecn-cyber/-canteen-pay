@@ -312,6 +312,109 @@ router.get('/subsidy-report', async (req, res) => {
   }
 });
 
+// ── MENÚ ROTATIVO (ciclo de 8 semanas) ──
+// Calcula qué semana del ciclo (1-8) toca hoy: AUTO la deriva de la fecha de inicio,
+// MANUAL usa la que el admin fijó a mano (útil si el ciclo se desfasa por un feriado, etc).
+function computeCurrentWeek(startDate, mode, manualWeek) {
+  if (mode === 'MANUAL') return Math.min(8, Math.max(1, parseInt(manualWeek) || 1));
+  if (!startDate) return 1;
+  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((now - start) / 86400000);
+  if (diffDays < 0) return 1;
+  const weeksSince = Math.floor(diffDays / 7);
+  return (weeksSince % 8) + 1;
+}
+
+router.get('/menu-rotation', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.json({ enabled: false, days: [], branches: [] });
+
+    const [company, days, branches] = await Promise.all([
+      prisma.company.findUnique({ where: { id: companyId }, select: { menuRotationEnabled: true, menuRotationStartDate: true, menuRotationMode: true, menuRotationManualWeek: true } }),
+      prisma.menuRotationDay.findMany({ where: { companyId } }),
+      prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true, useMenuRotation: true } })
+    ]);
+
+    res.json({
+      enabled: !!company?.menuRotationEnabled,
+      startDate: company?.menuRotationStartDate || null,
+      mode: company?.menuRotationMode || 'AUTO',
+      manualWeek: company?.menuRotationManualWeek || null,
+      currentWeek: computeCurrentWeek(company?.menuRotationStartDate, company?.menuRotationMode, company?.menuRotationManualWeek),
+      days: days.map(d => ({ week: d.week, dayOfWeek: d.dayOfWeek, name: d.name, price: d.price.toString() })),
+      branches
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener el menú rotativo' });
+  }
+});
+
+router.put('/menu-rotation/config', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const { enabled, startDate, mode, manualWeek } = req.body;
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        ...(enabled !== undefined && { menuRotationEnabled: !!enabled }),
+        ...(startDate !== undefined && { menuRotationStartDate: startDate ? new Date(startDate) : null }),
+        ...(mode !== undefined && { menuRotationMode: mode === 'MANUAL' ? 'MANUAL' : 'AUTO' }),
+        ...(manualWeek !== undefined && { menuRotationManualWeek: manualWeek ? Math.min(8, Math.max(1, parseInt(manualWeek))) : null })
+      }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar' });
+  }
+});
+
+// Guarda de un jalón toda la cuadrícula de 8 semanas x 7 días (upsert por día).
+router.put('/menu-rotation/days', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'No se pudo determinar tu empresa' });
+    const { days } = req.body;
+    if (!Array.isArray(days)) return res.status(400).json({ error: 'Formato inválido' });
+
+    await prisma.$transaction(days.map(d => {
+      const week = Math.min(8, Math.max(1, parseInt(d.week) || 1));
+      const dayOfWeek = Math.min(7, Math.max(1, parseInt(d.dayOfWeek) || 1));
+      const name = (d.name || '').trim();
+      const price = parseFloat(d.price) || 0;
+      return prisma.menuRotationDay.upsert({
+        where: { companyId_week_dayOfWeek: { companyId, week, dayOfWeek } },
+        create: { companyId, week, dayOfWeek, name, price },
+        update: { name, price }
+      });
+    }));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar el menú' });
+  }
+});
+
+router.put('/menu-rotation/branches/:branchId', async (req, res) => {
+  try {
+    const companyId = await adminCompanyId(req);
+    const branch = await prisma.branch.findUnique({ where: { id: req.params.branchId }, select: { companyId: true } });
+    if (!branch || branch.companyId !== companyId) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    const { useMenuRotation } = req.body;
+    await prisma.branch.update({ where: { id: req.params.branchId }, data: { useMenuRotation: !!useMenuRotation } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar' });
+  }
+});
+
 // GET config de pagos en línea de la empresa (token enmascarado)
 router.get('/payment-config', async (req, res) => {
   try {

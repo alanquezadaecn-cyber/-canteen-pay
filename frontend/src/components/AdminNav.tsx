@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, BarChart3, LogOut, Menu, X,
-  BarChart2, Bell, Check, Package, CreditCard, Clock, Coins
+  BarChart2, Bell, Check, Package, CreditCard, Clock, Coins, CalendarRange
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBranding } from '../hooks/useBranding';
@@ -36,6 +36,7 @@ export const AdminNav: React.FC = () => {
     features?.inventory !== false && { path: `${base}/inventory`, label: 'Inventario', icon: Package },
     features?.hr !== false && { path: `${base}/asistencia`,   label: 'Asistencia',     icon: Clock },
     features?.hr !== false && { path: `${base}/subsidio`,     label: 'Subsidio',       icon: Coins },
+    { path: `${base}/menu-semanal`, label: 'Menú semanal',   icon: CalendarRange },
     features?.payments !== false && { path: `${base}/pagos`,  label: 'Pagos',          icon: CreditCard },
   ].filter(Boolean) as { path: string; label: string; icon: any }[];
 

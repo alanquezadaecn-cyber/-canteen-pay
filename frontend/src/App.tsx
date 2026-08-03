@@ -37,6 +37,7 @@ import { CashierInventory } from './pages/cashier/CashierInventory';
 import { CashierAttendance } from './pages/cashier/CashierAttendance';
 import { Attendance } from './pages/admin/Attendance';
 import { Subsidy } from './pages/admin/Subsidy';
+import { MenuRotation } from './pages/admin/MenuRotation';
 import { FeatureGuard } from './components/FeatureGuard';
 
 // Admin
@@ -282,6 +283,7 @@ function App() {
             <Route path="pagos"                   element={<FeatureGuard feature="payments"><PaymentConfig /></FeatureGuard>} />
             <Route path="asistencia"              element={<FeatureGuard feature="hr"><Attendance /></FeatureGuard>} />
             <Route path="subsidio"                element={<FeatureGuard feature="hr"><Subsidy /></FeatureGuard>} />
+            <Route path="menu-semanal"             element={<MenuRotation />} />
             <Route path="branding"                element={<Branding />} />
             <Route path="branches/:id"            element={<BranchDetail />} />
             <Route path="branches/:branchId/reports" element={<BranchReports />} />

@@ -77,6 +77,16 @@ model Company {
   subsidyIvaRate     Decimal   @default(16) @db.Decimal(5, 2)
   subsidyTiers       SubsidyTier[]
 
+  // Menú rotativo de 8 semanas: un ciclo de platillos por día que se repite cada 8
+  // semanas, para que el comedor no repita menú seguido. menuRotationMode define si
+  // la semana activa se calcula sola desde menuRotationStartDate (AUTO) o la elige
+  // el admin a mano (MANUAL, usa menuRotationManualWeek).
+  menuRotationEnabled    Boolean   @default(false)
+  menuRotationStartDate  DateTime?
+  menuRotationMode       String    @default("AUTO") // AUTO | MANUAL
+  menuRotationManualWeek Int?
+  menuRotationDays       MenuRotationDay[]
+
   // Secciones habilitadas por el master admin (inventario, RH, pagos...). Claves ausentes = habilitado.
   enabledFeatures Json?
 
@@ -158,6 +168,7 @@ model Branch {
   isActive        Boolean   @default(true)
 
   subsidyMealsPerDay Int?   // Override de comidas subsidiadas/día para esta sucursal (null = usar el de la empresa)
+  useMenuRotation Boolean   @default(false) // si usa el menú rotativo de 8 semanas de la empresa
 
   // Licencia y Pago
   licenseStatus   String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, TRIAL
@@ -364,6 +375,22 @@ model SubsidyTier {
 
   @@index([companyId])
   @@index([branchId])
+}
+
+// Un platillo del ciclo de 8 semanas: week 1-8, dayOfWeek 1-7 (1=lunes...7=domingo).
+model MenuRotationDay {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  week      Int
+  dayOfWeek Int
+  name      String
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, week, dayOfWeek])
+  @@index([companyId])
 }
 
 model StockMovement {

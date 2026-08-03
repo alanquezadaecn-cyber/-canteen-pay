@@ -30,6 +30,51 @@ router.get('/branch/:branchId', verifyToken, checkRole(['ADMIN', 'CASHIER', 'USE
   }
 });
 
+export function computeCurrentWeek(startDate, mode, manualWeek) {
+  if (mode === 'MANUAL') return Math.min(8, Math.max(1, parseInt(manualWeek) || 1));
+  if (!startDate) return 1;
+  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((now - start) / 86400000);
+  if (diffDays < 0) return 1;
+  const weeksSince = Math.floor(diffDays / 7);
+  return (weeksSince % 8) + 1;
+}
+
+// GET el platillo del menú rotativo que toca HOY en esta sucursal (si la tiene activada).
+// Lo usan tanto el comensal (Menú del día) como el cajero (tab "Menú de la semana").
+router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 'CASHIER', 'USER']), async (req, res) => {
+  try {
+    const branch = await prisma.branch.findUnique({
+      where: { id: req.params.branchId },
+      include: { company: { select: { id: true, menuRotationEnabled: true, menuRotationStartDate: true, menuRotationMode: true, menuRotationManualWeek: true } } }
+    });
+    const requester = await prisma.user.findUnique({ where: { id: req.userId }, include: { branch: true } });
+    const companyId = req.userCompanyId || requester?.branch?.companyId;
+    if (!branch || branch.companyId !== companyId) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    if (!branch.company?.menuRotationEnabled || !branch.useMenuRotation) {
+      return res.json({ active: false });
+    }
+
+    const week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
+    const jsDay = new Date().getDay(); // 0=domingo...6=sábado
+    const dayOfWeek = jsDay === 0 ? 7 : jsDay; // 1=lunes...7=domingo
+
+    const day = await prisma.menuRotationDay.findUnique({
+      where: { companyId_week_dayOfWeek: { companyId: branch.company.id, week, dayOfWeek } }
+    });
+
+    res.json({
+      active: true, week, dayOfWeek,
+      item: day ? { name: day.name, price: day.price.toString() } : null
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener el menú del día' });
+  }
+});
+
 // CASHIER: listar TODOS los productos de su sucursal (activos e inactivos) — para gestionar el menú del día
 router.get('/cashier/branch', verifyToken, checkRole(['CASHIER']), async (req, res) => {
   try {

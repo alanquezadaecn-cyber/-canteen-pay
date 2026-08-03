@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UtensilsCrossed, Tag, AlertCircle } from 'lucide-react';
+import { UtensilsCrossed, Tag, AlertCircle, CalendarRange } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -14,6 +14,8 @@ interface Product {
   isActive: boolean;
 }
 
+interface RotationToday { active: boolean; week?: number; item?: { name: string; price: string } | null }
+
 const fmt = (n: string | number) =>
   `$${parseFloat(String(n)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
 
@@ -21,6 +23,7 @@ export const Menu: React.FC = () => {
   const { user } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rotation, setRotation] = useState<RotationToday | null>(null);
 
   useEffect(() => {
     if (!user?.branchId) return;
@@ -28,6 +31,9 @@ export const Menu: React.FC = () => {
       .then(({ data }) => setProducts(data))
       .catch(console.error)
       .finally(() => setLoading(false));
+    api.get(`/products/branch/${user.branchId}/rotation-today`)
+      .then(({ data }) => setRotation(data))
+      .catch(() => {});
   }, [user?.branchId]);
 
   const today = new Date().toLocaleDateString('es-MX', {
@@ -48,6 +54,31 @@ export const Menu: React.FC = () => {
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400 ml-11 capitalize">{today}</p>
       </div>
+
+      {/* Menú de la semana (ciclo de 8 semanas), si la sucursal lo tiene activado */}
+      {rotation?.active && (
+        <div className="px-6 pt-6">
+          <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-3xl p-5 shadow-lg shadow-emerald-500/20 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+                <CalendarRange className="w-6 h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-emerald-100 text-xs font-medium">Menú de la semana · Semana {rotation.week}</p>
+                {rotation.item ? (
+                  <>
+                    <p className="text-white text-lg font-extrabold truncate">{rotation.item.name}</p>
+                    <p className="text-emerald-100 text-sm font-semibold">{fmt(rotation.item.price)}</p>
+                  </>
+                ) : (
+                  <p className="text-white text-sm font-semibold">Aún no se definió el platillo de hoy</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="p-6 space-y-8">
         {loading ? (
