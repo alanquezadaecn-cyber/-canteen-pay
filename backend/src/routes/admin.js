@@ -329,28 +329,32 @@ function computeCurrentWeek(startDate, mode, manualWeek) {
 router.get('/menu-rotation', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
-    if (!companyId) return res.json({ enabled: false, days: [], branches: [] });
+    if (!companyId) return res.json({ enabled: false, tiers: [], days: [], branches: [] });
 
-    const [company, days, branches] = await Promise.all([
+    const [company, tiers, days, branches, manualMenus] = await Promise.all([
       prisma.company.findUnique({ where: { id: companyId }, select: { menuRotationEnabled: true, menuRotationStartDate: true, menuRotationMode: true, menuRotationManualWeek: true } }),
+      prisma.subsidyTier.findMany({ where: { companyId, isActive: true }, orderBy: { name: 'asc' } }),
       prisma.menuRotationDay.findMany({ where: { companyId } }),
-      prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true, useMenuRotation: true, menuRotationMode: true, manualMenuName: true, manualMenuPrice: true } })
+      prisma.branch.findMany({ where: { companyId }, select: { id: true, name: true, useMenuRotation: true, menuRotationMode: true } }),
+      prisma.branchManualMenu.findMany({ where: { branch: { companyId } } })
     ]);
+
+    const currentWeek = computeCurrentWeek(company?.menuRotationStartDate, company?.menuRotationMode, company?.menuRotationManualWeek);
 
     res.json({
       enabled: !!company?.menuRotationEnabled,
       startDate: company?.menuRotationStartDate || null,
       mode: company?.menuRotationMode || 'AUTO',
       manualWeek: company?.menuRotationManualWeek || null,
-      currentWeek: computeCurrentWeek(company?.menuRotationStartDate, company?.menuRotationMode, company?.menuRotationManualWeek),
-      days: days.map(d => ({ week: d.week, dayOfWeek: d.dayOfWeek, name: d.name, price: d.price.toString() })),
-      // Por sucursal: AUTO sigue el ciclo de la empresa; MANUAL usa su propio platillo de hoy.
+      currentWeek,
+      tiers: tiers.map(t => ({ id: t.id, name: t.name, cost: t.cost.toString(), branchId: t.branchId })),
+      days: days.map(d => ({ week: d.week, dayOfWeek: d.dayOfWeek, subsidyTierId: d.subsidyTierId, dishName: d.dishName })),
+      // Por sucursal: AUTO sigue el ciclo de la empresa; MANUAL usa su propio platillo de hoy por nivel.
       branches: branches.map(b => ({
         id: b.id, name: b.name, useMenuRotation: b.useMenuRotation,
         mode: b.menuRotationMode || 'AUTO',
-        manualMenuName: b.manualMenuName || '',
-        manualMenuPrice: b.manualMenuPrice != null ? b.manualMenuPrice.toString() : '',
-        currentWeek: computeCurrentWeek(company?.menuRotationStartDate, company?.menuRotationMode, company?.menuRotationManualWeek)
+        manualMenus: manualMenus.filter(m => m.branchId === b.id).map(m => ({ subsidyTierId: m.subsidyTierId, dishName: m.dishName })),
+        currentWeek
       }))
     });
   } catch (err) {
@@ -380,7 +384,7 @@ router.put('/menu-rotation/config', async (req, res) => {
   }
 });
 
-// Guarda de un jalón toda la cuadrícula de 8 semanas x 7 días (upsert por día).
+// Guarda de un jalón toda la cuadrícula de 8 semanas x 7 días x nivel de subsidio (upsert).
 router.put('/menu-rotation/days', async (req, res) => {
   try {
     const companyId = await adminCompanyId(req);
@@ -388,15 +392,18 @@ router.put('/menu-rotation/days', async (req, res) => {
     const { days } = req.body;
     if (!Array.isArray(days)) return res.status(400).json({ error: 'Formato inválido' });
 
-    await prisma.$transaction(days.map(d => {
+    // Solo se permite escribir días con un subsidyTierId que sí pertenece a esta empresa.
+    const validTierIds = new Set((await prisma.subsidyTier.findMany({ where: { companyId }, select: { id: true } })).map(t => t.id));
+    const rows = days.filter(d => validTierIds.has(d.subsidyTierId));
+
+    await prisma.$transaction(rows.map(d => {
       const week = Math.min(8, Math.max(1, parseInt(d.week) || 1));
       const dayOfWeek = Math.min(7, Math.max(1, parseInt(d.dayOfWeek) || 1));
-      const name = (d.name || '').trim();
-      const price = parseFloat(d.price) || 0;
+      const dishName = (d.dishName || '').trim();
       return prisma.menuRotationDay.upsert({
-        where: { companyId_week_dayOfWeek: { companyId, week, dayOfWeek } },
-        create: { companyId, week, dayOfWeek, name, price },
-        update: { name, price }
+        where: { companyId_week_dayOfWeek_subsidyTierId: { companyId, week, dayOfWeek, subsidyTierId: d.subsidyTierId } },
+        create: { companyId, week, dayOfWeek, subsidyTierId: d.subsidyTierId, dishName },
+        update: { dishName }
       });
     }));
 
@@ -413,17 +420,26 @@ router.put('/menu-rotation/branches/:branchId', async (req, res) => {
     const branch = await prisma.branch.findUnique({ where: { id: req.params.branchId }, select: { companyId: true } });
     if (!branch || branch.companyId !== companyId) return res.status(404).json({ error: 'Sucursal no encontrada' });
 
-    const { useMenuRotation, mode, manualMenuName, manualMenuPrice } = req.body;
+    const { useMenuRotation, mode, manualMenus } = req.body;
     await prisma.branch.update({
       where: { id: req.params.branchId },
       data: {
         ...(useMenuRotation !== undefined && { useMenuRotation: !!useMenuRotation }),
-        // mode: 'AUTO' sigue el ciclo de la empresa | 'MANUAL' usa el platillo propio de la sucursal
-        ...(mode !== undefined && { menuRotationMode: mode === 'MANUAL' ? 'MANUAL' : 'AUTO' }),
-        ...(manualMenuName !== undefined && { manualMenuName: manualMenuName?.trim() || null }),
-        ...(manualMenuPrice !== undefined && { manualMenuPrice: manualMenuPrice ? parseFloat(manualMenuPrice) : null })
+        // mode: 'AUTO' sigue el ciclo de la empresa | 'MANUAL' usa el platillo propio de la sucursal por nivel
+        ...(mode !== undefined && { menuRotationMode: mode === 'MANUAL' ? 'MANUAL' : 'AUTO' })
       }
     });
+
+    if (Array.isArray(manualMenus)) {
+      const validTierIds = new Set((await prisma.subsidyTier.findMany({ where: { companyId }, select: { id: true } })).map(t => t.id));
+      const rows = manualMenus.filter(m => validTierIds.has(m.subsidyTierId));
+      await prisma.$transaction(rows.map(m => prisma.branchManualMenu.upsert({
+        where: { branchId_subsidyTierId: { branchId: req.params.branchId, subsidyTierId: m.subsidyTierId } },
+        create: { branchId: req.params.branchId, subsidyTierId: m.subsidyTierId, dishName: (m.dishName || '').trim() },
+        update: { dishName: (m.dishName || '').trim() }
+      })));
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);

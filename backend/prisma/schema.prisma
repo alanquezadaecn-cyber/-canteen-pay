@@ -169,12 +169,11 @@ model Branch {
 
   subsidyMealsPerDay Int?   // Override de comidas subsidiadas/día para esta sucursal (null = usar el de la empresa)
   useMenuRotation Boolean   @default(false) // si usa el menú rotativo de 8 semanas de la empresa
-  // Cada sucursal decide: AUTO (sigue el ciclo de 8 semanas de la empresa) o MANUAL (esta
-  // sucursal puso su propio platillo de hoy, sin importar lo que toque en el ciclo).
-  // null = se comporta como AUTO.
+  // Cada sucursal decide: AUTO (sigue el ciclo de 8 semanas de la empresa, por nivel de
+  // subsidio) o MANUAL (esta sucursal puso su propio platillo de hoy por nivel — ver
+  // BranchManualMenu — sin importar lo que toque en el ciclo). null = se comporta como AUTO.
   menuRotationMode String? // AUTO | MANUAL | null
-  manualMenuName    String?
-  manualMenuPrice   Decimal? @db.Decimal(10, 2)
+  manualMenus       BranchManualMenu[]
 
   // Licencia y Pago
   licenseStatus   String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, TRIAL
@@ -379,24 +378,46 @@ model SubsidyTier {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  menuRotationDays  MenuRotationDay[]
+  branchManualMenus BranchManualMenu[]
+
   @@index([companyId])
   @@index([branchId])
 }
 
 // Un platillo del ciclo de 8 semanas: week 1-8, dayOfWeek 1-7 (1=lunes...7=domingo).
+// El menú rotativo ES el menú subsidiado: cada día del ciclo tiene un platillo distinto
+// POR NIVEL de subsidio (ej. Estándar = Milanesa, Especial = Camarones). El precio no vive
+// aquí — lo sigue definiendo SubsidyTier.cost; esto solo dice "qué platillo toca hoy".
 model MenuRotationDay {
-  id        String   @id @default(cuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  week      Int
-  dayOfWeek Int
-  name      String
-  price     Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String      @id @default(cuid())
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  week          Int
+  dayOfWeek     Int
+  subsidyTierId String
+  subsidyTier   SubsidyTier @relation(fields: [subsidyTierId], references: [id], onDelete: Cascade)
+  dishName      String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  @@unique([companyId, week, dayOfWeek])
+  @@unique([companyId, week, dayOfWeek, subsidyTierId])
   @@index([companyId])
+  @@index([subsidyTierId])
+}
+
+// Override manual por sucursal: cuando esa sucursal está en modo MANUAL, este es el
+// platillo que puso para HOY en cada nivel de subsidio (ignora el ciclo por completo).
+model BranchManualMenu {
+  id            String      @id @default(cuid())
+  branchId      String
+  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  subsidyTierId String
+  subsidyTier   SubsidyTier @relation(fields: [subsidyTierId], references: [id], onDelete: Cascade)
+  dishName      String
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([branchId, subsidyTierId])
 }
 
 model StockMovement {

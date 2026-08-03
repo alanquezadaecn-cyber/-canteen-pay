@@ -9,6 +9,18 @@ const router = express.Router();
 
 router.use(verifyToken, checkRole(['CASHIER', 'ADMIN']));
 
+// Calcula qué semana del ciclo de 8 semanas del menú rotativo toca hoy.
+function computeCurrentWeek(startDate, mode, manualWeek) {
+  if (mode === 'MANUAL') return Math.min(8, Math.max(1, parseInt(manualWeek) || 1));
+  if (!startDate) return 1;
+  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((now - start) / 86400000);
+  if (diffDays < 0) return 1;
+  const weeksSince = Math.floor(diffDays / 7);
+  return (weeksSince % 8) + 1;
+}
+
 // Notificación in-app (campanita del comensal) + push del navegador. No bloquea la
 // respuesta del cobro/recarga ni la tumba si falla — es "mejor esfuerzo".
 function notifyUser(userId, { type, message, title, url }) {
@@ -157,7 +169,7 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
     let subsidy = { enabled: false, limit: 0, usedToday: 0, left: 0, tiers: [] };
     const branch = await prisma.branch.findUnique({
       where: { id: branchId },
-      include: { company: { select: { id: true, subsidyEnabled: true, subsidyMealsPerDay: true } } }
+      include: { company: { select: { id: true, subsidyEnabled: true, subsidyMealsPerDay: true, menuRotationEnabled: true, menuRotationStartDate: true, menuRotationMode: true, menuRotationManualWeek: true } } }
     });
     if (branch?.company?.subsidyEnabled) {
       const cfg = await prisma.user.findUnique({ where: { id: user.id }, select: { subsidyMealsPerDay: true } });
@@ -173,9 +185,25 @@ router.get('/branch/:branchId/scan/:qrCode', async (req, res) => {
         orderBy: { cost: 'asc' },
         select: { id: true, name: true, cost: true }
       });
+
+      // El menú rotativo ES el menú subsidiado: si está activo, cada tier trae el platillo de hoy
+      let dishByTier = {};
+      if (branch.company.menuRotationEnabled && branch.useMenuRotation) {
+        if (branch.menuRotationMode === 'MANUAL') {
+          const manualMenus = await prisma.branchManualMenu.findMany({ where: { branchId } });
+          dishByTier = Object.fromEntries(manualMenus.map(m => [m.subsidyTierId, m.dishName]));
+        } else {
+          const week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
+          const jsDay = new Date().getDay();
+          const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+          const days = await prisma.menuRotationDay.findMany({ where: { companyId: branch.company.id, week, dayOfWeek } });
+          dishByTier = Object.fromEntries(days.map(d => [d.subsidyTierId, d.dishName]));
+        }
+      }
+
       subsidy = {
         enabled: true, limit, usedToday, left: Math.max(0, limit - usedToday),
-        tiers: tiers.map(t => ({ ...t, cost: t.cost.toString() }))
+        tiers: tiers.map(t => ({ ...t, cost: t.cost.toString(), dishName: dishByTier[t.id] || null }))
       };
     }
 

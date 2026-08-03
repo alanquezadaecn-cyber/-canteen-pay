@@ -41,8 +41,9 @@ export function computeCurrentWeek(startDate, mode, manualWeek) {
   return (weeksSince % 8) + 1;
 }
 
-// GET el platillo del menú rotativo que toca HOY en esta sucursal (si la tiene activada).
-// Lo usan tanto el comensal (Menú del día) como el cajero (tab "Menú de la semana").
+// GET el platillo del menú rotativo que toca HOY en esta sucursal, uno por cada nivel de
+// subsidio (el rotativo ES el menú subsidiado). Lo usan el comensal (Menú del día) y el
+// cajero (para mostrar qué platillo corresponde a cada tier al cobrar subsidiado).
 router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 'CASHIER', 'USER']), async (req, res) => {
   try {
     const branch = await prisma.branch.findUnique({
@@ -57,26 +58,39 @@ router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 
       return res.json({ active: false });
     }
 
-    // MANUAL: esta sucursal puso su propio platillo de hoy, ignora el ciclo por completo.
+    // Los niveles de subsidio que aplican a esta sucursal (propios de la sucursal + los generales de la empresa)
+    const tiers = await prisma.subsidyTier.findMany({
+      where: { companyId: branch.company.id, isActive: true, OR: [{ branchId: branch.id }, { branchId: null }] },
+      orderBy: { name: 'asc' }
+    });
+
+    // MANUAL: esta sucursal puso su propio platillo de hoy por nivel, ignora el ciclo.
     if (branch.menuRotationMode === 'MANUAL') {
+      const manualMenus = await prisma.branchManualMenu.findMany({ where: { branchId: branch.id } });
       return res.json({
         active: true, mode: 'MANUAL',
-        item: branch.manualMenuName ? { name: branch.manualMenuName, price: (branch.manualMenuPrice || 0).toString() } : null
+        items: tiers.map(t => {
+          const m = manualMenus.find(x => x.subsidyTierId === t.id);
+          return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: m?.dishName || null };
+        })
       });
     }
 
-    // AUTO (default): sigue el ciclo de 8 semanas de la empresa.
+    // AUTO (default): sigue el ciclo de 8 semanas de la empresa, un platillo por nivel.
     const week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
     const jsDay = new Date().getDay(); // 0=domingo...6=sábado
     const dayOfWeek = jsDay === 0 ? 7 : jsDay; // 1=lunes...7=domingo
 
-    const day = await prisma.menuRotationDay.findUnique({
-      where: { companyId_week_dayOfWeek: { companyId: branch.company.id, week, dayOfWeek } }
+    const days = await prisma.menuRotationDay.findMany({
+      where: { companyId: branch.company.id, week, dayOfWeek, subsidyTierId: { in: tiers.map(t => t.id) } }
     });
 
     res.json({
       active: true, mode: 'AUTO', week, dayOfWeek,
-      item: day ? { name: day.name, price: day.price.toString() } : null
+      items: tiers.map(t => {
+        const d = days.find(x => x.subsidyTierId === t.id);
+        return { subsidyTierId: t.id, tierName: t.name, cost: t.cost.toString(), dishName: d?.dishName || null };
+      })
     });
   } catch (err) {
     console.error(err);

@@ -29,7 +29,7 @@ interface Shift {
 
 const MAX_SHIFTS = 3;
 
-interface SubsidyTier { id: string; name: string; cost: number }
+interface SubsidyTier { id: string; name: string; cost: number; dishName?: string | null }
 interface Subsidy { enabled: boolean; limit: number; usedToday: number; left: number; tiers?: SubsidyTier[] }
 interface User {
   id: string;
@@ -74,8 +74,6 @@ export const CashierActionPanel: React.FC = () => {
   const [payWithCash, setPayWithCash] = useState(false);
   const [cashProduct, setCashProduct] = useState<Product | null>(null);
   const [cashReceivedInput, setCashReceivedInput] = useState('');
-  const [chargeRotation, setChargeRotation] = useState(false);
-  const [rotationToday, setRotationToday] = useState<{ active: boolean; week?: number; item?: { name: string; price: string } | null } | null>(null);
 
   // Turno de operación: apertura/cierre de barra
   const [openShift, setOpenShift] = useState<Shift | null>(null);
@@ -128,7 +126,7 @@ export const CashierActionPanel: React.FC = () => {
 
   // Cargar productos al montar
   useEffect(() => {
-    if (branchId) { loadProducts(); loadRotationToday(); }
+    if (branchId) { loadProducts(); }
   }, [branchId]);
 
   // Reaccionar cuando llega ?qr= en la URL (viene del scanner)
@@ -197,36 +195,6 @@ export const CashierActionPanel: React.FC = () => {
     // Cachear comensales para operar offline (en segundo plano, no bloquea)
     if (branchId && isOnline()) {
       api.get(`/cashier/branch/${branchId}/users`).then(r => cacheComensales(branchId, r.data)).catch(() => {});
-    }
-  };
-
-  const loadRotationToday = () => {
-    if (!branchId) return;
-    api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => {
-      setRotationToday(data);
-      // Sigue la preferencia que el cajero dejó en "Menú del día" (misma sucursal, mismo día)
-      if (data.active && data.item) {
-        const stored = localStorage.getItem(`cashfood_use_rotation_${branchId}_${new Date().toISOString().slice(0, 10)}`);
-        setChargeRotation(stored === null ? true : stored === '1');
-      }
-    }).catch(() => {});
-  };
-
-  const handleChargeRotation = async () => {
-    if (!user || !branchId || !rotationToday?.item) return;
-    setLoading(true);
-    try {
-      const res: any = await doCharge(branchId, user, parseFloat(rotationToday.item.price), `Menú de la semana: ${rotationToday.item.name}`, false);
-      setSuccess(res.offline
-        ? `⚠️ Sin conexión: ${rotationToday.item.name} cobrado a ${user.name} (se sincronizará). Saldo: $${res.newBalance}`
-        : `✅ ${rotationToday.item.name} cobrado a ${user.name}. Nuevo saldo: $${res.newBalance}`);
-      setUser({ ...user, balance: res.newBalance });
-      setMode('select');
-      setTimeout(() => { setSuccess(''); setUser(null); }, 2200);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al procesar cobro');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -532,7 +500,7 @@ export const CashierActionPanel: React.FC = () => {
         {mode === 'select' && (
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); setPayWithCash(false); setCashProduct(null); setCashReceivedInput(''); setChargeRotation(false); setChargeTab('MENU'); }}
+              onClick={() => { setMode('charge'); setError(''); setChargeSubsidized(false); setPayWithCash(false); setCashProduct(null); setCashReceivedInput(''); setChargeTab('MENU'); }}
               disabled={loading}
               className="flex flex-col items-center justify-center gap-2 h-28 rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-40 shadow-lg shadow-emerald-600/25 cursor-pointer"
             >
@@ -572,7 +540,7 @@ export const CashierActionPanel: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setChargeSubsidized(v => !v); setPayWithCash(false); setCashProduct(null); setChargeRotation(false); }}
+                  onClick={() => { setChargeSubsidized(v => !v); setPayWithCash(false); setCashProduct(null); }}
                   disabled={user.subsidy.left <= 0}
                   className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 ${chargeSubsidized ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
                 >
@@ -588,31 +556,12 @@ export const CashierActionPanel: React.FC = () => {
                 <p className="text-xs text-slate-500">El comensal paga en mano, no descuenta su saldo de la app</p>
               </div>
               <button
-                onClick={() => { setPayWithCash(v => !v); setChargeSubsidized(false); setCashProduct(null); setCashReceivedInput(''); setChargeRotation(false); }}
+                onClick={() => { setPayWithCash(v => !v); setChargeSubsidized(false); setCashProduct(null); setCashReceivedInput(''); }}
                 className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${payWithCash ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
               >
                 {payWithCash ? 'EFECTIVO ✓' : 'Activar efectivo'}
               </button>
             </div>
-
-            {/* Toggle de menú de la semana (ciclo de 8 semanas), si la sucursal lo tiene activado */}
-            {rotationToday?.active && (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Menú de la semana</p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {rotationToday.item ? `${rotationToday.item.name} · $${rotationToday.item.price}` : 'Aún no se definió el platillo de hoy'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => { setChargeRotation(v => !v); setChargeSubsidized(false); setPayWithCash(false); setCashProduct(null); }}
-                  disabled={!rotationToday.item}
-                  className={`h-9 px-4 rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 flex-shrink-0 ${chargeRotation ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                >
-                  {chargeRotation ? 'ACTIVO ✓' : 'Usar menú semana'}
-                </button>
-              </div>
-            )}
 
             {payWithCash && cashProduct ? (
               // Paso 2 del pago en efectivo: cuánto pagó y cuánto cambio dar
@@ -685,23 +634,13 @@ export const CashierActionPanel: React.FC = () => {
                       className="flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400"
                     >
                       <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{tier.name}</span>
+                      {tier.dishName && <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tier.dishName}</span>}
                       <span className="text-emerald-600 text-base font-bold mt-2">Subsidiado</span>
                       <span className="text-xs text-slate-400 mt-1">Costo empresa: ${tier.cost}</span>
                     </button>
                   ))}
                 </div>
               )
-            ) : chargeRotation && rotationToday?.item ? (
-              // Cobro del menú de la semana: un solo platillo, el que toca hoy en el ciclo.
-              <button
-                onClick={handleChargeRotation}
-                disabled={loading}
-                className="w-full flex flex-col items-start p-4 rounded-2xl border hover:shadow-md transition-all text-left disabled:opacity-40 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-400"
-              >
-                <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-slate-50 leading-tight">{rotationToday.item.name}</span>
-                <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mt-2">${rotationToday.item.price}</span>
-                <span className="text-xs text-slate-400 mt-1">Semana {rotationToday.week} · Menú de la semana</span>
-              </button>
             ) : (() => {
               const menuItems = products.filter(p => p.productType !== 'PRODUCTO');
               const snackItems = products.filter(p => p.productType === 'PRODUCTO');

@@ -14,7 +14,8 @@ interface Product {
   isActive: boolean;
 }
 
-interface RotationToday { active: boolean; week?: number; item?: { name: string; price: string } | null }
+interface RotationItem { subsidyTierId: string; tierName: string; cost: string; dishName: string | null }
+interface RotationToday { active: boolean; week?: number; items?: RotationItem[] }
 
 const fmt = (n: string | number) =>
   `$${parseFloat(String(n)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
@@ -55,24 +56,28 @@ export const Menu: React.FC = () => {
         <p className="text-sm text-slate-500 dark:text-slate-400 ml-11 capitalize">{today}</p>
       </div>
 
-      {/* Menú de la semana (ciclo de 8 semanas), si la sucursal lo tiene activado */}
+      {/* Menú de la semana (ciclo de 8 semanas) = el menú subsidiado de hoy, un platillo por nivel */}
       {rotation?.active && (
         <div className="px-6 pt-6">
           <div className="relative bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-3xl p-5 shadow-lg shadow-emerald-500/20 overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="relative flex items-center gap-4">
+            <div className="relative flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
                 <CalendarRange className="w-6 h-6 text-white" />
               </div>
-              <div className="min-w-0">
-                <p className="text-emerald-100 text-xs font-medium">Menú de la semana · Semana {rotation.week}</p>
-                {rotation.item ? (
-                  <>
-                    <p className="text-white text-lg font-extrabold truncate">{rotation.item.name}</p>
-                    <p className="text-emerald-100 text-sm font-semibold">{fmt(rotation.item.price)}</p>
-                  </>
+              <div className="min-w-0 flex-1">
+                <p className="text-emerald-100 text-xs font-medium">Menú de la semana{rotation.week ? ` · Semana ${rotation.week}` : ''}</p>
+                {!rotation.items || rotation.items.length === 0 ? (
+                  <p className="text-white text-sm font-semibold mt-1">Aún no se definió el platillo de hoy</p>
                 ) : (
-                  <p className="text-white text-sm font-semibold">Aún no se definió el platillo de hoy</p>
+                  <div className="mt-1.5 space-y-1">
+                    {rotation.items.map(it => (
+                      <div key={it.subsidyTierId} className="flex items-baseline gap-2">
+                        <span className="text-emerald-100 text-xs font-semibold flex-shrink-0">{it.tierName}:</span>
+                        <span className="text-white text-base font-extrabold truncate">{it.dishName || 'Por definir'}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
