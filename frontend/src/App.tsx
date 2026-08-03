@@ -6,6 +6,7 @@ import { AppNav } from './components/AppNav';
 import { CashierNav } from './components/CashierNav';
 import { CashierLockScreen } from './components/CashierLockScreen';
 import { useIdleLock } from './hooks/useIdleLock';
+import { useIdleLogout } from './hooks/useIdleLogout';
 import { AdminNav } from './components/AdminNav';
 
 // Auth
@@ -145,7 +146,7 @@ const CajaLayout: React.FC = () => {
   // El panel de caja se queda "siempre abierto": en vez de cerrar sesión por
   // inactividad (lo que obligaría a reloguearse y desgastaría el token), se
   // bloquea la pantalla y solo se desbloquea con la contraseña del cajero.
-  const { locked, unlock } = useIdleLock(!!session && ready);
+  const { locked, unlock } = useIdleLock(!!session && ready, session?.user.branchId);
   if (!session) return <Login mode="branch" />;
   if (!ready) return <PanelSpinner />;
   return (
@@ -170,6 +171,9 @@ const AdminLayout: React.FC = () => {
 
 const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, ready } = usePanelGuard('master');
+  // La cuenta master-admin controla bloqueo/pagos de TODAS las empresas — sin
+  // interacción, se cierra sesión sola en vez de quedarse abierta indefinidamente.
+  useIdleLogout(!!session && ready, () => useAuthStore.getState().logout());
   if (!session) return <Navigate to="/login" replace />;
   if (!ready) return <PanelSpinner />;
   return <>{children}</>;

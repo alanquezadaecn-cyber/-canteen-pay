@@ -6,14 +6,25 @@ import { useEffect, useRef, useState } from 'react';
 // y no hay que volver a iniciar sesión completa cada vez.
 const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos
 
-export function useIdleLock(enabled: boolean) {
-  const [locked, setLocked] = useState(false);
+// El "locked" se persiste en localStorage (no solo en memoria): si no, con la caja
+// bloqueada bastaba con recargar la página (Ctrl+R / F5) para que el componente
+// volviera a montar con locked=false y se "desbloqueara" sin pedir contraseña.
+function lockKey(storageKey?: string) {
+  return `cashfood_idlelock_${storageKey || 'default'}`;
+}
+
+export function useIdleLock(enabled: boolean, storageKey?: string) {
+  const key = lockKey(storageKey);
+  const [locked, setLocked] = useState(() => localStorage.getItem(key) === '1');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!enabled) return;
-    timerRef.current = setTimeout(() => setLocked(true), IDLE_TIMEOUT_MS);
+    timerRef.current = setTimeout(() => {
+      localStorage.setItem(key, '1');
+      setLocked(true);
+    }, IDLE_TIMEOUT_MS);
   };
 
   useEffect(() => {
@@ -34,14 +45,19 @@ export function useIdleLock(enabled: boolean) {
       events.forEach((ev) => window.removeEventListener(ev, onActivity));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [enabled, locked]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, locked, key]);
 
   const unlock = () => {
+    localStorage.removeItem(key);
     setLocked(false);
     resetTimer();
   };
 
-  const lockNow = () => setLocked(true);
+  const lockNow = () => {
+    localStorage.setItem(key, '1');
+    setLocked(true);
+  };
 
   return { locked, unlock, lockNow };
 }

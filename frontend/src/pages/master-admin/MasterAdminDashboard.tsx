@@ -4,7 +4,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import api from '../../lib/api';
-import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Zap, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2, LogIn, Package, Users2, Settings2 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
+import { Lock, Unlock, DollarSign, AlertCircle, Building2, TrendingUp, Edit3, MapPin, CreditCard, Mail, Plus, Trash2, Copy, CheckCircle, RefreshCw, X, Link2, LogIn, Package, Users2, Settings2, LogOut } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -271,9 +272,7 @@ export const MasterAdminDashboard: React.FC = () => {
         <div className="border-b border-slate-200 dark:border-slate-700 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-slate-900 dark:bg-slate-100 rounded-xl flex-shrink-0">
-                <Zap className="w-6 h-6 text-white dark:text-slate-900" />
-              </div>
+              <img src="/icons/icon.svg" alt="CashFood" className="w-12 h-12 rounded-xl flex-shrink-0" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">
                   Master Admin
@@ -298,6 +297,13 @@ export const MasterAdminDashboard: React.FC = () => {
               >
                 <Plus className="w-4 h-4" />
                 Nueva Empresa
+              </button>
+              <button
+                onClick={() => useAuthStore.getState().logout()}
+                title="Cerrar sesión"
+                className="h-10 w-10 flex-shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
