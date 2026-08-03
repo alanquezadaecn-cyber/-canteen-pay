@@ -169,6 +169,12 @@ model Branch {
 
   subsidyMealsPerDay Int?   // Override de comidas subsidiadas/día para esta sucursal (null = usar el de la empresa)
   useMenuRotation Boolean   @default(false) // si usa el menú rotativo de 8 semanas de la empresa
+  // Cada sucursal decide: AUTO (sigue el ciclo de 8 semanas de la empresa) o MANUAL (esta
+  // sucursal puso su propio platillo de hoy, sin importar lo que toque en el ciclo).
+  // null = se comporta como AUTO.
+  menuRotationMode String? // AUTO | MANUAL | null
+  manualMenuName    String?
+  manualMenuPrice   Decimal? @db.Decimal(10, 2)
 
   // Licencia y Pago
   licenseStatus   String    @default("ACTIVE") // ACTIVE, EXPIRED, BLOCKED, TRIAL

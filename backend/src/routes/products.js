@@ -57,6 +57,15 @@ router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 
       return res.json({ active: false });
     }
 
+    // MANUAL: esta sucursal puso su propio platillo de hoy, ignora el ciclo por completo.
+    if (branch.menuRotationMode === 'MANUAL') {
+      return res.json({
+        active: true, mode: 'MANUAL',
+        item: branch.manualMenuName ? { name: branch.manualMenuName, price: (branch.manualMenuPrice || 0).toString() } : null
+      });
+    }
+
+    // AUTO (default): sigue el ciclo de 8 semanas de la empresa.
     const week = computeCurrentWeek(branch.company.menuRotationStartDate, branch.company.menuRotationMode, branch.company.menuRotationManualWeek);
     const jsDay = new Date().getDay(); // 0=domingo...6=sábado
     const dayOfWeek = jsDay === 0 ? 7 : jsDay; // 1=lunes...7=domingo
@@ -66,7 +75,7 @@ router.get('/branch/:branchId/rotation-today', verifyToken, checkRole(['ADMIN', 
     });
 
     res.json({
-      active: true, week, dayOfWeek,
+      active: true, mode: 'AUTO', week, dayOfWeek,
       item: day ? { name: day.name, price: day.price.toString() } : null
     });
   } catch (err) {

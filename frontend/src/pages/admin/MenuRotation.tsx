@@ -14,7 +14,7 @@ const DAYS = [
 const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 interface DayEntry { week: number; dayOfWeek: number; name: string; price: string }
-interface BranchRow { id: string; name: string; useMenuRotation: boolean }
+interface BranchRow { id: string; name: string; useMenuRotation: boolean; mode: 'AUTO' | 'MANUAL'; manualMenuName: string; manualMenuPrice: string; currentWeek: number }
 
 export const MenuRotation: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
@@ -68,6 +68,21 @@ export const MenuRotation: React.FC = () => {
   const toggleBranch = async (branchId: string, value: boolean) => {
     setBranches(prev => prev.map(b => b.id === branchId ? { ...b, useMenuRotation: value } : b));
     try { await api.put(`/admin/menu-rotation/branches/${branchId}`, { useMenuRotation: value }); } catch { load(); }
+  };
+
+  const setBranchMode = async (branchId: string, newMode: 'AUTO' | 'MANUAL') => {
+    setBranches(prev => prev.map(b => b.id === branchId ? { ...b, mode: newMode } : b));
+    try { await api.put(`/admin/menu-rotation/branches/${branchId}`, { mode: newMode }); } catch { load(); }
+  };
+
+  const updateBranchManual = (branchId: string, field: 'manualMenuName' | 'manualMenuPrice', value: string) => {
+    setBranches(prev => prev.map(b => b.id === branchId ? { ...b, [field]: value } : b));
+  };
+
+  const saveBranchManual = async (branchId: string) => {
+    const b = branches.find(x => x.id === branchId);
+    if (!b) return;
+    try { await api.put(`/admin/menu-rotation/branches/${branchId}`, { manualMenuName: b.manualMenuName, manualMenuPrice: b.manualMenuPrice }); } catch { load(); }
   };
 
   const updateDay = (week: number, dayOfWeek: number, field: 'name' | 'price', value: string) => {
@@ -158,17 +173,65 @@ export const MenuRotation: React.FC = () => {
         {branches.length > 0 && (
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 space-y-3">
             <p className="text-sm font-bold text-slate-900 dark:text-slate-50">¿Qué sucursales lo ven?</p>
-            <p className="text-xs text-slate-500 -mt-2">Las que actives aquí muestran el menú rotativo a sus comensales, y el cajero puede cobrarlo como "Menú de la semana".</p>
+            <p className="text-xs text-slate-500 -mt-2">
+              Cada sucursal activada elige: <strong className="text-slate-600 dark:text-slate-300">Automático</strong> (sigue el ciclo de 8 semanas)
+              o <strong className="text-slate-600 dark:text-slate-300">Manual</strong> (esa sucursal pone su propio platillo de hoy, sin importar el ciclo).
+            </p>
             <div className="space-y-2">
               {branches.map(b => (
-                <div key={b.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3">
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{b.name}</span>
-                  <button
-                    onClick={() => toggleBranch(b.id, !b.useMenuRotation)}
-                    className={`h-8 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors ${b.useMenuRotation ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
-                  >
-                    {b.useMenuRotation ? 'Activado' : 'Desactivado'}
-                  </button>
+                <div key={b.id} className="bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 space-y-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{b.name}</span>
+                    <button
+                      onClick={() => toggleBranch(b.id, !b.useMenuRotation)}
+                      className={`h-8 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors flex-shrink-0 ${b.useMenuRotation ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
+                    >
+                      {b.useMenuRotation ? 'Activado' : 'Desactivado'}
+                    </button>
+                  </div>
+
+                  {b.useMenuRotation && (
+                    <>
+                      <div className="flex gap-2 bg-white dark:bg-slate-900 rounded-full p-1 w-fit">
+                        <button
+                          onClick={() => setBranchMode(b.id, 'AUTO')}
+                          className={`h-7 px-3 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${b.mode === 'AUTO' ? 'bg-emerald-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                        >
+                          Automático · Semana {b.currentWeek}
+                        </button>
+                        <button
+                          onClick={() => setBranchMode(b.id, 'MANUAL')}
+                          className={`h-7 px-3 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${b.mode === 'MANUAL' ? 'bg-amber-500 text-slate-950' : 'text-slate-500 dark:text-slate-400'}`}
+                        >
+                          Manual
+                        </button>
+                      </div>
+
+                      {b.mode === 'MANUAL' && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={b.manualMenuName}
+                            onChange={e => updateBranchManual(b.id, 'manualMenuName', e.target.value)}
+                            onBlur={() => saveBranchManual(b.id)}
+                            placeholder="Platillo de hoy"
+                            className="flex-1 h-9 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-amber-400"
+                          />
+                          <div className="relative w-24 flex-shrink-0">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={b.manualMenuPrice}
+                              onChange={e => updateBranchManual(b.id, 'manualMenuPrice', e.target.value)}
+                              onBlur={() => saveBranchManual(b.id)}
+                              placeholder="0.00"
+                              className="w-full h-9 pl-6 pr-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-amber-400"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
