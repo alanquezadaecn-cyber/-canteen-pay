@@ -158,10 +158,18 @@ router.post('/login', async (req, res) => {
 
     const MASTER_EMAIL = process.env.MASTER_EMAIL || 'alejandro.qt92@gmail.com';
 
-    // Bloqueo: si la empresa o la sucursal están bloqueadas, nadie entra (excepto el master admin)
+    // Bloqueo: si la empresa o la sucursal están bloqueadas, nadie entra (excepto el master
+    // admin). Excepción: el ADMIN de la empresa SÍ puede entrar aunque su empresa esté
+    // bloqueada — así puede ver el aviso de suspensión y contactar soporte, en vez de
+    // quedarse sin poder ni iniciar sesión para saber qué pasó.
+    let companyBlocked = false;
     if (user.email !== MASTER_EMAIL) {
       if (user.branch?.company?.isBlocked) {
-        return res.status(403).json({ error: 'Cuenta suspendida. Contacta a soporte de CashFood.' });
+        if (user.role === 'ADMIN') {
+          companyBlocked = true;
+        } else {
+          return res.status(403).json({ error: 'Cuenta suspendida. Contacta a soporte de CashFood.' });
+        }
       }
       if (user.branch?.isBlocked) {
         return res.status(403).json({ error: 'Esta sucursal está suspendida. Contacta a soporte.' });
@@ -195,7 +203,8 @@ router.post('/login', async (req, res) => {
           branchSlug: user.branch?.slug || null,
           qrCode: user.qrCode,
           employeeNumber: user.employeeNumber,
-          phone: user.phone
+          phone: user.phone,
+          companyBlocked
         },
         accessToken,
         refreshToken

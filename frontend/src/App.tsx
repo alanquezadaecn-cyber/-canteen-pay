@@ -59,6 +59,7 @@ import { PaymentConfig } from './pages/admin/PaymentConfig';
 import { CorteDeCaja } from './pages/cashier/CorteDeCaja';
 import { Menu } from './pages/user/Menu';
 import { Branding } from './pages/admin/Branding';
+import { AccountSuspended } from './pages/admin/AccountSuspended';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,9 @@ const AdminLayout: React.FC = () => {
   useSlugBackfill();
   if (!session) return <Login mode="admin" />;
   if (!ready) return <PanelSpinner />;
+  // La empresa está suspendida (falta de pago, etc.): el admin sí puede entrar, pero
+  // solo ve el aviso de suspensión — no el panel operativo.
+  if (session.user.companyBlocked) return <AccountSuspended />;
   return <><AdminNav /><Outlet /></>;
 };
 

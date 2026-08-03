@@ -16,6 +16,7 @@ interface User {
   phone?: string;
   company?: string;
   subsidyBalance?: string | null;
+  companyBlocked?: boolean;
 }
 
 export type Panel = 'master' | 'admin' | 'cashier' | 'user';
