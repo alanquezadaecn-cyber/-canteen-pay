@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Pencil, Check, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Check, X, Eye, EyeOff, CalendarRange } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../lib/api';
 
@@ -10,6 +10,12 @@ interface Product {
   category: string;
   isActive: boolean;
 }
+
+interface RotationToday { active: boolean; mode?: 'AUTO' | 'MANUAL'; week?: number; item?: { name: string; price: string } | null }
+
+// Preferencia del cajero de usar (o no) el menú de la semana como lo que se cobra hoy —
+// se guarda por sucursal+día para que no haya que repetirlo cada vez que se abre la caja.
+const rotationPrefKey = (branchId: string) => `cashfood_use_rotation_${branchId}_${new Date().toISOString().slice(0, 10)}`;
 
 export const CashierProducts: React.FC = () => {
   const { user } = useAuthStore();
@@ -23,10 +29,26 @@ export const CashierProducts: React.FC = () => {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'General' });
   const [editValues, setEditValues] = useState({ name: '', price: '', category: '' });
   const [saving, setSaving] = useState(false);
+  const [rotation, setRotation] = useState<RotationToday | null>(null);
+  const [useRotation, setUseRotation] = useState(false);
 
   useEffect(() => {
-    if (branchId) load();
+    if (branchId) {
+      load();
+      api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => {
+        setRotation(data);
+        if (data.active) {
+          const stored = localStorage.getItem(rotationPrefKey(branchId));
+          setUseRotation(stored === null ? true : stored === '1'); // por defecto activado si hay menú de la semana
+        }
+      }).catch(() => {});
+    }
   }, [branchId]);
+
+  const toggleUseRotation = (value: boolean) => {
+    setUseRotation(value);
+    if (branchId) localStorage.setItem(rotationPrefKey(branchId), value ? '1' : '0');
+  };
 
   const load = async () => {
     try {
@@ -116,6 +138,36 @@ export const CashierProducts: React.FC = () => {
             Agregar
           </button>
         </div>
+
+        {/* Menú de la semana (ciclo de 8 semanas): si la sucursal no lo tiene activado desde
+            Admin -> Menú semanal, esta tarjeta simplemente no aparece y todo sigue como siempre. */}
+        {rotation?.active && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                <CalendarRange className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                  Menú de la semana {rotation.mode === 'MANUAL' ? '· manual' : rotation.week ? `· Semana ${rotation.week}` : ''}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {rotation.item ? `${rotation.item.name} · $${rotation.item.price}` : 'Aún no se definió el platillo de hoy (Admin → Menú semanal)'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Usar este platillo como lo que se cobra hoy en caja</p>
+              <button
+                onClick={() => toggleUseRotation(!useRotation)}
+                disabled={!rotation.item}
+                className={`h-8 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors disabled:opacity-40 flex-shrink-0 ${useRotation ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+              >
+                {useRotation ? 'Activado' : 'Desactivado'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-sm">

@@ -202,7 +202,14 @@ export const CashierActionPanel: React.FC = () => {
 
   const loadRotationToday = () => {
     if (!branchId) return;
-    api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => setRotationToday(data)).catch(() => {});
+    api.get(`/products/branch/${branchId}/rotation-today`).then(({ data }) => {
+      setRotationToday(data);
+      // Sigue la preferencia que el cajero dejó en "Menú del día" (misma sucursal, mismo día)
+      if (data.active && data.item) {
+        const stored = localStorage.getItem(`cashfood_use_rotation_${branchId}_${new Date().toISOString().slice(0, 10)}`);
+        setChargeRotation(stored === null ? true : stored === '1');
+      }
+    }).catch(() => {});
   };
 
   const handleChargeRotation = async () => {
