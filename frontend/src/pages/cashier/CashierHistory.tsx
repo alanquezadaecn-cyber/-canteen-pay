@@ -169,14 +169,14 @@ export const CashierHistory: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card variant="elevated">
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Transacciones</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
+                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2 truncate">
                       {pagination.total}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 flex-shrink-0">
                     <ShoppingCart className="w-6 h-6 text-slate-400" />
                   </div>
                 </div>
@@ -185,14 +185,14 @@ export const CashierHistory: React.FC = () => {
 
             <Card variant="elevated">
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Cobrado</p>
-                    <p className="text-3xl font-bold text-red-500 mt-2">
+                    <p className="text-3xl font-bold text-red-500 mt-2 truncate">
                       ${parseFloat(totals.charges).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                  <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30 flex-shrink-0">
                     <DollarSign className="w-6 h-6 text-red-500" />
                   </div>
                 </div>
@@ -201,14 +201,14 @@ export const CashierHistory: React.FC = () => {
 
             <Card variant="elevated">
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Recargado</p>
-                    <p className="text-3xl font-bold text-emerald-600 mt-2">
+                    <p className="text-3xl font-bold text-emerald-600 mt-2 truncate">
                       ${parseFloat(totals.recharges).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex-shrink-0">
                     <TrendingUp className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
