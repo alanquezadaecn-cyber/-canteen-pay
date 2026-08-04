@@ -70,11 +70,11 @@ export const Menu: React.FC = () => {
                 {!rotation.items || rotation.items.length === 0 ? (
                   <p className="text-white text-sm font-semibold mt-1">Aún no se definió el platillo de hoy</p>
                 ) : (
-                  <div className="mt-1.5 space-y-1">
+                  <div className="mt-1.5 space-y-2.5">
                     {rotation.items.map(it => (
-                      <div key={it.subsidyTierId} className="flex items-baseline gap-2">
-                        <span className="text-emerald-100 text-xs font-semibold flex-shrink-0">{it.tierName}:</span>
-                        <span className="text-white text-base font-extrabold truncate">{it.dishName || 'Por definir'}</span>
+                      <div key={it.subsidyTierId}>
+                        <span className="text-emerald-100 text-xs font-semibold">{it.tierName}</span>
+                        <p className="text-white text-base font-extrabold leading-snug break-words">{it.dishName || 'Por definir'}</p>
                       </div>
                     ))}
                   </div>
