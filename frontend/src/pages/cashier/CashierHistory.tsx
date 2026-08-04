@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import api from '../../lib/api';
-import { ShoppingCart, TrendingUp, Clock, DollarSign, User } from 'lucide-react';
+import { ShoppingCart, TrendingUp, Clock, DollarSign } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -26,19 +26,32 @@ interface Pagination {
   pages: number;
 }
 
+interface Totals { charges: string; recharges: string }
+
+// YYYY-MM-DD en horario local (no UTC), para que el <input type="date"> y los presets coincidan
+const toLocalDate = (d: Date) => {
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+};
+const todayStr = () => toLocalDate(new Date());
+
 export const CashierHistory: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [totals, setTotals] = useState<Totals | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState(todayStr());
+  const [toDate, setToDate] = useState(todayStr());
 
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const { data } = await api.get(`/cashier/history?page=${page}&limit=30`);
+        const { data } = await api.get(`/cashier/history?page=${page}&limit=30&from=${fromDate}&to=${toDate}`);
         setTransactions(data.data);
         setPagination(data.pagination);
+        setTotals(data.totals);
       } catch (err) {
         console.error('Error fetching history:', err);
       } finally {
@@ -47,7 +60,23 @@ export const CashierHistory: React.FC = () => {
     };
 
     fetchHistory();
-  }, [page]);
+  }, [page, fromDate, toDate]);
+
+  const applyPreset = (preset: 'hoy' | 'ayer' | '7dias' | 'mes') => {
+    const now = new Date();
+    if (preset === 'hoy') { setFromDate(todayStr()); setToDate(todayStr()); }
+    else if (preset === 'ayer') {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      setFromDate(toLocalDate(y)); setToDate(toLocalDate(y));
+    } else if (preset === '7dias') {
+      const from = new Date(now); from.setDate(from.getDate() - 6);
+      setFromDate(toLocalDate(from)); setToDate(todayStr());
+    } else if (preset === 'mes') {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFromDate(toLocalDate(from)); setToDate(todayStr());
+    }
+    setPage(1);
+  };
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -95,8 +124,48 @@ export const CashierHistory: React.FC = () => {
           </p>
         </div>
 
+        {/* Filtro de fechas */}
+        <Card variant="default">
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {([['hoy', 'Hoy'], ['ayer', 'Ayer'], ['7dias', 'Últimos 7 días'], ['mes', 'Este mes']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => applyPreset(key)}
+                  className="h-8 px-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-slate-600 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Del</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  max={toDate}
+                  onChange={e => { setFromDate(e.target.value); setPage(1); }}
+                  className="h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Al</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  min={fromDate}
+                  max={todayStr()}
+                  onChange={e => { setToDate(e.target.value); setPage(1); }}
+                  className="h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Summary */}
-        {pagination && (
+        {pagination && totals && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card variant="elevated">
               <CardContent className="pt-6">
@@ -118,13 +187,13 @@ export const CashierHistory: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Páginas</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                      {pagination.page} / {pagination.pages}
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Cobrado</p>
+                    <p className="text-3xl font-bold text-red-500 mt-2">
+                      ${parseFloat(totals.charges).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
-                    <Clock className="w-6 h-6 text-slate-400" />
+                  <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                    <DollarSign className="w-6 h-6 text-red-500" />
                   </div>
                 </div>
               </CardContent>
@@ -134,13 +203,13 @@ export const CashierHistory: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Por Página</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-50 mt-2">
-                      {pagination.limit}
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium uppercase">Total Recargado</p>
+                    <p className="text-3xl font-bold text-emerald-600 mt-2">
+                      ${parseFloat(totals.recharges).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
-                    <User className="w-6 h-6 text-slate-400" />
+                  <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                    <TrendingUp className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>

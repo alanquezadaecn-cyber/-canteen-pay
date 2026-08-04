@@ -1138,24 +1138,21 @@ router.get('/branch/:branchId/subsidy-report', async (req, res) => {
 
 router.get('/history', async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 30 } = req.query;
     const skip = (page - 1) * limit;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Por default muestra solo hoy (como antes), pero admite from/to para consultar
+    // cualquier rango — antes esta pantalla solo podía ver el día en curso.
+    const from = req.query.from ? new Date(String(req.query.from)) : new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+    to.setHours(23, 59, 59, 999);
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const where = { cashierId: req.userId, createdAt: { gte: from, lte: to } };
 
-    const [transactions, total] = await Promise.all([
+    const [transactions, total, sums] = await Promise.all([
       prisma.transaction.findMany({
-        where: {
-          cashierId: req.userId,
-          createdAt: {
-            gte: today,
-            lt: tomorrow
-          }
-        },
+        where,
         include: {
           user: {
             select: { name: true, employeeNumber: true }
@@ -1165,15 +1162,8 @@ router.get('/history', async (req, res) => {
         skip: parseInt(skip),
         take: parseInt(limit)
       }),
-      prisma.transaction.count({
-        where: {
-          cashierId: req.userId,
-          createdAt: {
-            gte: today,
-            lt: tomorrow
-          }
-        }
-      })
+      prisma.transaction.count({ where }),
+      prisma.transaction.groupBy({ by: ['type'], where, _sum: { amount: true } })
     ]);
 
     const formatted = transactions.map(t => ({
@@ -1185,6 +1175,9 @@ router.get('/history', async (req, res) => {
       cashChange: t.cashChange != null ? t.cashChange.toString() : null
     }));
 
+    const sumByType = { PURCHASE: 0, RECHARGE: 0 };
+    (sums || []).forEach(s => { sumByType[s.type] = parseFloat(s._sum?.amount || 0); });
+
     res.json({
       data: formatted,
       pagination: {
@@ -1192,7 +1185,13 @@ router.get('/history', async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         pages: Math.ceil(total / limit)
-      }
+      },
+      totals: {
+        charges: sumByType.PURCHASE.toFixed(2),
+        recharges: sumByType.RECHARGE.toFixed(2)
+      },
+      from: from.toISOString(),
+      to: to.toISOString()
     });
   } catch (err) {
     console.error(err);
